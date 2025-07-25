@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.ConversationMapper">
+    
+    <resultMap id="conversationResultMap" type="com.example.entity.Conversation">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="title" column="title"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+    
+    <insert id="insert" parameterType="com.example.entity.Conversation" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO conversations (user_id, title, created_at, updated_at)
+        VALUES (#{userId}, #{title}, NOW(), NOW())
+    </insert>
+    
+    <select id="selectById" resultMap="conversationResultMap">
+        SELECT * FROM conversations WHERE id = #{id}
+    </select>
+    
+    <select id="selectByUserId" resultMap="conversationResultMap">
+        SELECT * FROM conversations 
+        WHERE user_id = #{userId} 
+        ORDER BY updated_at DESC
+    </select>
+    
+    <select id="selectRecentByUserId" resultMap="conversationResultMap">
+        SELECT * FROM conversations 
+        WHERE user_id = #{userId} 
+        ORDER BY updated_at DESC 
+        LIMIT #{limit}
+    </select>
+    
+    <update id="updateById" parameterType="com.example.entity.Conversation">
+        UPDATE conversations SET
+            title = #{title},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="deleteById">
+        DELETE FROM conversations WHERE id = #{id}
+    </delete>
+    
+</mapper>

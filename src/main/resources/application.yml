@@ -1,0 +1,79 @@
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-chat
+    
+  # 数据源配置
+  datasource:
+    # H2数据库配置 (开发环境)
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    # MySQL数据库配置 (生产环境，注释掉H2配置后启用)
+    # driver-class-name: com.mysql.cj.jdbc.Driver
+    # url: jdbc:mysql://localhost:3306/ai_chat?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    # username: root
+    # password: your_password
+  
+  # H2控制台配置 (开发环境)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+  
+  # AI配置
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:sk-yBoOvdiixdvpCG06mwCSGnxt3lxj3ekZ5t6bav3Ii9cS0Ln4}
+      base-url: ${OPENAI_BASE_URL:https://api.moonshot.cn/v1}
+      model: ${OPENAI_MODEL:kimi-k2-0711-preview}
+      temperature: 0.7
+      max-tokens: 1000
+  
+  # 异步任务配置
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 20
+        queue-capacity: 100
+        thread-name-prefix: "ai-chat-"
+
+# MyBatis配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    cache-enabled: true
+    lazy-loading-enabled: true
+
+# 日志配置
+logging:
+  level:
+    com.example: DEBUG
+    org.springframework.ai: DEBUG
+    org.mybatis: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 搜索服务配置
+search:
+  google:
+    api-key: ${GOOGLE_SEARCH_API_KEY:AIzaSyAi_NseTvDZLEsJItwvX0G-cmMix7fzUqw}
+    search-engine-id: ${GOOGLE_SEARCH_ENGINE_ID:googlesearch}
+    enabled: ${SEARCH_ENABLED:true}
+
+# 应用配置
+app:
+  chat:
+    max-history-size: 20
+    response-timeout: 30s
+    sse-timeout: 30s

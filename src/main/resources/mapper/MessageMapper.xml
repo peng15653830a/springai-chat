@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.MessageMapper">
+    
+    <resultMap id="messageResultMap" type="com.example.entity.Message">
+        <id property="id" column="id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="role" column="role"/>
+        <result property="content" column="content"/>
+        <result property="searchResults" column="search_results"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+    
+    <insert id="insert" parameterType="com.example.entity.Message" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO messages (conversation_id, role, content, search_results, created_at)
+        VALUES (#{conversationId}, #{role}, #{content}, #{searchResults}, NOW())
+    </insert>
+    
+    <select id="selectById" resultMap="messageResultMap">
+        SELECT * FROM messages WHERE id = #{id}
+    </select>
+    
+    <select id="selectByConversationId" resultMap="messageResultMap">
+        SELECT * FROM messages 
+        WHERE conversation_id = #{conversationId} 
+        ORDER BY created_at ASC
+    </select>
+    
+    <select id="selectRecentMessages" resultMap="messageResultMap">
+        SELECT * FROM messages 
+        WHERE conversation_id = #{conversationId} 
+        ORDER BY created_at DESC 
+        LIMIT #{limit}
+    </select>
+    
+    <delete id="deleteById">
+        DELETE FROM messages WHERE id = #{id}
+    </delete>
+    
+    <delete id="deleteByConversationId">
+        DELETE FROM messages WHERE conversation_id = #{conversationId}
+    </delete>
+    
+</mapper>
