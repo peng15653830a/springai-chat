@@ -29,4 +29,19 @@ public class ApiResponse<T> {
         response.setMessage(message);
         return response;
     }
+    
+    public static <T> ApiResponse<T> error(String code, String message) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setSuccess(false);
+        response.setMessage(message);
+        return response;
+    }
+    
+    public static <T> ApiResponse<T> error(String code, String message, T data) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setSuccess(false);
+        response.setMessage(message);
+        response.setData(data);
+        return response;
+    }
 }

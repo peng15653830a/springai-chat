@@ -59,7 +59,20 @@
               <el-avatar v-else :size="32" class="ai-avatar">AI</el-avatar>
             </div>
             <div class="message-content">
-              <div class="message-text">{{ message.content }}</div>
+              <div class="message-text">
+                {{ message.content }}
+                <div class="message-actions">
+                  <el-button
+                    type="text"
+                    size="small"
+                    @click="copyMessage(message.content)"
+                    class="copy-btn"
+                    title="复制"
+                  >
+                    <el-icon><CopyDocument /></el-icon>
+                  </el-button>
+                </div>
+              </div>
               <div class="message-time">{{ formatTime(message.createdAt) }}</div>
             </div>
           </div>
@@ -348,6 +361,27 @@ export default {
       localStorage.setItem('searchEnabled', value.toString())
     }
     
+    // 复制消息内容
+    const copyMessage = async (content) => {
+      try {
+        await navigator.clipboard.writeText(content)
+        ElMessage.success('已复制到剪贴板')
+      } catch (error) {
+        // 降级处理：使用传统方法复制
+        const textArea = document.createElement('textarea')
+        textArea.value = content
+        document.body.appendChild(textArea)
+        textArea.select()
+        try {
+          document.execCommand('copy')
+          ElMessage.success('已复制到剪贴板')
+        } catch (err) {
+          ElMessage.error('复制失败')
+        }
+        document.body.removeChild(textArea)
+      }
+    }
+    
     // 从本地存储加载搜索设置
     const loadSearchSettings = () => {
       const saved = localStorage.getItem('searchEnabled')
@@ -382,6 +416,7 @@ export default {
       deleteConversation,
       handleSendMessage,
       onSearchToggle,
+      copyMessage,
       formatTime
     }
   }
@@ -520,10 +555,45 @@ export default {
   border-radius: 10px;
   word-wrap: break-word;
   white-space: pre-wrap;
+  position: relative;
+}
+
+.message-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.message-text:hover .message-actions {
+  opacity: 1;
+}
+
+.copy-btn {
+  padding: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #666;
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #409eff;
 }
 
 .message-item.user .message-text {
   background: #409eff;
+  color: white;
+}
+
+.message-item.user .copy-btn {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.message-item.user .copy-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
   color: white;
 }
 

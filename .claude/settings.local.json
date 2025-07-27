@@ -10,7 +10,10 @@
       "Bash(npm create:*)",
       "Bash(npm install:*)",
       "Bash(chmod:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(choco install:*)",
+      "Bash(ls:*)",
+      "Bash(echo $HOME)"
     ],
     "deny": []
   }
