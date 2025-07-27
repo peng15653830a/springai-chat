@@ -13,7 +13,9 @@
       "Bash(mv:*)",
       "Bash(choco install:*)",
       "Bash(ls:*)",
-      "Bash(echo $HOME)"
+      "Bash(echo $HOME)",
+      "Bash(gh auth:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

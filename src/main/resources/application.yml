@@ -15,7 +15,7 @@ spring:
   datasource:
     # H2数据库配置 (开发环境)
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;TRACE_LEVEL_FILE=0;TRACE_LEVEL_SYSTEM_OUT=0
     username: sa
     password: 
     # MySQL数据库配置 (生产环境，注释掉H2配置后启用)
@@ -31,6 +31,19 @@ spring:
       path: /h2-console
       settings:
         web-allow-others: true
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+    
+  # SQL初始化配置
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
   
   # AI配置
   ai:
