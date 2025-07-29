@@ -9,6 +9,7 @@ public class Message {
     private Long conversationId;
     private String role;
     private String content;
+    private String thinking; // AI推理过程
     private String searchResults;
     private Date createdAt;
 }

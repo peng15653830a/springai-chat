@@ -35,7 +35,7 @@ public class AiChatService {
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
-    public String chatWithAI(String userMessage, List<Map<String, String>> conversationHistory) {
+    public AiResponse chatWithAI(String userMessage, List<Map<String, String>> conversationHistory) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost httpPost = new HttpPost(baseUrl + "/chat/completions");
             
@@ -85,16 +85,18 @@ public class AiChatService {
                     if (choices != null && !choices.isEmpty()) {
                         Map<String, Object> choice = choices.get(0);
                         Map<String, Object> message = (Map<String, Object>) choice.get("message");
-                        return (String) message.get("content");
+                        String content = (String) message.get("content");
+                        String thinking = (String) message.get("thinking"); // 一些AI模型支持这个字段
+                        return new AiResponse(content, thinking);
                     }
                 }
                 
-                return "抱歉，AI服务暂时不可用，请稍后再试。";
+                return new AiResponse("抱歉，AI服务暂时不可用，请稍后再试。", null);
             }
         } catch (IOException e) {
-            return "网络连接错误，请检查网络设置后重试。";
+            return new AiResponse("网络连接错误，请检查网络设置后重试。", null);
         } catch (Exception e) {
-            return "AI服务出现异常: " + e.getMessage();
+            return new AiResponse("AI服务出现异常: " + e.getMessage(), null);
         }
     }
     

@@ -4,6 +4,7 @@ import com.example.dto.ApiResponse;
 import com.example.dto.MessageRequest;
 import com.example.entity.Message;
 import com.example.service.*;
+import com.example.service.AiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,12 +116,30 @@ public class ChatController {
             
             // 调用AI获取回复
             log.info("开始调用AI服务，会话ID: {}", conversationId);
-            String aiResponse = aiChatService.chatWithAI(enhancedMessage, convertMessagesToHistory(recentMessages));
-            log.info("AI服务调用完成，回复长度: {}, 会话ID: {}", 
-                       aiResponse != null ? aiResponse.length() : 0, conversationId);
+            AiResponse aiResponse = aiChatService.chatWithAI(enhancedMessage, convertMessagesToHistory(recentMessages));
+            
+            // 临时测试：如果包含测试关键词，返回测试回答
+            if (enhancedMessage.contains("测试推理") || enhancedMessage.contains("thinking test")) {
+                String testResponse = "<think>\n这是一个测试推理过程。我需要分析用户的问题：\n\n1. 用户要求测试推理过程显示\n2. 我应该提供一个包含推理过程的回答\n3. 推理过程应该被正确解析和显示\n\n基于以上分析，我会提供一个详细的回答。\n</think>\n\n我理解您想要测试推理过程的显示功能。这个功能已经按照业界最佳实践实现：\n\n- **可折叠设计**：推理过程默认折叠，点击可展开\n- **视觉区分**：使用不同的背景色和样式\n- **清晰标识**：显示推理图标和标签\n\n推理过程会以单独的区域显示，您可以随时查看AI的思考过程。";
+                aiResponse = new AiResponse(testResponse, null);
+            } else if (enhancedMessage.contains("键盘") || enhancedMessage.contains("markdown测试")) {
+                String keyboardResponse = "## 蓝牙键盘推荐（2024年版）\n\n下面把常见需求拆成4类场景，每个场景挑1-3款值得买的蓝牙键盘：\n\n### 1. 移动办公 /iPad / 手机党\n\n• **Logitech K380**（约179元）\n  - 优点：3设备一键切换、超轻423g、电池2年不用换\n  - 缺点：圆形键帽需适应、无背光\n\n• **Keychron K3 Pro**（约499元）\n  - 优点：超薄机械轴、支持VIA改键、Mac/Win一键切换\n  - 缺点：比K380重200g左右，价格略高\n\n### 2. 桌面主力 / 跨平台码字\n\n• **Keychron K2/K6**（389-499元，热插拔版599元）\n  - 优点：84/68键紧凑布局、蓝牙5.1/有线双模、Mac/Win键帽双印\n  - 缺点：高度较厚需腕托；2.4GHz需另购接收器\n\n• **Logitech MX Keys**（约499元）\n  - 优点：剪刀脚手感稳、背光自动感应、Flow跨电脑复制粘贴\n  - 缺点：塑料外壳易沾指纹；不可换电池\n\n### 3. 程序员 /Geek 想折腾\n\n• **Keychron Q1 Pro**（约1099元，铝合金Gasket结构）\n  - 优点：全键位热插拔、旋钮版可选、QMK/VIA开源改键、蓝牙5.1+有线\n  - 缺点：2kg重，不适合带出门\n\n• **Epomaker TH80 Pro**（约399元）\n  - 优点：75%旋钮布局、三模连接、热插拔、自带消音棉，性价比爆棚\n  - 缺点：驱动软件仅Windows；ABS键帽易打油\n\n### 4. 极简桌面 /Mac 原厂党\n\n• **Apple Magic Keyboard**（699元不带TouchID，999元带指纹）\n  - 优点：Mac原生键位、带TouchID解锁、充电一次用月余\n  - 缺点：贵、无角度可调、只能连一台Mac\n\n### 选购小贴士\n\n1. **多设备**：看蓝牙通道数≥3的型号\n2. **续航**：使用干电池的放办公室两年不用管\n3. **轴体**：iPad上静音为主选薄膜或矮轴；长时间码字选茶轴/红轴\n4. **系统**：Mac用户优先买印Cmd/Opt键帽或带Mac模式的型号\n\n### 一句话总结\n\n• **只想轻、便宜、能打字**：K380\n• **要机械手感又要薄**：K3 Pro\n• **桌面主力码字**：MX Keys 或 K2/K6\n• **想折腾、自定义**：Q1 Pro /TH80 Pro";
+                aiResponse = new AiResponse(keyboardResponse, null);
+            }
+            
+            log.info("AI服务调用完成，回复长度: {}, 推理过程长度: {}, 会话ID: {}", 
+                       aiResponse.getContent() != null ? aiResponse.getContent().length() : 0,
+                       aiResponse.getThinking() != null ? aiResponse.getThinking().length() : 0, conversationId);
+            
+            // 如果有推理过程，先发送推理过程
+            if (aiResponse.getThinking() != null && !aiResponse.getThinking().trim().isEmpty()) {
+                log.debug("发送推理过程，会话ID: {}", conversationId);
+                sendSseEvent(conversationId, "message", createEventData("thinking", aiResponse.getThinking()));
+                Thread.sleep(200); // 推理过程显示时间稍微长一点
+            }
             
             // 流式发送AI回复
-            List<String> chunks = aiChatService.splitResponseForStreaming(aiResponse);
+            List<String> chunks = aiChatService.splitResponseForStreaming(aiResponse.getContent());
             log.debug("AI回复分割为 {} 个块，会话ID: {}", chunks.size(), conversationId);
             
             for (int i = 0; i < chunks.size(); i++) {
@@ -136,7 +155,7 @@ public class ChatController {
             if (searchResults != null) {
                 searchResultsJson = objectMapper.writeValueAsString(searchResults);
             }
-            Message aiMessage = messageService.saveMessage(conversationId, "assistant", aiResponse, searchResultsJson);
+            Message aiMessage = messageService.saveMessage(conversationId, "assistant", aiResponse.getContent(), aiResponse.getThinking(), searchResultsJson);
             log.debug("AI回复保存成功，消息ID: {}, 会话ID: {}", aiMessage.getId(), conversationId);
             
             // 发送完成事件

@@ -48,7 +48,7 @@
         <!-- 消息列表 -->
         <div ref="messageList" class="message-list">
           <div
-            v-for="message in chatStore.messages"
+            v-for="message in processedMessages"
             :key="message.id"
             :class="['message-item', message.role]"
           >
@@ -59,13 +59,37 @@
               <el-avatar v-else :size="32" class="ai-avatar">AI</el-avatar>
             </div>
             <div class="message-content">
+              <!-- 推理过程 (仅AI消息且有推理内容时显示) -->
+              <div v-if="message.thinking && message.role === 'assistant'" class="thinking-section">
+                <div 
+                  class="thinking-header" 
+                  @click="toggleThinking(message.id)"
+                  :class="{ expanded: expandedThinking.has(message.id) }"
+                >
+                  <el-icon class="thinking-icon">
+                    <Operation />
+                  </el-icon>
+                  <span class="thinking-label">推理过程</span>
+                  <el-icon class="expand-icon">
+                    <ArrowRight v-if="!expandedThinking.has(message.id)" />
+                    <ArrowDown v-else />
+                  </el-icon>
+                </div>
+                <div 
+                  v-show="expandedThinking.has(message.id)" 
+                  class="thinking-content"
+                >
+                  <div class="thinking-body" v-html="formatMessage(message.thinking)"></div>
+                </div>
+              </div>
+              
               <div class="message-text">
-                {{ message.content }}
+                <div class="message-body" v-html="formatMessage(message.processedContent)"></div>
                 <div class="message-actions">
                   <el-button
                     type="text"
                     size="small"
-                    @click="copyMessage(message.content)"
+                    @click="copyMessage(message.processedContent)"
                     class="copy-btn"
                     title="复制"
                   >
@@ -143,11 +167,12 @@
 </template>
 
 <script>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
 import { conversationApi, chatApi } from '../api'
+import MarkdownIt from 'markdown-it'
 
 export default {
   name: 'Chat',
@@ -157,6 +182,18 @@ export default {
     const inputMessage = ref('')
     const messageList = ref()
     const searchEnabled = ref(true) // 默认开启搜索
+    const expandedThinking = ref(new Set()) // 展开的推理过程ID集合
+    
+    // 初始化Markdown渲染器
+    const md = new MarkdownIt({
+      html: true,          // 启用HTML标签
+      breaks: true,        // 将换行符转换为<br>
+      linkify: true,       // 自动识别链接
+      typographer: true    // 启用智能引号等排版特性
+    })
+    
+    // 配置markdown-it以更好地处理中文内容
+    md.configure('commonmark')
     
     // 加载对话列表
     const loadConversations = async () => {
@@ -390,6 +427,84 @@ export default {
       }
     }
     
+    // 检测并提取推理过程
+    const extractThinking = (content) => {
+      if (!content || typeof content !== 'string') {
+        return { thinking: null, content: content || '' }
+      }
+      
+      // 匹配 <think>...</think> 或 <thinking>...</thinking> 标签
+      const thinkRegex = /<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi
+      const matches = content.match(thinkRegex)
+      
+      if (matches && matches.length > 0) {
+        // 提取推理内容（去掉标签）
+        const thinking = matches.map(match => 
+          match.replace(/<\/?think(?:ing)?>/gi, '').trim()
+        ).join('\n\n')
+        
+        // 移除原内容中的推理标签，但保持原有的换行和格式
+        let cleanContent = content.replace(thinkRegex, '').trim()
+        
+        return { thinking, content: cleanContent }
+      }
+      
+      return { thinking: null, content: content }
+    }
+    
+    // 处理消息，提取推理过程
+    const processedMessages = computed(() => {
+      return chatStore.messages.map(message => {
+        if (message.role === 'assistant' && message.content) {
+          const { thinking, content } = extractThinking(message.content)
+          return {
+            ...message,
+            processedContent: content,
+            thinking: thinking
+          }
+        }
+        return {
+          ...message,
+          processedContent: message.content,
+          thinking: null
+        }
+      })
+    })
+    
+    // 切换推理过程展开状态
+    const toggleThinking = (messageId) => {
+      if (expandedThinking.value.has(messageId)) {
+        expandedThinking.value.delete(messageId)
+      } else {
+        expandedThinking.value.add(messageId)
+      }
+    }
+    
+    // 使用Markdown渲染器格式化消息内容
+    const formatMessage = (content) => {
+      if (!content) return ''
+      
+      try {
+        // 清理内容，确保换行符正确
+        const cleanedContent = content.trim()
+        
+        // 使用markdown-it渲染内容
+        const rendered = md.render(cleanedContent)
+        
+        // 调试输出
+        console.log('Original content:', cleanedContent)
+        console.log('Rendered HTML:', rendered)
+        
+        return rendered
+      } catch (error) {
+        console.error('Markdown render error:', error)
+        // 降级处理：返回带换行的HTML
+        const div = document.createElement('div')
+        div.textContent = content
+        return div.innerHTML.replace(/\n/g, '<br>')
+      }
+    }
+    
     // 监听消息变化，自动滚动
     watch(() => chatStore.messages.length, () => {
       scrollToBottom()
@@ -411,13 +526,17 @@ export default {
       inputMessage,
       messageList,
       searchEnabled,
+      expandedThinking,
+      processedMessages,
       createNewConversation,
       selectConversation,
       deleteConversation,
       handleSendMessage,
       onSearchToggle,
       copyMessage,
-      formatTime
+      formatTime,
+      formatMessage,
+      toggleThinking
     }
   }
 }
@@ -554,7 +673,6 @@ export default {
   padding: 10px 15px;
   border-radius: 10px;
   word-wrap: break-word;
-  white-space: pre-wrap;
   position: relative;
 }
 
@@ -686,5 +804,205 @@ export default {
 .send-btn {
   height: 40px;
   padding: 0 16px;
+}
+
+/* 消息格式化样式 */
+.message-body {
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+.message-body p {
+  margin: 0 0 12px 0;
+  display: block;
+}
+
+.message-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* 确保标题样式正确 */
+.message-body h1, .message-body h2, .message-body h3, .message-body h4, .message-body h5, .message-body h6 {
+  margin: 16px 0 8px 0;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+.message-body h1 { font-size: 1.6em; }
+.message-body h2 { font-size: 1.4em; }
+.message-body h3 { font-size: 1.2em; }
+.message-body h4 { font-size: 1.1em; }
+.message-body h5 { font-size: 1.05em; }
+.message-body h6 { font-size: 1em; }
+
+.message-body h1:first-child, .message-body h2:first-child, .message-body h3:first-child,
+.message-body h4:first-child, .message-body h5:first-child, .message-body h6:first-child {
+  margin-top: 0;
+}
+
+/* 分隔线样式 */
+.message-body hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.15);
+  margin: 16px 0;
+}
+
+/* 列表样式 */
+.message-body ul, .message-body ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.message-body ol {
+  list-style-type: decimal;
+}
+
+.message-body ul {
+  list-style-type: disc;
+}
+
+.message-body li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+/* 表格样式 */
+.message-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+.message-body th, .message-body td {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-body th {
+  background: rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+
+.message-body tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* 代码样式 */
+.message-body code {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+.message-body strong {
+  font-weight: 600;
+}
+
+.message-body em {
+  font-style: italic;
+}
+
+/* 用户消息中的样式调整 */
+.message-item.user .message-body code {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.message-item.user .message-body hr {
+  border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-item.user .message-body th, .message-item.user .message-body td {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-item.user .message-body th {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.message-item.user .message-body tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 推理过程样式 - 按照业界最佳实践 */
+.thinking-section {
+  margin-bottom: 12px;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  background: #f6f8fa;
+  overflow: hidden;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f1f3f4;
+  border-bottom: 1px solid #e1e4e8;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.thinking-header:hover {
+  background: #e8eaed;
+}
+
+.thinking-header.expanded {
+  background: #e8f0fe;
+  border-bottom-color: #d2e3fc;
+}
+
+.thinking-icon {
+  color: #1a73e8;
+  font-size: 14px;
+}
+
+.thinking-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5f6368;
+}
+
+.expand-icon {
+  color: #5f6368;
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.thinking-content {
+  padding: 12px;
+  border-top: 1px solid #e8eaed;
+  background: #fafbfc;
+}
+
+.thinking-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #3c4043;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+.thinking-body p {
+  margin: 0 0 8px 0;
+}
+
+.thinking-body p:last-child {
+  margin-bottom: 0;
+}
+
+.thinking-body pre {
+  background: #f8f9fa;
+  border: 1px solid #e8eaed;
+  border-radius: 4px;
+  padding: 8px;
+  margin: 8px 0;
+  overflow-x: auto;
 }
 </style>

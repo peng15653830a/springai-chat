@@ -8,13 +8,14 @@
         <result property="conversationId" column="conversation_id"/>
         <result property="role" column="role"/>
         <result property="content" column="content"/>
+        <result property="thinking" column="thinking"/>
         <result property="searchResults" column="search_results"/>
         <result property="createdAt" column="created_at"/>
     </resultMap>
     
     <insert id="insert" parameterType="com.example.entity.Message" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO messages (conversation_id, role, content, search_results, created_at)
-        VALUES (#{conversationId}, #{role}, #{content}, #{searchResults}, NOW())
+        INSERT INTO messages (conversation_id, role, content, thinking, search_results, created_at)
+        VALUES (#{conversationId}, #{role}, #{content}, #{thinking}, #{searchResults}, NOW())
     </insert>
     
     <select id="selectById" resultMap="messageResultMap">

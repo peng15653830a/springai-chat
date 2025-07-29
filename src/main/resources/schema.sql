@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS messages (
     conversation_id BIGINT NOT NULL,
     role VARCHAR(20) NOT NULL COMMENT 'user or assistant',
     content TEXT NOT NULL,
+    thinking TEXT COMMENT 'AI推理过程',
     search_results TEXT COMMENT 'JSON格式的搜索结果',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_conversation_id (conversation_id)

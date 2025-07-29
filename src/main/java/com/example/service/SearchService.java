@@ -28,48 +28,122 @@ public class SearchService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     public List<Map<String, String>> searchGoogle(String query) {
-        // 首先尝试Google搜索API
-        if (searchEnabled && !googleApiKey.isEmpty() && !searchEngineId.isEmpty() && 
-            !googleApiKey.equals("your_google_api_key_here") && !searchEngineId.equals("googlesearch")) {
-            
-            try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-                URIBuilder uriBuilder = new URIBuilder("https://www.googleapis.com/customsearch/v1");
-                uriBuilder.addParameter("key", googleApiKey);
-                uriBuilder.addParameter("cx", searchEngineId);
-                uriBuilder.addParameter("q", query);
-                uriBuilder.addParameter("num", "3");
-                
-                HttpGet httpGet = new HttpGet(uriBuilder.build());
-                
-                try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                    String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                    
-                    if (response.getStatusLine().getStatusCode() == 200) {
-                        Map<String, Object> responseMap = objectMapper.readValue(responseString, Map.class);
-                        List<Map<String, Object>> items = (List<Map<String, Object>>) responseMap.get("items");
-                        
-                        List<Map<String, String>> results = new ArrayList<>();
-                        if (items != null && !items.isEmpty()) {
-                            for (Map<String, Object> item : items) {
-                                Map<String, String> result = new HashMap<>();
-                                result.put("title", (String) item.get("title"));
-                                result.put("snippet", (String) item.get("snippet"));
-                                result.put("link", (String) item.get("link"));
-                                results.add(result);
-                            }
-                            return results;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Google搜索API调用失败: " + e.getMessage());
-            }
+        // 首先尝试DuckDuckGo免费搜索API
+        List<Map<String, String>> duckResults = searchDuckDuckGo(query);
+        if (!duckResults.isEmpty()) {
+            return duckResults;
         }
         
-        // 如果Google API不可用，尝试使用百度搜索
-        return searchBaidu(query);
+        // 如果DuckDuckGo不可用，尝试SerpAPI免费额度
+        List<Map<String, String>> serpResults = searchSerpAPI(query);
+        if (!serpResults.isEmpty()) {
+            return serpResults;
+        }
+        
+        // 最后降级到增强的本地搜索结果
+        return createEnhancedSearchResults(query);
     }
     
+    /**
+     * 使用DuckDuckGo免费搜索API
+     */
+    private List<Map<String, String>> searchDuckDuckGo(String query) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            URIBuilder uriBuilder = new URIBuilder("https://api.duckduckgo.com/");
+            uriBuilder.addParameter("q", query);
+            uriBuilder.addParameter("format", "json");
+            uriBuilder.addParameter("no_html", "1");
+            uriBuilder.addParameter("skip_disambig", "1");
+            
+            HttpGet httpGet = new HttpGet(uriBuilder.build());
+            httpGet.setHeader("User-Agent", "SpringAI-ChatBot/1.0");
+            
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+                if (response.getStatusLine().getStatusCode() == 200) {
+                    String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                    Map<String, Object> responseMap = objectMapper.readValue(responseString, Map.class);
+                    
+                    List<Map<String, String>> results = new ArrayList<>();
+                    
+                    // 获取即时答案
+                    String abstractText = (String) responseMap.get("Abstract");
+                    String abstractUrl = (String) responseMap.get("AbstractURL");
+                    if (abstractText != null && !abstractText.isEmpty()) {
+                        results.add(createResult("DuckDuckGo即时答案", abstractText, 
+                                               abstractUrl != null ? abstractUrl : "https://duckduckgo.com/?q=" + query));
+                    }
+                    
+                    // 获取相关主题
+                    List<Map<String, Object>> relatedTopics = (List<Map<String, Object>>) responseMap.get("RelatedTopics");
+                    if (relatedTopics != null && !relatedTopics.isEmpty()) {
+                        for (int i = 0; i < Math.min(2, relatedTopics.size()); i++) {
+                            Map<String, Object> topic = relatedTopics.get(i);
+                            String text = (String) topic.get("Text");
+                            String firstURL = (String) topic.get("FirstURL");
+                            if (text != null && !text.isEmpty()) {
+                                results.add(createResult("相关信息", text, 
+                                                       firstURL != null ? firstURL : "https://duckduckgo.com/?q=" + query));
+                            }
+                        }
+                    }
+                    
+                    return results;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("DuckDuckGo搜索调用失败: " + e.getMessage());
+        }
+        
+        return new ArrayList<>();
+    }
+    
+    /**
+     * 使用SerpAPI免费额度搜索
+     */
+    private List<Map<String, String>> searchSerpAPI(String query) {
+        // 这里可以配置SerpAPI的免费API密钥（每月100次免费）
+        String serpApiKey = System.getenv("SERP_API_KEY");
+        if (serpApiKey == null || serpApiKey.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            URIBuilder uriBuilder = new URIBuilder("https://serpapi.com/search");
+            uriBuilder.addParameter("q", query);
+            uriBuilder.addParameter("api_key", serpApiKey);
+            uriBuilder.addParameter("engine", "google");
+            uriBuilder.addParameter("num", "3");
+            
+            HttpGet httpGet = new HttpGet(uriBuilder.build());
+            
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+                if (response.getStatusLine().getStatusCode() == 200) {
+                    String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                    Map<String, Object> responseMap = objectMapper.readValue(responseString, Map.class);
+                    
+                    List<Map<String, Object>> organicResults = (List<Map<String, Object>>) responseMap.get("organic_results");
+                    List<Map<String, String>> results = new ArrayList<>();
+                    
+                    if (organicResults != null && !organicResults.isEmpty()) {
+                        for (Map<String, Object> item : organicResults) {
+                            Map<String, String> result = new HashMap<>();
+                            result.put("title", (String) item.get("title"));
+                            result.put("snippet", (String) item.get("snippet"));
+                            result.put("link", (String) item.get("link"));
+                            results.add(result);
+                        }
+                    }
+                    
+                    return results;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("SerpAPI搜索调用失败: " + e.getMessage());
+        }
+        
+        return new ArrayList<>();
+    }
+
     /**
      * 使用百度搜索API (免费方案)
      */

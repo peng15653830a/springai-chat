@@ -15,7 +15,10 @@
       "Bash(ls:*)",
       "Bash(echo $HOME)",
       "Bash(gh auth:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ithy.com)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }

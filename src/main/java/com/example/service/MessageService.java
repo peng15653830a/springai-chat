@@ -16,10 +16,15 @@ public class MessageService {
     }
     
     public Message saveMessage(Long conversationId, String role, String content, String searchResults) {
+        return saveMessage(conversationId, role, content, null, searchResults);
+    }
+    
+    public Message saveMessage(Long conversationId, String role, String content, String thinking, String searchResults) {
         Message message = new Message();
         message.setConversationId(conversationId);
         message.setRole(role);
         message.setContent(content);
+        message.setThinking(thinking);
         message.setSearchResults(searchResults);
         messageMapper.insert(message);
         return message;
