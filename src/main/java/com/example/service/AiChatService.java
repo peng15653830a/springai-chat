@@ -102,24 +102,13 @@ public class AiChatService {
     
     public List<String> splitResponseForStreaming(String response) {
         List<String> chunks = new ArrayList<>();
-        String[] words = response.split("\\s+");
-        StringBuilder chunk = new StringBuilder();
         
-        for (String word : words) {
-            if (chunk.length() + word.length() + 1 > 20) { // 每20个字符一个chunk
-                if (chunk.length() > 0) {
-                    chunks.add(chunk.toString());
-                    chunk = new StringBuilder();
-                }
-            }
-            if (chunk.length() > 0) {
-                chunk.append(" ");
-            }
-            chunk.append(word);
-        }
+        // 保持原始格式，按字符数分割而不是按单词分割
+        int chunkSize = 50; // 增加chunk大小以获得更好的用户体验
         
-        if (chunk.length() > 0) {
-            chunks.add(chunk.toString());
+        for (int i = 0; i < response.length(); i += chunkSize) {
+            int endIndex = Math.min(i + chunkSize, response.length());
+            chunks.add(response.substring(i, endIndex));
         }
         
         return chunks;

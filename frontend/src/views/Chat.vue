@@ -189,11 +189,11 @@ export default {
       html: true,          // 启用HTML标签
       breaks: true,        // 将换行符转换为<br>
       linkify: true,       // 自动识别链接
-      typographer: true    // 启用智能引号等排版特性
+      typographer: false   // 关闭智能引号避免冲突
     })
     
-    // 配置markdown-it以更好地处理中文内容
-    md.configure('commonmark')
+    // 不使用commonmark配置，使用默认配置
+    console.log('MarkdownIt initialized:', md)
     
     // 加载对话列表
     const loadConversations = async () => {
@@ -455,18 +455,12 @@ export default {
     // 处理消息，提取推理过程
     const processedMessages = computed(() => {
       return chatStore.messages.map(message => {
-        if (message.role === 'assistant' && message.content) {
-          const { thinking, content } = extractThinking(message.content)
-          return {
-            ...message,
-            processedContent: content,
-            thinking: thinking
-          }
-        }
+        // 对于所有消息，直接使用原始内容，不进行推理过程提取
+        // 这样确保markdown格式不被破坏
         return {
           ...message,
-          processedContent: message.content,
-          thinking: null
+          processedContent: message.content || '',
+          thinking: null // 暂时禁用推理过程显示，确保基础markdown正常工作
         }
       })
     })
@@ -485,23 +479,12 @@ export default {
       if (!content) return ''
       
       try {
-        // 清理内容，确保换行符正确
-        const cleanedContent = content.trim()
-        
-        // 使用markdown-it渲染内容
-        const rendered = md.render(cleanedContent)
-        
-        // 调试输出
-        console.log('Original content:', cleanedContent)
-        console.log('Rendered HTML:', rendered)
-        
-        return rendered
+        // 确保内容是字符串并直接渲染
+        return md.render(String(content))
       } catch (error) {
         console.error('Markdown render error:', error)
-        // 降级处理：返回带换行的HTML
-        const div = document.createElement('div')
-        div.textContent = content
-        return div.innerHTML.replace(/\n/g, '<br>')
+        // 降级处理：保持原始换行格式
+        return String(content).replace(/\n/g, '<br>')
       }
     }
     

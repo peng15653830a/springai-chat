@@ -18,7 +18,9 @@
       "Bash(git add:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:ithy.com)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(./start.sh:*)",
+      "Bash(./stop.sh)"
     ],
     "deny": []
   }
