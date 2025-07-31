@@ -1,0 +1,126 @@
+# 测试环境配置
+server:
+  # 随机端口
+  port: 0
+
+spring:
+  application:
+    name: ai-chat-test
+    
+  # 测试数据源配置
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb-${random.uuid};MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+  
+  # H2控制台配置
+  h2:
+    console:
+      enabled: false
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+    
+  # SQL初始化配置
+  sql:
+    init:
+      mode: embedded
+      encoding: UTF-8
+      continue-on-error: true
+      data-locations: classpath:test-data.sql
+  
+  # AI配置 - 测试环境使用模拟配置
+  ai:
+    openai:
+      api-key: test-openai-key
+      base-url: https://api.test.com/v1
+      model: test-model
+      temperature: 0.7
+      max-tokens: 1000
+    moonshot:
+      api-key: sk-yBoOvdiixdvpCG06mwCSGnxt3lxj3ekZ5t6bav3Ii9cS0Ln4
+      base-url: https://api.moonshot.cn/v1
+      model: kimi-k2-0711-preview
+      temperature: 0.7
+      max-tokens: 1000
+
+# AI服务配置 - 直接配置，避免嵌套问题
+ai:
+  moonshot:
+    api-key: sk-yBoOvdiixdvpCG06mwCSGnxt3lxj3ekZ5t6bav3Ii9cS0Ln4
+    base-url: https://api.moonshot.cn/v1
+    model: kimi-k2-0711-preview
+    temperature: 0.7
+    max-tokens: 1000
+
+# MyBatis配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    # 测试环境关闭SQL日志
+    log-impl: org.apache.ibatis.logging.noop.NoOpImpl
+    cache-enabled: true
+    lazy-loading-enabled: true
+
+# 日志配置
+# 测试环境简化日志
+logging:
+  level:
+    com.example: INFO
+    org.springframework: WARN
+    org.mybatis: WARN
+    org.apache.http: WARN
+
+# 搜索服务配置
+# 测试环境配置
+search:
+  metaso:
+    api-key: mk-2A24E872A9A815A08EAFFB34AD42381D
+    enabled: true
+  keywords:
+    time: "最新,今天,现在,当前,实时,近期,目前,这几天,本周,最近"
+    info: "新闻,资讯,消息,报道,动态,头条"
+    finance: "天气,股价,汇率,股票,基金,投资,行情,价格"
+    query: "什么是,如何,怎么,哪里,什么时候,为什么"
+    search: "搜索,查询,找,查找,了解,知道"
+  test:
+    no-trigger-messages: "你好,谢谢,再见,我很好,没问题,聊天,对话"
+    sample-queries:
+      weather: "今天天气"
+      news: "最新新闻"
+      stock: "股票行情"
+
+# 应用配置
+# 测试环境配置
+app:
+  chat:
+    # 测试环境减少历史记录数量
+    max-history-size: 5
+    response-timeout: 5s
+    sse-timeout: 5s
+    streaming:
+      # 流式响应分块大小
+      chunk-size: 50
+      # 分块间延迟毫秒数
+      delay-ms: 100
+
+# 测试数据配置
+test:
+  ai:
+    sample-messages:
+      user: "Hello"
+      assistant: "Hi there!"
+    test-queries:
+      simple: "Test message"
+      empty: ""
+      long: "This is a very long response that should be split into multiple chunks to demonstrate the streaming functionality of the AI chat service implementation."
+      with-newlines: "Line 1\nLine 2\n\nLine 3 with more content"
+    expected-responses:
+      error-keywords: "抱歉,网络连接错误,AI服务"

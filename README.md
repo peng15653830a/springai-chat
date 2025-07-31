@@ -5,7 +5,7 @@
 ## 🚀 项目特性
 
 - **智能对话**: 支持与AI进行自然语言对话
-- **联网搜索**: AI能够搜索最新信息并整合到回复中
+- **联网搜索**: 集成秘塔搜索API，AI能够搜索最新信息并整合到回复中
 - **实时流式响应**: 使用SSE技术实现打字机效果
 - **多轮对话**: 支持上下文理解的连续对话
 - **对话管理**: 创建、删除、切换多个对话会话
@@ -70,18 +70,16 @@ spring:
       model: ${OPENAI_MODEL:gpt-3.5-turbo}
 
 search:
-  google:
-    api-key: ${GOOGLE_SEARCH_API_KEY:your_google_api_key_here}
-    search-engine-id: ${GOOGLE_SEARCH_ENGINE_ID:your_search_engine_id_here}
-    enabled: ${SEARCH_ENABLED:false}
+  metaso:
+    api-key: ${METASO_API_KEY:your_metaso_api_key_here}
+    enabled: ${SEARCH_ENABLED:true}
 ```
 
 ### 2. 环境变量
 
 ```bash
 export OPENAI_API_KEY="your-openai-api-key"
-export GOOGLE_SEARCH_API_KEY="your-google-search-api-key"
-export GOOGLE_SEARCH_ENGINE_ID="your-search-engine-id"
+export METASO_API_KEY="your-metaso-api-key"
 export SEARCH_ENABLED="true"
 ```
 
@@ -117,7 +115,7 @@ npm run dev
 1. **用户登录**: 访问 `http://localhost:3000`，输入用户名和昵称登录
 2. **创建对话**: 点击"新对话"按钮创建聊天会话
 3. **发送消息**: 在输入框中输入问题，按回车或点击发送
-4. **智能搜索**: 包含"最新"、"今天"等关键词时会自动触发联网搜索
+4. **智能搜索**: 使用秘塔搜索API，包含"最新"、"今天"等关键词时会自动触发联网搜索
 5. **切换对话**: 点击左侧对话列表切换不同会话
 6. **删除对话**: 悬停对话项，点击删除按钮
 
@@ -152,7 +150,7 @@ eventSource.addEventListener('message', (event) => {
 })
 ```
 
-### 联网搜索集成
+### 秘塔搜索API集成
 当消息包含特定关键词时自动触发搜索：
 
 ```java
@@ -162,6 +160,9 @@ public boolean shouldSearch(String message) {
     return Arrays.stream(searchKeywords)
         .anyMatch(keyword -> message.toLowerCase().contains(keyword));
 }
+
+// 调用秘塔搜索API
+List<Map<String, String>> results = searchService.searchMetaso(userMessage);
 ```
 
 ## 🐛 故障排除

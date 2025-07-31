@@ -103,6 +103,11 @@ public class AiChatService {
     public List<String> splitResponseForStreaming(String response) {
         List<String> chunks = new ArrayList<>();
         
+        // 处理null或空字符串
+        if (response == null || response.isEmpty()) {
+            return chunks;
+        }
+        
         // 保持原始格式，按字符数分割而不是按单词分割
         int chunkSize = 50; // 增加chunk大小以获得更好的用户体验
         

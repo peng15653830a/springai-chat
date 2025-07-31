@@ -84,9 +84,8 @@ logging:
 
 # 搜索服务配置
 search:
-  google:
-    api-key: ${GOOGLE_SEARCH_API_KEY:AIzaSyAi_NseTvDZLEsJItwvX0G-cmMix7fzUqw}
-    search-engine-id: ${GOOGLE_SEARCH_ENGINE_ID:googlesearch}
+  metaso:
+    api-key: ${METASO_API_KEY:mk-2A24E872A9A815A08EAFFB34AD42381D}
     enabled: ${SEARCH_ENABLED:true}
 
 # 应用配置

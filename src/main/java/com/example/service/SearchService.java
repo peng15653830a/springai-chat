@@ -1,9 +1,10 @@
 package com.example.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -13,179 +14,118 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+@Slf4j
 @Service
 public class SearchService {
     
-    @Value("${search.google.api-key:}")
-    private String googleApiKey;
+    @Value("${search.metaso.api-key:}")
+    private String metasoApiKey;
     
-    @Value("${search.google.search-engine-id:}")
-    private String searchEngineId;
-    
-    @Value("${search.google.enabled:false}")
+    @Value("${search.metaso.enabled:true}")
     private boolean searchEnabled;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
-    public List<Map<String, String>> searchGoogle(String query) {
-        // 首先尝试DuckDuckGo免费搜索API
-        List<Map<String, String>> duckResults = searchDuckDuckGo(query);
-        if (!duckResults.isEmpty()) {
-            return duckResults;
+    /**
+     * 主搜索方法：使用秘塔搜索API或本地搜索
+     */
+    public List<Map<String, String>> searchMetaso(String query) {
+        log.info("开始搜索，查询词: {}, 搜索启用: {}", query, searchEnabled);
+        
+        if (!searchEnabled) {
+            log.info("搜索功能已禁用，返回本地搜索结果");
+            return createLocalSearchResults(query);
         }
         
-        // 如果DuckDuckGo不可用，尝试SerpAPI免费额度
-        List<Map<String, String>> serpResults = searchSerpAPI(query);
-        if (!serpResults.isEmpty()) {
-            return serpResults;
+        // 尝试秘塔搜索API
+        List<Map<String, String>> metasoResults = callMetasoAPI(query);
+        if (!metasoResults.isEmpty()) {
+            log.info("秘塔搜索成功，返回 {} 条结果", metasoResults.size());
+            return metasoResults;
         }
         
-        // 最后降级到增强的本地搜索结果
-        return createEnhancedSearchResults(query);
+        // 降级到本地搜索结果
+        log.info("秘塔搜索失败，降级到本地搜索");
+        return createLocalSearchResults(query);
     }
     
     /**
-     * 使用DuckDuckGo免费搜索API
+     * 调用秘塔搜索API
      */
-    private List<Map<String, String>> searchDuckDuckGo(String query) {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            URIBuilder uriBuilder = new URIBuilder("https://api.duckduckgo.com/");
-            uriBuilder.addParameter("q", query);
-            uriBuilder.addParameter("format", "json");
-            uriBuilder.addParameter("no_html", "1");
-            uriBuilder.addParameter("skip_disambig", "1");
-            
-            HttpGet httpGet = new HttpGet(uriBuilder.build());
-            httpGet.setHeader("User-Agent", "SpringAI-ChatBot/1.0");
-            
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                if (response.getStatusLine().getStatusCode() == 200) {
-                    String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                    Map<String, Object> responseMap = objectMapper.readValue(responseString, Map.class);
-                    
-                    List<Map<String, String>> results = new ArrayList<>();
-                    
-                    // 获取即时答案
-                    String abstractText = (String) responseMap.get("Abstract");
-                    String abstractUrl = (String) responseMap.get("AbstractURL");
-                    if (abstractText != null && !abstractText.isEmpty()) {
-                        results.add(createResult("DuckDuckGo即时答案", abstractText, 
-                                               abstractUrl != null ? abstractUrl : "https://duckduckgo.com/?q=" + query));
-                    }
-                    
-                    // 获取相关主题
-                    List<Map<String, Object>> relatedTopics = (List<Map<String, Object>>) responseMap.get("RelatedTopics");
-                    if (relatedTopics != null && !relatedTopics.isEmpty()) {
-                        for (int i = 0; i < Math.min(2, relatedTopics.size()); i++) {
-                            Map<String, Object> topic = relatedTopics.get(i);
-                            String text = (String) topic.get("Text");
-                            String firstURL = (String) topic.get("FirstURL");
-                            if (text != null && !text.isEmpty()) {
-                                results.add(createResult("相关信息", text, 
-                                                       firstURL != null ? firstURL : "https://duckduckgo.com/?q=" + query));
-                            }
-                        }
-                    }
-                    
-                    return results;
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("DuckDuckGo搜索调用失败: " + e.getMessage());
-        }
-        
-        return new ArrayList<>();
-    }
-    
-    /**
-     * 使用SerpAPI免费额度搜索
-     */
-    private List<Map<String, String>> searchSerpAPI(String query) {
-        // 这里可以配置SerpAPI的免费API密钥（每月100次免费）
-        String serpApiKey = System.getenv("SERP_API_KEY");
-        if (serpApiKey == null || serpApiKey.isEmpty()) {
+    private List<Map<String, String>> callMetasoAPI(String query) {
+        if (metasoApiKey == null || metasoApiKey.isEmpty()) {
+            log.warn("秘塔搜索API密钥未配置");
             return new ArrayList<>();
         }
         
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            URIBuilder uriBuilder = new URIBuilder("https://serpapi.com/search");
-            uriBuilder.addParameter("q", query);
-            uriBuilder.addParameter("api_key", serpApiKey);
-            uriBuilder.addParameter("engine", "google");
-            uriBuilder.addParameter("num", "3");
+            HttpPost httpPost = new HttpPost("https://metaso.cn/api/search");
             
-            HttpGet httpGet = new HttpGet(uriBuilder.build());
+            // 设置请求头
+            httpPost.setHeader("Authorization", "Bearer " + metasoApiKey);
+            httpPost.setHeader("Content-Type", "application/json");
+            httpPost.setHeader("User-Agent", "SpringAI-ChatBot/1.0");
             
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                if (response.getStatusLine().getStatusCode() == 200) {
+            // 构建请求体
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("query", query);
+            requestBody.put("num_results", 5);
+            requestBody.put("search_type", "web");
+            requestBody.put("language", "zh-CN");
+            
+            String jsonRequest = objectMapper.writeValueAsString(requestBody);
+            httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
+            
+            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                int statusCode = response.getStatusLine().getStatusCode();
+                if (statusCode == 200) {
                     String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                    Map<String, Object> responseMap = objectMapper.readValue(responseString, Map.class);
-                    
-                    List<Map<String, Object>> organicResults = (List<Map<String, Object>>) responseMap.get("organic_results");
-                    List<Map<String, String>> results = new ArrayList<>();
-                    
-                    if (organicResults != null && !organicResults.isEmpty()) {
-                        for (Map<String, Object> item : organicResults) {
-                            Map<String, String> result = new HashMap<>();
-                            result.put("title", (String) item.get("title"));
-                            result.put("snippet", (String) item.get("snippet"));
-                            result.put("link", (String) item.get("link"));
-                            results.add(result);
-                        }
-                    }
-                    
-                    return results;
+                    return parseMetasoResponse(responseString);
+                } else {
+                    log.error("秘塔搜索API调用失败，状态码: {}", statusCode);
                 }
             }
         } catch (Exception e) {
-            System.err.println("SerpAPI搜索调用失败: " + e.getMessage());
+            log.error("秘塔搜索API调用异常: {}", e.getMessage());
         }
         
         return new ArrayList<>();
     }
-
+    
     /**
-     * 使用百度搜索API (免费方案)
+     * 解析秘塔API响应
      */
-    private List<Map<String, String>> searchBaidu(String query) {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            // 使用百度搜索的开放接口
-            URIBuilder uriBuilder = new URIBuilder("https://www.baidu.com/s");
-            uriBuilder.addParameter("wd", query);
-            uriBuilder.addParameter("rn", "3"); // 返回3个结果
+    private List<Map<String, String>> parseMetasoResponse(String responseString) {
+        try {
+            Map<String, Object> responseMap = objectMapper.readValue(responseString, Map.class);
+            List<Map<String, Object>> searchResults = (List<Map<String, Object>>) responseMap.get("results");
             
-            HttpGet httpGet = new HttpGet(uriBuilder.build());
-            httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                if (response.getStatusLine().getStatusCode() == 200) {
-                    // 由于百度返回HTML，这里提供模拟的搜索结果
-                    return createEnhancedSearchResults(query);
-                }
+            if (searchResults == null || searchResults.isEmpty()) {
+                return new ArrayList<>();
             }
+            
+            List<Map<String, String>> results = new ArrayList<>();
+            for (Map<String, Object> item : searchResults) {
+                Map<String, String> result = new HashMap<>();
+                result.put("title", (String) item.get("title"));
+                result.put("snippet", (String) item.get("snippet"));
+                result.put("link", (String) item.get("url"));
+                results.add(result);
+            }
+            
+            return results;
         } catch (Exception e) {
-            System.err.println("百度搜索调用失败: " + e.getMessage());
+            log.error("解析秘塔API响应失败: {}", e.getMessage());
+            return new ArrayList<>();
         }
-        
-        return createEnhancedSearchResults(query);
     }
     
-    private List<Map<String, String>> createMockSearchResults(String query) {
-        List<Map<String, String>> results = new ArrayList<>();
-        
-        Map<String, String> result1 = new HashMap<>();
-        result1.put("title", "关于「" + query + "」的搜索结果");
-        result1.put("snippet", "这是一个模拟的搜索结果，用于演示搜索功能。在实际部署时，请配置Google搜索API密钥。");
-        result1.put("link", "https://example.com/search?q=" + query);
-        results.add(result1);
-        
-        return results;
-    }
+
     
     /**
-     * 创建增强的搜索结果 (基于关键词生成相关信息)
+     * 创建本地搜索结果 (基于关键词生成相关信息)
      */
-    private List<Map<String, String>> createEnhancedSearchResults(String query) {
+    private List<Map<String, String>> createLocalSearchResults(String query) {
         List<Map<String, String>> results = new ArrayList<>();
         String lowerQuery = query.toLowerCase();
         
@@ -212,6 +152,9 @@ public class SearchService {
         return results;
     }
     
+    /**
+     * 创建搜索结果项
+     */
     private Map<String, String> createResult(String title, String snippet, String link) {
         Map<String, String> result = new HashMap<>();
         result.put("title", title);
@@ -220,6 +163,9 @@ public class SearchService {
         return result;
     }
     
+    /**
+     * 格式化搜索结果为文本
+     */
     public String formatSearchResults(List<Map<String, String>> searchResults) {
         if (searchResults == null || searchResults.isEmpty()) {
             return "";
@@ -238,7 +184,14 @@ public class SearchService {
         return formatted.toString();
     }
     
+    /**
+     * 判断是否需要搜索
+     */
     public boolean shouldSearch(String message) {
+        if (message == null || message.trim().isEmpty()) {
+            return false;
+        }
+        
         String[] searchKeywords = {
             // 时间相关
             "最新", "今天", "现在", "当前", "实时", "近期", "目前", "这几天", "本周", "最近",
@@ -254,14 +207,17 @@ public class SearchService {
         
         String lowerMessage = message.toLowerCase();
         
+        // 检查搜索关键词
         for (String keyword : searchKeywords) {
             if (lowerMessage.contains(keyword)) {
+                log.debug("消息包含搜索关键词: {}", keyword);
                 return true;
             }
         }
         
-        // 额外检查：如果消息包含问号，也可能需要搜索
+        // 检查问号
         if (lowerMessage.contains("?") || lowerMessage.contains("？")) {
+            log.debug("消息包含问号，触发搜索");
             return true;
         }
         

@@ -8,7 +8,9 @@ import com.example.service.AiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -41,23 +43,45 @@ public class ChatController {
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     @GetMapping(value = "/stream/{conversationId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(@PathVariable Long conversationId) {
+    public ResponseEntity<SseEmitter> streamChat(@PathVariable Long conversationId) {
         log.info("创建SSE连接，会话ID: {}", conversationId);
+        
+        // 验证会话ID
+        if (conversationId == null || conversationId <= 0) {
+            log.warn("SSE连接请求的会话ID无效: {}", conversationId);
+            return ResponseEntity.badRequest().build();
+        }
+        
         try {
             SseEmitter emitter = sseEmitterManager.createEmitter(conversationId);
             log.debug("SSE连接创建成功，会话ID: {}", conversationId);
-            return emitter;
+            return ResponseEntity.ok()
+                    .header("Content-Type", "text/event-stream;charset=UTF-8")
+                    .header("Cache-Control", "no-cache")
+                    .body(emitter);
         } catch (Exception e) {
             log.error("创建SSE连接失败，会话ID: {}", conversationId, e);
-            throw e;
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     
     @PostMapping("/conversations/{id}/messages")
-    public ApiResponse<Message> sendMessage(@PathVariable Long id, 
+    public ResponseEntity<ApiResponse<Message>> sendMessage(@PathVariable Long id, 
                                           @RequestBody MessageRequest request) {
         log.info("接收到消息发送请求，会话ID: {}, 消息长度: {}, 搜索开启: {}", 
                    id, request.getContent() != null ? request.getContent().length() : 0, request.getSearchEnabled());
+        
+        // 验证会话ID
+        if (id == null || id <= 0) {
+            log.warn("会话ID无效: {}", id);
+            return ResponseEntity.badRequest().body(ApiResponse.error("会话ID无效"));
+        }
+        
+        // 验证消息内容
+        if (request.getContent() == null || request.getContent().trim().isEmpty()) {
+            log.warn("消息内容为空，会话ID: {}", id);
+            return ResponseEntity.badRequest().body(ApiResponse.error("消息内容不能为空"));
+        }
         
         try {
             // 保存用户消息
@@ -68,10 +92,11 @@ public class ChatController {
             processAiResponse(id, request.getContent(), request.getSearchEnabled());
             
             log.info("消息发送处理完成，会话ID: {}", id);
-            return ApiResponse.success("消息发送成功", userMessage);
+            return ResponseEntity.ok(ApiResponse.success("消息发送成功", userMessage));
         } catch (Exception e) {
             log.error("发送消息失败，会话ID: {}", id, e);
-            return ApiResponse.error("发送消息失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("发送消息失败: " + e.getMessage()));
         }
     }
     
@@ -89,7 +114,7 @@ public class ChatController {
                 // 发送搜索开始事件
                 sendSseEvent(conversationId, "search", createEventData("start", "正在搜索相关信息..."));
                 
-                searchResults = searchService.searchGoogle(userMessage);
+                searchResults = searchService.searchMetaso(userMessage);
                 log.debug("搜索完成，结果数量: {}, 会话ID: {}", 
                            searchResults != null ? searchResults.size() : 0, conversationId);
                 
