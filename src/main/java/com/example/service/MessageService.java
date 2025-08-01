@@ -20,6 +20,16 @@ public class MessageService {
     }
     
     public Message saveMessage(Long conversationId, String role, String content, String thinking, String searchResults) {
+        if (conversationId == null || conversationId <= 0) {
+            throw new IllegalArgumentException("对话ID无效");
+        }
+        if (role == null || role.trim().isEmpty()) {
+            throw new IllegalArgumentException("消息角色不能为空");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("消息内容不能为空");
+        }
+        
         Message message = new Message();
         message.setConversationId(conversationId);
         message.setRole(role);
@@ -32,5 +42,12 @@ public class MessageService {
     
     public Message getMessageById(Long messageId) {
         return messageMapper.selectById(messageId);
+    }
+    
+    public java.util.List<com.example.entity.Message> getMessagesByConversationId(Long conversationId) {
+        if (conversationId == null || conversationId <= 0) {
+            throw new IllegalArgumentException("对话ID无效");
+        }
+        return messageMapper.selectByConversationId(conversationId);
     }
 }

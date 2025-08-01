@@ -20,8 +20,11 @@ public class ConversationService {
     private MessageMapper messageMapper;
     
     public Conversation createConversation(Long userId, String title) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("用户ID无效");
+        }
         if (title == null || title.trim().isEmpty()) {
-            title = "新对话";
+            throw new IllegalArgumentException("对话标题不能为空");
         }
         
         Conversation conversation = new Conversation();
@@ -32,10 +35,20 @@ public class ConversationService {
     }
     
     public Conversation getConversationById(Long conversationId) {
-        return conversationMapper.selectById(conversationId);
+        if (conversationId == null || conversationId <= 0) {
+            throw new IllegalArgumentException("对话ID无效");
+        }
+        Conversation conversation = conversationMapper.selectById(conversationId);
+        if (conversation == null) {
+            throw new IllegalArgumentException("对话不存在");
+        }
+        return conversation;
     }
     
     public List<Conversation> getUserConversations(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("用户ID无效");
+        }
         return conversationMapper.selectByUserId(userId);
     }
     
@@ -52,11 +65,17 @@ public class ConversationService {
     
     @Transactional
     public void deleteConversation(Long conversationId) {
+        if (conversationId == null || conversationId <= 0) {
+            throw new IllegalArgumentException("对话ID无效");
+        }
         messageMapper.deleteByConversationId(conversationId);
         conversationMapper.deleteById(conversationId);
     }
     
     public List<Message> getConversationMessages(Long conversationId) {
+        if (conversationId == null || conversationId <= 0) {
+            throw new IllegalArgumentException("对话ID无效");
+        }
         return messageMapper.selectByConversationId(conversationId);
     }
     

@@ -1,17 +1,25 @@
 package com.example.service;
 
+import com.example.entity.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest(classes = com.example.springai.SpringaiApplication.class)
 @TestPropertySource(locations = "classpath:application-test.yml")
@@ -20,6 +28,15 @@ public class AiChatServiceTest {
 
     @Autowired
     private AiChatService aiChatService;
+    
+    @MockBean
+    private MessageService messageService;
+    
+    @MockBean
+    private SearchService searchService;
+    
+    @MockBean
+    private SseEmitterManager sseEmitterManager;
 
     /**
      * 从配置文件读取AI配置，使用默认值
@@ -299,5 +316,333 @@ public class AiChatServiceTest {
             assertTrue(chunks.get(i).length() <= chunkSize, 
                       "Chunk " + i + " length should be <= " + chunkSize + " but was " + chunks.get(i).length());
         }
+    }
+
+    @Test
+    void testChatWithAI_WithEmptyHistory() {
+        // When
+        AiResponse response = aiChatService.chatWithAI(simpleQuery, new ArrayList<>());
+
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+    }
+
+    @Test
+    void testChatWithAI_WithEmptySearchContext() {
+        // When
+        AiResponse response = aiChatService.chatWithAI(simpleQuery, testHistory, "");
+
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+    }
+
+    @Test
+    void testChatWithAI_WithWhitespaceSearchContext() {
+        // When
+        AiResponse response = aiChatService.chatWithAI(simpleQuery, testHistory, "   ");
+
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+    }
+
+    @Test
+    void testChat_WithEmptyHistory() {
+        // Given
+        Long conversationId = 1L;
+        when(messageService.getMessagesByConversationId(conversationId)).thenReturn(new ArrayList<>());
+
+        // When
+        AiResponse response = aiChatService.chat(conversationId, simpleQuery, null);
+
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+        verify(messageService).getMessagesByConversationId(conversationId);
+    }
+
+    @Test
+    void testSplitResponseForStreaming_ExactChunkSize() {
+        // Given - 创建正好等于chunkSize的字符串
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < chunkSize; i++) {
+            sb.append("X");
+        }
+        String response = sb.toString();
+
+        // When
+        List<String> chunks = aiChatService.splitResponseForStreaming(response);
+
+        // Then
+        assertNotNull(chunks);
+        assertEquals(1, chunks.size());
+        assertEquals(chunkSize, chunks.get(0).length());
+    }
+
+    @Test
+    void testSplitResponseForStreaming_SingleCharacter() {
+        // When
+        List<String> chunks = aiChatService.splitResponseForStreaming("A");
+
+        // Then
+        assertNotNull(chunks);
+        assertEquals(1, chunks.size());
+        assertEquals("A", chunks.get(0));
+    }
+    
+    // ========== 新增测试方法 ==========
+    
+    @Test
+    void testChatWithAI_WithSearchContext() {
+        // Given
+        String searchContext = "搜索上下文信息";
+        
+        // When
+        AiResponse response = aiChatService.chatWithAI(simpleQuery, testHistory, searchContext);
+        
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+    }
+    
+    @Test
+    void testChatWithAI_WithEmptySearchContext() {
+        // Given
+        String searchContext = "";
+        
+        // When
+        AiResponse response = aiChatService.chatWithAI(simpleQuery, testHistory, searchContext);
+        
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+    }
+    
+    @Test
+    void testChatWithAI_WithNullSearchContext() {
+        // When
+        AiResponse response = aiChatService.chatWithAI(simpleQuery, testHistory, null);
+        
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+    }
+    
+    @Test
+    void testChat_WithConversationId() {
+        // Given
+        Long conversationId = 1L;
+        List<Message> mockMessages = Arrays.asList(
+            createMockMessage(1L, conversationId, "user", "Hello"),
+            createMockMessage(2L, conversationId, "assistant", "Hi there!")
+        );
+        when(messageService.getMessagesByConversationId(conversationId)).thenReturn(mockMessages);
+        
+        // When
+        AiResponse response = aiChatService.chat(conversationId, simpleQuery, null);
+        
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+        verify(messageService).getMessagesByConversationId(conversationId);
+    }
+    
+    @Test
+    void testChat_WithSearchContext() {
+        // Given
+        Long conversationId = 1L;
+        String searchContext = "搜索上下文";
+        List<Message> mockMessages = new ArrayList<>();
+        when(messageService.getMessagesByConversationId(conversationId)).thenReturn(mockMessages);
+        
+        // When
+        AiResponse response = aiChatService.chat(conversationId, simpleQuery, searchContext);
+        
+        // Then
+        assertNotNull(response);
+        assertNotNull(response.getContent());
+        verify(messageService).getMessagesByConversationId(conversationId);
+    }
+    
+    @Test
+    void testGetConversationHistory() {
+        // Given
+        Long conversationId = 1L;
+        List<Message> expectedMessages = Arrays.asList(
+            createMockMessage(1L, conversationId, "user", "Hello"),
+            createMockMessage(2L, conversationId, "assistant", "Hi!")
+        );
+        when(messageService.getMessagesByConversationId(conversationId)).thenReturn(expectedMessages);
+        
+        // When
+        List<Message> result = aiChatService.getConversationHistory(conversationId);
+        
+        // Then
+        assertEquals(expectedMessages, result);
+        verify(messageService).getMessagesByConversationId(conversationId);
+    }
+    
+    @Test
+    void testSendMessage_ValidInput() {
+        // Given
+        Long conversationId = 1L;
+        String content = "Test message";
+        Message mockUserMessage = createMockMessage(1L, conversationId, "user", content);
+        when(messageService.saveMessage(conversationId, "user", content)).thenReturn(mockUserMessage);
+        
+        // When
+        Message result = aiChatService.sendMessage(conversationId, content, false);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(mockUserMessage, result);
+        verify(messageService).saveMessage(conversationId, "user", content);
+    }
+    
+    @Test
+    void testSendMessage_WithSearchEnabled() {
+        // Given
+        Long conversationId = 1L;
+        String content = "Test message with search";
+        Message mockUserMessage = createMockMessage(1L, conversationId, "user", content);
+        when(messageService.saveMessage(conversationId, "user", content)).thenReturn(mockUserMessage);
+        
+        // When
+        Message result = aiChatService.sendMessage(conversationId, content, true);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(mockUserMessage, result);
+        verify(messageService).saveMessage(conversationId, "user", content);
+    }
+    
+    @Test
+    void testSendMessage_InvalidConversationId_Null() {
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            aiChatService.sendMessage(null, "Test message", false);
+        });
+        assertEquals("会话ID无效", exception.getMessage());
+    }
+    
+    @Test
+    void testSendMessage_InvalidConversationId_Zero() {
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            aiChatService.sendMessage(0L, "Test message", false);
+        });
+        assertEquals("会话ID无效", exception.getMessage());
+    }
+    
+    @Test
+    void testSendMessage_InvalidConversationId_Negative() {
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            aiChatService.sendMessage(-1L, "Test message", false);
+        });
+        assertEquals("会话ID无效", exception.getMessage());
+    }
+    
+    @Test
+    void testSendMessage_EmptyContent() {
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            aiChatService.sendMessage(1L, "", false);
+        });
+        assertEquals("消息内容不能为空", exception.getMessage());
+    }
+    
+    @Test
+    void testSendMessage_NullContent() {
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            aiChatService.sendMessage(1L, null, false);
+        });
+        assertEquals("消息内容不能为空", exception.getMessage());
+    }
+    
+    @Test
+    void testSendMessage_WhitespaceOnlyContent() {
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            aiChatService.sendMessage(1L, "   ", false);
+        });
+        assertEquals("消息内容不能为空", exception.getMessage());
+    }
+    
+    @Test
+    void testProcessAiResponseAsync_WithSearch() throws InterruptedException {
+        // Given
+        Long conversationId = 1L;
+        String userMessage = "Test message";
+        List<Map<String, String>> searchResults = Arrays.asList(
+            createSearchResult("Title 1", "Content 1"),
+            createSearchResult("Title 2", "Content 2")
+        );
+        String formattedResults = "Formatted search results";
+        Message mockAiMessage = createMockMessage(2L, conversationId, "assistant", "AI response");
+        
+        when(searchService.searchMetaso(userMessage)).thenReturn(searchResults);
+        when(searchService.formatSearchResults(searchResults)).thenReturn(formattedResults);
+        when(messageService.getMessagesByConversationId(conversationId)).thenReturn(new ArrayList<>());
+        when(messageService.saveMessage(eq(conversationId), eq("assistant"), anyString())).thenReturn(mockAiMessage);
+        
+        // When
+        Message userMsg = createMockMessage(1L, conversationId, "user", userMessage);
+        when(messageService.saveMessage(eq(conversationId), eq("user"), eq(userMessage))).thenReturn(userMsg);
+        
+        Message result = aiChatService.sendMessage(conversationId, userMessage, true);
+        
+        // Then
+        assertNotNull(result);
+        verify(messageService).saveMessage(conversationId, "user", userMessage);
+        
+        // Wait a bit for async processing
+        Thread.sleep(100);
+    }
+    
+    @Test
+    void testProcessAiResponseAsync_WithoutSearch() throws InterruptedException {
+        // Given
+        Long conversationId = 1L;
+        String userMessage = "Test message";
+        Message mockAiMessage = createMockMessage(2L, conversationId, "assistant", "AI response");
+        
+        when(messageService.getMessagesByConversationId(conversationId)).thenReturn(new ArrayList<>());
+        when(messageService.saveMessage(eq(conversationId), eq("assistant"), anyString())).thenReturn(mockAiMessage);
+        
+        // When
+        Message userMsg = createMockMessage(1L, conversationId, "user", userMessage);
+        when(messageService.saveMessage(eq(conversationId), eq("user"), eq(userMessage))).thenReturn(userMsg);
+        
+        Message result = aiChatService.sendMessage(conversationId, userMessage, false);
+        
+        // Then
+        assertNotNull(result);
+        verify(messageService).saveMessage(conversationId, "user", userMessage);
+        
+        // Wait a bit for async processing
+        Thread.sleep(100);
+    }
+    
+    // ========== 辅助方法 ==========
+    
+    private Message createMockMessage(Long id, Long conversationId, String role, String content) {
+        Message message = new Message();
+        message.setId(id);
+        message.setConversationId(conversationId);
+        message.setRole(role);
+        message.setContent(content);
+        message.setCreatedAt(LocalDateTime.now());
+        return message;
+    }
+    
+    private Map<String, String> createSearchResult(String title, String content) {
+        Map<String, String> result = new HashMap<>();
+        result.put("title", title);
+        result.put("content", content);
+        return result;
     }
 }

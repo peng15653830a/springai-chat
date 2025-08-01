@@ -15,7 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.ContextConfiguration;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -45,7 +45,7 @@ public class UserControllerTest {
         testUser.setId(1L);
         testUser.setUsername("testuser");
         testUser.setNickname("TestUser");
-        testUser.setCreatedAt(new Date());
+        testUser.setCreatedAt(LocalDateTime.now());
 
         loginRequest = new LoginRequest();
         loginRequest.setUsername("testuser");
@@ -157,5 +157,119 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.message").value("获取用户信息失败: Database error"));
 
         verify(userService).getUserById(1L);
+    }
+
+    @Test
+    void testLogin_NullUsername() throws Exception {
+        // Given
+        loginRequest.setUsername(null);
+        when(userService.loginOrCreate(null, "TestUser")).thenReturn(testUser);
+
+        // When & Then
+        mockMvc.perform(post("/api/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(userService).loginOrCreate(null, "TestUser");
+    }
+
+    @Test
+    void testLogin_NullNickname() throws Exception {
+        // Given
+        loginRequest.setNickname(null);
+        when(userService.loginOrCreate("testuser", null)).thenReturn(testUser);
+
+        // When & Then
+        mockMvc.perform(post("/api/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(userService).loginOrCreate("testuser", null);
+    }
+
+    @Test
+    void testLogin_BothNull() throws Exception {
+        // Given
+        loginRequest.setUsername(null);
+        loginRequest.setNickname(null);
+        when(userService.loginOrCreate(null, null)).thenReturn(testUser);
+
+        // When & Then
+        mockMvc.perform(post("/api/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(userService).loginOrCreate(null, null);
+    }
+
+    @Test
+    void testLogin_SpecialCharacters() throws Exception {
+        // Given
+        loginRequest.setUsername("user@123");
+        loginRequest.setNickname("用户#123");
+        when(userService.loginOrCreate("user@123", "用户#123")).thenReturn(testUser);
+
+        // When & Then
+        mockMvc.perform(post("/api/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(userService).loginOrCreate("user@123", "用户#123");
+    }
+
+    @Test
+    void testGetProfile_ZeroId() throws Exception {
+        // Given
+        when(userService.getUserById(0L)).thenReturn(null);
+
+        // When & Then
+        mockMvc.perform(get("/api/users/profile/0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("用户不存在"));
+
+        verify(userService).getUserById(0L);
+    }
+
+    @Test
+    void testGetProfile_NegativeId() throws Exception {
+        // Given
+        when(userService.getUserById(-1L)).thenReturn(null);
+
+        // When & Then
+        mockMvc.perform(get("/api/users/profile/-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("用户不存在"));
+
+        verify(userService).getUserById(-1L);
+    }
+
+    @Test
+    void testLogin_LongUsername() throws Exception {
+        // Given
+        StringBuilder longUsername = new StringBuilder();
+        for (int i = 0; i < 100; i++) {
+            longUsername.append("user");
+        }
+        loginRequest.setUsername(longUsername.toString());
+        when(userService.loginOrCreate(longUsername.toString(), "TestUser")).thenReturn(testUser);
+
+        // When & Then
+        mockMvc.perform(post("/api/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(userService).loginOrCreate(longUsername.toString(), "TestUser");
     }
 }

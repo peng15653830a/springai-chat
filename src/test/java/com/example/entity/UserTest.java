@@ -3,7 +3,7 @@ package com.example.entity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,8 +35,8 @@ public class UserTest {
         Long id = 1L;
         String username = "testuser";
         String nickname = "TestUser";
-        Date createdAt = new Date();
-        Date updatedAt = new Date();
+        LocalDateTime createdAt = LocalDateTime.now();
+        LocalDateTime updatedAt = LocalDateTime.now();
 
         // When
         user.setId(id);

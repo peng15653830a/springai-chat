@@ -1,7 +1,7 @@
 package com.example.entity;
 
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Data
 public class Message {
@@ -11,5 +11,5 @@ public class Message {
     private String content;
     private String thinking; // AI推理过程
     private String searchResults;
-    private Date createdAt;
+    private LocalDateTime createdAt;
 }

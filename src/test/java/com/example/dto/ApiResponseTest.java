@@ -1,126 +1,144 @@
 package com.example.dto;
 
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ApiResponseTest {
+class ApiResponseTest {
 
     @Test
-    void testSuccessResponse() {
+    void testSuccessWithData() {
         // Given
-        String testData = "Test data";
-
+        String testData = "test data";
+        
         // When
         ApiResponse<String> response = ApiResponse.success(testData);
-
+        
         // Then
         assertTrue(response.isSuccess());
         assertEquals(testData, response.getData());
         assertNull(response.getMessage());
     }
-
+    
     @Test
-    void testSuccessResponseWithMessage() {
+    void testSuccessWithMessageAndData() {
         // Given
-        String testData = "Test data";
-        String message = "Operation successful";
-
+        String message = "操作成功";
+        String testData = "test data";
+        
         // When
         ApiResponse<String> response = ApiResponse.success(message, testData);
-
+        
         // Then
         assertTrue(response.isSuccess());
-        assertEquals(testData, response.getData());
         assertEquals(message, response.getMessage());
+        assertEquals(testData, response.getData());
     }
-
+    
     @Test
-    void testErrorResponse() {
+    void testErrorWithMessage() {
         // Given
-        String errorMessage = "Something went wrong";
-
+        String errorMessage = "操作失败";
+        
         // When
-        ApiResponse<Void> response = ApiResponse.error(errorMessage);
-
+        ApiResponse<Object> response = ApiResponse.error(errorMessage);
+        
         // Then
         assertFalse(response.isSuccess());
+        assertEquals(errorMessage, response.getMessage());
         assertNull(response.getData());
-        assertEquals(errorMessage, response.getMessage());
     }
-
+    
     @Test
-    void testErrorResponseWithData() {
+    void testErrorWithCodeAndMessage() {
         // Given
-        String errorCode = "VALIDATION_ERROR";
-        String errorMessage = "Validation failed";
-        String errorData = "Field error details";
-
+        String code = "ERROR_001";
+        String message = "系统错误";
+        
         // When
-        ApiResponse<String> response = ApiResponse.error(errorCode, errorMessage, errorData);
-
+        ApiResponse<Object> response = ApiResponse.error(code, message);
+        
         // Then
         assertFalse(response.isSuccess());
-        assertEquals(errorData, response.getData());
-        assertEquals(errorMessage, response.getMessage());
+        assertEquals(message, response.getMessage());
+        assertNull(response.getData());
     }
-
+    
+    @Test
+    void testErrorWithCodeMessageAndData() {
+        // Given
+        String code = "ERROR_002";
+        String message = "验证失败";
+        String errorData = "error details";
+        
+        // When
+        ApiResponse<String> response = ApiResponse.error(code, message, errorData);
+        
+        // Then
+        assertFalse(response.isSuccess());
+        assertEquals(message, response.getMessage());
+        assertEquals(errorData, response.getData());
+    }
+    
     @Test
     void testSettersAndGetters() {
         // Given
         ApiResponse<String> response = new ApiResponse<>();
-        String data = "Test data";
-        String message = "Test message";
-
+        
         // When
         response.setSuccess(true);
-        response.setData(data);
-        response.setMessage(message);
-
+        response.setMessage("测试消息");
+        response.setData("测试数据");
+        
         // Then
         assertTrue(response.isSuccess());
-        assertEquals(data, response.getData());
-        assertEquals(message, response.getMessage());
+        assertEquals("测试消息", response.getMessage());
+        assertEquals("测试数据", response.getData());
     }
-
+    
     @Test
-    void testNullValues() {
-        // When
-        ApiResponse<String> response = ApiResponse.success(null);
-
+    void testEqualsAndHashCode() {
+        // Given
+        ApiResponse<String> response1 = new ApiResponse<>();
+        response1.setSuccess(true);
+        response1.setMessage("test");
+        response1.setData("data");
+        
+        ApiResponse<String> response2 = new ApiResponse<>();
+        response2.setSuccess(true);
+        response2.setMessage("test");
+        response2.setData("data");
+        
         // Then
-        assertTrue(response.isSuccess());
-        assertNull(response.getData());
-
-        // When
-        ApiResponse<Void> errorResponse = ApiResponse.error(null);
-
-        // Then
-        assertFalse(errorResponse.isSuccess());
-        assertNull(errorResponse.getMessage());
+        assertEquals(response1, response2);
+        assertEquals(response1.hashCode(), response2.hashCode());
     }
-
+    
     @Test
-    void testEmptyMessage() {
+    void testToString() {
+        // Given
+        ApiResponse<String> response = new ApiResponse<>();
+        response.setSuccess(true);
+        response.setMessage("test message");
+        response.setData("test data");
+        
         // When
-        ApiResponse<Void> response = ApiResponse.error("");
-
+        String toString = response.toString();
+        
         // Then
-        assertFalse(response.isSuccess());
-        assertEquals("", response.getMessage());
+        assertNotNull(toString);
+        assertTrue(toString.contains("success=true"));
+        assertTrue(toString.contains("message=test message"));
+        assertTrue(toString.contains("data=test data"));
     }
-
+    
     @Test
     void testGenericTypes() {
-        // When
-        ApiResponse<Integer> intResponse = ApiResponse.success(42);
+        // Given & When
+        ApiResponse<Integer> intResponse = ApiResponse.success(123);
         ApiResponse<Boolean> boolResponse = ApiResponse.success(true);
-
+        
         // Then
-        assertTrue(intResponse.isSuccess());
-        assertEquals(Integer.valueOf(42), intResponse.getData());
-
-        assertTrue(boolResponse.isSuccess());
+        assertEquals(Integer.valueOf(123), intResponse.getData());
         assertEquals(Boolean.TRUE, boolResponse.getData());
     }
 }

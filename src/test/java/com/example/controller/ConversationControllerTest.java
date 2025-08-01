@@ -17,7 +17,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(MockitoExtension.class)
 @WebMvcTest(ConversationController.class)
-@ContextConfiguration(classes = {ConversationController.class})
+@ContextConfiguration(classes = {ConversationController.class, com.example.exception.GlobalExceptionHandler.class})
 public class ConversationControllerTest {
 
     @Autowired
@@ -52,15 +52,15 @@ public class ConversationControllerTest {
         testConversation.setId(1L);
         testConversation.setUserId(1L);
         testConversation.setTitle("Test Conversation");
-        testConversation.setCreatedAt(new Date());
-        testConversation.setUpdatedAt(new Date());
+        testConversation.setCreatedAt(LocalDateTime.now());
+        testConversation.setUpdatedAt(LocalDateTime.now());
 
         testMessage = new Message();
         testMessage.setId(1L);
         testMessage.setConversationId(1L);
         testMessage.setRole("user");
         testMessage.setContent("Test message");
-        testMessage.setCreatedAt(new Date());
+        testMessage.setCreatedAt(LocalDateTime.now());
 
         conversationRequest = new ConversationRequest();
         conversationRequest.setTitle("New Conversation");
@@ -102,7 +102,7 @@ public class ConversationControllerTest {
         mockMvc.perform(get("/api/conversations?userId=1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("获取对话列表失败: Database error"));
+                .andExpect(jsonPath("$.message").value("系统运行异常: Database error"));
     }
 
     @Test
@@ -179,7 +179,7 @@ public class ConversationControllerTest {
         mockMvc.perform(delete("/api/conversations/1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("删除失败: Database error"));
+                .andExpect(jsonPath("$.message").value("系统运行异常: Database error"));
     }
 
     @Test
@@ -206,5 +206,90 @@ public class ConversationControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("对话ID无效"));
+    }
+
+    @Test
+    void testGetConversationMessages_ServiceException() throws Exception {
+        // Given
+        when(conversationService.getConversationMessages(1L))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // When & Then
+        mockMvc.perform(get("/api/conversations/1/messages"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("系统运行异常: Database error"));
+    }
+
+    @Test
+    void testCreateConversation_NullTitle() throws Exception {
+        // Given
+        conversationRequest.setTitle(null);
+
+        // When & Then
+        mockMvc.perform(post("/api/conversations?userId=1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(conversationRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("对话标题不能为空"));
+    }
+
+    @Test
+    void testCreateConversation_WhitespaceTitle() throws Exception {
+        // Given
+        conversationRequest.setTitle("   ");
+
+        // When & Then
+        mockMvc.perform(post("/api/conversations?userId=1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(conversationRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("对话标题不能为空"));
+    }
+
+    @Test
+    void testGetUserConversations_EmptyResult() throws Exception {
+        // Given
+        when(conversationService.getUserConversations(1L)).thenReturn(Arrays.asList());
+
+        // When & Then
+        mockMvc.perform(get("/api/conversations?userId=1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        verify(conversationService).getUserConversations(1L);
+    }
+
+    @Test
+    void testDeleteConversation_NegativeId() throws Exception {
+        // When & Then
+        mockMvc.perform(delete("/api/conversations/-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("对话ID无效"));
+    }
+
+    @Test
+    void testGetUserConversations_NegativeUserId() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/api/conversations?userId=-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("用户ID无效"));
+    }
+
+    @Test
+    void testCreateConversation_NegativeUserId() throws Exception {
+        // When & Then
+        mockMvc.perform(post("/api/conversations?userId=-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(conversationRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("用户ID无效"));
     }
 }

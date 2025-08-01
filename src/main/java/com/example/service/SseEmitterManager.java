@@ -13,6 +13,9 @@ public class SseEmitterManager {
     private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
     
     public SseEmitter createEmitter(Long conversationId) {
+        if (conversationId == null || conversationId <= 0) {
+            throw new IllegalArgumentException("会话ID无效");
+        }
         SseEmitter emitter = new SseEmitter(30000L); // 30秒超时
         
         emitter.onCompletion(() -> {
