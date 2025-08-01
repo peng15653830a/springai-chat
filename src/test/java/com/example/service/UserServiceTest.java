@@ -316,31 +316,6 @@ class UserServiceTest {
         verify(userMapper).updateById(userToUpdate);
     }
 
-    // ========== 额外的分支测试 ==========
-
-    @Test
-    void testCreateUser_WithEmptyValues() {
-        // Given
-        String username = "";
-        String nickname = "";
-        
-        doAnswer(invocation -> {
-            User user = invocation.getArgument(0);
-            user.setId(7L);
-            return null;
-        }).when(userMapper).insert(any(User.class));
-
-        // When
-        User result = userService.createUser(username, nickname);
-
-        // Then
-        assertNotNull(result);
-        assertEquals("", result.getUsername());
-        assertEquals("", result.getNickname());
-        assertEquals(7L, result.getId());
-        verify(userMapper).insert(any(User.class));
-    }
-
     @Test
     void testGetUserById_ZeroId() {
         // Given

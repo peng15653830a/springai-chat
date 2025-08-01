@@ -11,6 +11,7 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
@@ -38,10 +39,10 @@ class GlobalExceptionHandlerTest {
     void testHandleIllegalArgumentException() {
         // Given
         IllegalArgumentException exception = new IllegalArgumentException("参数无效");
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleIllegalArgumentException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
@@ -53,10 +54,10 @@ class GlobalExceptionHandlerTest {
     void testHandleBusinessException() {
         // Given
         BusinessException exception = new BusinessException("业务异常");
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleBusinessException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
@@ -67,10 +68,10 @@ class GlobalExceptionHandlerTest {
     void testHandleRuntimeException() {
         // Given
         RuntimeException exception = new RuntimeException("运行时异常");
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleRuntimeException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
@@ -82,10 +83,10 @@ class GlobalExceptionHandlerTest {
     void testHandleGeneralException() {
         // Given
         Exception exception = new Exception("通用异常");
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleGeneralException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
@@ -94,50 +95,48 @@ class GlobalExceptionHandlerTest {
     }
 
 
-
     @Test
     void testHandleNullPointerException() {
         // Given
         NullPointerException exception = new NullPointerException("空指针异常");
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleNullPointerException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
         assertEquals("系统内部错误，请联系管理员", response.getMessage());
         assertNull(response.getData());
     }
-    
+
     @Test
     void testHandleTypeMismatchException() {
         // Given
-        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException exception = 
-            mock(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class);
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException exception =
+                mock(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class);
         when(exception.getName()).thenReturn("id");
         when(exception.getRequiredType()).thenReturn((Class) Long.class);
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleTypeMismatchException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
         assertTrue(response.getMessage().contains("参数"));
         assertNull(response.getData());
     }
-    
 
 
     @Test
     void testHandleIllegalArgumentExceptionWithNullMessage() {
         // Given
         IllegalArgumentException exception = new IllegalArgumentException();
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleIllegalArgumentException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
@@ -148,10 +147,10 @@ class GlobalExceptionHandlerTest {
     void testHandleRuntimeExceptionWithNullMessage() {
         // Given
         RuntimeException exception = new RuntimeException();
-        
+
         // When
         ApiResponse<Object> response = globalExceptionHandler.handleRuntimeException(exception, request);
-        
+
         // Then
         assertNotNull(response);
         assertFalse(response.isSuccess());
@@ -164,10 +163,10 @@ class GlobalExceptionHandlerTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         IllegalArgumentException exception = new IllegalArgumentException("测试异常");
-        
+
         // When
         globalExceptionHandler.handleIllegalArgumentException(exception, request);
-        
+
         // Then
         verify(request, atLeastOnce()).getRequestURI();
     }
@@ -179,7 +178,7 @@ class GlobalExceptionHandlerTest {
         BindingResult bindingResult = mock(BindingResult.class);
         FieldError fieldError1 = new FieldError("testObject", "field1", "Field1 error");
         FieldError fieldError2 = new FieldError("testObject", "field2", "Field2 error");
-        
+
         when(exception.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getAllErrors()).thenReturn(Arrays.asList(fieldError1, fieldError2));
 
@@ -199,7 +198,7 @@ class GlobalExceptionHandlerTest {
         BindException exception = mock(BindException.class);
         BindingResult bindingResult = mock(BindingResult.class);
         FieldError fieldError = new FieldError("testObject", "testField", "Test error");
-        
+
         when(exception.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getAllErrors()).thenReturn(Arrays.asList(fieldError));
 
@@ -249,7 +248,7 @@ class GlobalExceptionHandlerTest {
         // Given
         MethodArgumentNotValidException exception = mock(MethodArgumentNotValidException.class);
         BindingResult bindingResult = mock(BindingResult.class);
-        
+
         when(exception.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getAllErrors()).thenReturn(Arrays.asList());
 
@@ -267,7 +266,7 @@ class GlobalExceptionHandlerTest {
         // Given
         BindException exception = mock(BindException.class);
         BindingResult bindingResult = mock(BindingResult.class);
-        
+
         when(exception.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getAllErrors()).thenReturn(Arrays.asList());
 
@@ -279,3 +278,4 @@ class GlobalExceptionHandlerTest {
         assertFalse(response.isSuccess());
         assertEquals("参数绑定失败", response.getMessage());
     }
+}

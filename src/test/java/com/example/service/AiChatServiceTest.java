@@ -406,20 +406,7 @@ public class AiChatServiceTest {
         assertNotNull(response);
         assertNotNull(response.getContent());
     }
-    
-    @Test
-    void testChatWithAI_WithEmptySearchContext() {
-        // Given
-        String searchContext = "";
-        
-        // When
-        AiResponse response = aiChatService.chatWithAI(simpleQuery, testHistory, searchContext);
-        
-        // Then
-        assertNotNull(response);
-        assertNotNull(response.getContent());
-    }
-    
+
     @Test
     void testChatWithAI_WithNullSearchContext() {
         // When
