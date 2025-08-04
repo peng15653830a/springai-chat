@@ -190,6 +190,13 @@ class GlobalExceptionHandlerTest {
         assertFalse(response.isSuccess());
         assertEquals("参数验证失败", response.getMessage());
         assertNotNull(response.getData());
+        
+        // Verify the data contains error details
+        assertTrue(response.getData() instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, String> errorMap = (Map<String, String>) response.getData();
+        assertEquals("Field1 error", errorMap.get("field1"));
+        assertEquals("Field2 error", errorMap.get("field2"));
     }
 
     @Test
@@ -210,6 +217,12 @@ class GlobalExceptionHandlerTest {
         assertFalse(response.isSuccess());
         assertEquals("参数绑定失败", response.getMessage());
         assertNotNull(response.getData());
+        
+        // Verify the data contains error details
+        assertTrue(response.getData() instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, String> errorMap = (Map<String, String>) response.getData();
+        assertEquals("Test error", errorMap.get("testField"));
     }
 
     @Test
@@ -259,6 +272,10 @@ class GlobalExceptionHandlerTest {
         assertNotNull(response);
         assertFalse(response.isSuccess());
         assertEquals("参数验证失败", response.getMessage());
+        assertTrue(response.getData() instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, String> errorMap = (Map<String, String>) response.getData();
+        assertTrue(errorMap.isEmpty());
     }
 
     @Test
@@ -277,5 +294,9 @@ class GlobalExceptionHandlerTest {
         assertNotNull(response);
         assertFalse(response.isSuccess());
         assertEquals("参数绑定失败", response.getMessage());
+        assertTrue(response.getData() instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, String> errorMap = (Map<String, String>) response.getData();
+        assertTrue(errorMap.isEmpty());
     }
 }

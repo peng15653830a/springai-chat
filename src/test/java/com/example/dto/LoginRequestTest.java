@@ -72,9 +72,84 @@ class LoginRequestTest {
         request2.setUsername("user1");
         request2.setNickname("用户1");
         
+        LoginRequest request3 = new LoginRequest();
+        request3.setUsername("user2");
+        request3.setNickname("用户1");
+        
         // Then
         assertEquals(request1, request2);
         assertEquals(request1.hashCode(), request2.hashCode());
+        assertNotEquals(request1, request3);
+        
+        // Test equals with null
+        assertNotEquals(request1, null);
+        
+        // Test equals with different class
+        assertNotEquals(request1, "not a request");
+        
+        // Test equals with same object
+        assertEquals(request1, request1);
+        
+        // Test canEqual method
+        assertTrue(request1.canEqual(request2));
+        assertFalse(request1.canEqual("not a request"));
+        assertFalse(request1.canEqual(null));
+        
+        // Test with null username
+        LoginRequest requestNullUsername1 = new LoginRequest();
+        requestNullUsername1.setUsername(null);
+        requestNullUsername1.setNickname("nick");
+        
+        LoginRequest requestNullUsername2 = new LoginRequest();
+        requestNullUsername2.setUsername(null);
+        requestNullUsername2.setNickname("nick");
+        
+        assertEquals(requestNullUsername1, requestNullUsername2);
+        assertEquals(requestNullUsername1.hashCode(), requestNullUsername2.hashCode());
+        
+        // Test with null nickname
+        LoginRequest requestNullNickname1 = new LoginRequest();
+        requestNullNickname1.setUsername("user");
+        requestNullNickname1.setNickname(null);
+        
+        LoginRequest requestNullNickname2 = new LoginRequest();
+        requestNullNickname2.setUsername("user");
+        requestNullNickname2.setNickname(null);
+        
+        assertEquals(requestNullNickname1, requestNullNickname2);
+        assertEquals(requestNullNickname1.hashCode(), requestNullNickname2.hashCode());
+        
+        // Test with both null
+        LoginRequest requestBothNull1 = new LoginRequest();
+        LoginRequest requestBothNull2 = new LoginRequest();
+        
+        assertEquals(requestBothNull1, requestBothNull2);
+        assertEquals(requestBothNull1.hashCode(), requestBothNull2.hashCode());
+        
+        // Test null vs non-null username
+        LoginRequest requestUsernameNull = new LoginRequest();
+        requestUsernameNull.setUsername(null);
+        
+        LoginRequest requestUsernameNotNull = new LoginRequest();
+        requestUsernameNotNull.setUsername("user");
+        
+        assertNotEquals(requestUsernameNull, requestUsernameNotNull);
+        assertNotEquals(requestUsernameNotNull, requestUsernameNull);
+        
+        // Test null vs non-null nickname
+        LoginRequest requestNicknameNull = new LoginRequest();
+        requestNicknameNull.setNickname(null);
+        
+        LoginRequest requestNicknameNotNull = new LoginRequest();
+        requestNicknameNotNull.setNickname("nick");
+        
+        assertNotEquals(requestNicknameNull, requestNicknameNotNull);
+        assertNotEquals(requestNicknameNotNull, requestNicknameNull);
+        
+        // Test hashCode consistency
+        int hashCode1 = request1.hashCode();
+        int hashCode2 = request1.hashCode();
+        assertEquals(hashCode1, hashCode2);
     }
     
     @Test

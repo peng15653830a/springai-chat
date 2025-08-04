@@ -241,6 +241,156 @@ public class SearchServiceTest {
         assertTrue(formatted.contains("1. "));
     }
 
+    // ========== 私有方法测试 ==========
+    
+    @Test
+    void testParseMetasoResponse_ValidResponse() throws Exception {
+        // Given - 模拟有效的API响应
+        String validResponse = "{\n" +
+                "  \"results\": [\n" +
+                "    {\n" +
+                "      \"title\": \"测试标题1\",\n" +
+                "      \"snippet\": \"测试摘要1\",\n" +
+                "      \"url\": \"https://example1.com\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"title\": \"测试标题2\",\n" +
+                "      \"snippet\": \"测试摘要2\",\n" +
+                "      \"url\": \"https://example2.com\"\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}";
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", validResponse);
+        
+        // Then
+        assertNotNull(results);
+        assertEquals(2, results.size());
+        
+        Map<String, String> result1 = results.get(0);
+        assertEquals("测试标题1", result1.get("title"));
+        assertEquals("测试摘要1", result1.get("snippet"));
+        assertEquals("https://example1.com", result1.get("link"));
+        
+        Map<String, String> result2 = results.get(1);
+        assertEquals("测试标题2", result2.get("title"));
+        assertEquals("测试摘要2", result2.get("snippet"));
+        assertEquals("https://example2.com", result2.get("link"));
+    }
+    
+    @Test
+    void testParseMetasoResponse_EmptyResults() throws Exception {
+        // Given - 模拟空结果的API响应
+        String emptyResponse = "{\n" +
+                "  \"results\": []\n" +
+                "}";
+        
+        // When
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", emptyResponse);
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testParseMetasoResponse_NullResults() throws Exception {
+        // Given - 模拟null结果的API响应
+        String nullResponse = "{\n" +
+                "  \"results\": null\n" +
+                "}";
+        
+        // When
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", nullResponse);
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testParseMetasoResponse_MissingResults() throws Exception {
+        // Given - 模拟缺少results字段的API响应
+        String missingResultsResponse = "{\n" +
+                "  \"status\": \"success\"\n" +
+                "}";
+        
+        // When
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", missingResultsResponse);
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testParseMetasoResponse_InvalidJson() throws Exception {
+        // Given - 模拟无效的JSON响应
+        String invalidJson = "{ invalid json }";
+        
+        // When
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", invalidJson);
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testParseMetasoResponse_NullInput() throws Exception {
+        // When
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", (String) null);
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testParseMetasoResponse_EmptyString() throws Exception {
+        // When
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", "");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testParseMetasoResponse_WithNullFields() throws Exception {
+        // Given - 模拟包含null字段的API响应
+        String responseWithNulls = "{\n" +
+                "  \"results\": [\n" +
+                "    {\n" +
+                "      \"title\": null,\n" +
+                "      \"snippet\": \"测试摘要\",\n" +
+                "      \"url\": null\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}";
+        
+        // When
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "parseMetasoResponse", responseWithNulls);
+        
+        // Then
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        
+        Map<String, String> result = results.get(0);
+        assertNull(result.get("title"));
+        assertEquals("测试摘要", result.get("snippet"));
+        assertNull(result.get("link"));
+    }
+
     // ========== 辅助方法 ==========
     
     private List<Map<String, String>> createTestSearchResults() {

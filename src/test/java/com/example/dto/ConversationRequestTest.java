@@ -61,9 +61,52 @@ class ConversationRequestTest {
         ConversationRequest request2 = new ConversationRequest();
         request2.setTitle("相同标题");
         
+        ConversationRequest request3 = new ConversationRequest();
+        request3.setTitle("不同标题");
+        
         // Then
         assertEquals(request1, request2);
         assertEquals(request1.hashCode(), request2.hashCode());
+        assertNotEquals(request1, request3);
+        
+        // Test equals with null
+        assertNotEquals(request1, null);
+        
+        // Test equals with different class
+        assertNotEquals(request1, "not a request");
+        
+        // Test equals with same object
+        assertEquals(request1, request1);
+        
+        // Test canEqual method
+        assertTrue(request1.canEqual(request2));
+        assertFalse(request1.canEqual("not a request"));
+        assertFalse(request1.canEqual(null));
+        
+        // Test with null title
+        ConversationRequest requestNull1 = new ConversationRequest();
+        requestNull1.setTitle(null);
+        
+        ConversationRequest requestNull2 = new ConversationRequest();
+        requestNull2.setTitle(null);
+        
+        assertEquals(requestNull1, requestNull2);
+        assertEquals(requestNull1.hashCode(), requestNull2.hashCode());
+        
+        // Test null vs non-null title
+        ConversationRequest requestTitleNull = new ConversationRequest();
+        requestTitleNull.setTitle(null);
+        
+        ConversationRequest requestTitleNotNull = new ConversationRequest();
+        requestTitleNotNull.setTitle("title");
+        
+        assertNotEquals(requestTitleNull, requestTitleNotNull);
+        assertNotEquals(requestTitleNotNull, requestTitleNull);
+        
+        // Test hashCode consistency
+        int hashCode1 = request1.hashCode();
+        int hashCode2 = request1.hashCode();
+        assertEquals(hashCode1, hashCode2);
     }
     
     @Test

@@ -292,4 +292,70 @@ public class ConversationControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("用户ID无效"));
     }
-}
+
+    @Test
+    void testGetConversation_Success() throws Exception {
+        // Given
+        when(conversationService.getConversationById(1L)).thenReturn(testConversation);
+
+        // When & Then
+        mockMvc.perform(get("/api/conversations/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.title").value("Test Conversation"));
+
+        verify(conversationService).getConversationById(1L);
+    }
+
+    @Test
+    void testGetConversation_ServiceException() throws Exception {
+        // Given
+        when(conversationService.getConversationById(1L))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // When & Then
+        mockMvc.perform(get("/api/conversations/1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("系统运行异常: Database error"));
+    }
+
+    @Test
+    void testSendMessage_Success() throws Exception {
+        // Given
+        com.example.dto.MessageRequest messageRequest = new com.example.dto.MessageRequest();
+        messageRequest.setContent("Test message content");
+        
+        when(messageService.saveMessage(1L, "user", "Test message content")).thenReturn(testMessage);
+
+        // When & Then
+        mockMvc.perform(post("/api/conversations/1/messages")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(messageRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("消息发送成功"))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.content").value("Test message"));
+
+        verify(messageService).saveMessage(1L, "user", "Test message content");
+    }
+
+    @Test
+    void testSendMessage_ServiceException() throws Exception {
+        // Given
+        com.example.dto.MessageRequest messageRequest = new com.example.dto.MessageRequest();
+        messageRequest.setContent("Test message content");
+        
+        when(messageService.saveMessage(1L, "user", "Test message content"))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // When & Then
+        mockMvc.perform(post("/api/conversations/1/messages")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(messageRequest)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("系统运行异常: Database error"));
+    }}

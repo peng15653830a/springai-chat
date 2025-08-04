@@ -108,9 +108,106 @@ class ApiResponseTest {
         response2.setMessage("test");
         response2.setData("data");
         
+        ApiResponse<String> response3 = new ApiResponse<>();
+        response3.setSuccess(false);
+        response3.setMessage("test");
+        response3.setData("data");
+        
         // Then
         assertEquals(response1, response2);
         assertEquals(response1.hashCode(), response2.hashCode());
+        assertNotEquals(response1, response3);
+        
+        // Test equals with null
+        assertNotEquals(response1, null);
+        
+        // Test equals with different class
+        assertNotEquals(response1, "not a response");
+        
+        // Test equals with same object
+        assertEquals(response1, response1);
+        
+        // Test canEqual method
+        assertTrue(response1.canEqual(response2));
+        assertFalse(response1.canEqual("not a response"));
+        assertFalse(response1.canEqual(null));
+        
+        // Test with different success values
+        ApiResponse<String> responseDiffSuccess = new ApiResponse<>();
+        responseDiffSuccess.setSuccess(false);
+        responseDiffSuccess.setMessage("test");
+        responseDiffSuccess.setData("data");
+        
+        assertNotEquals(response1, responseDiffSuccess);
+        
+        // Test with different message
+        ApiResponse<String> responseDiffMessage = new ApiResponse<>();
+        responseDiffMessage.setSuccess(true);
+        responseDiffMessage.setMessage("different");
+        responseDiffMessage.setData("data");
+        
+        assertNotEquals(response1, responseDiffMessage);
+        
+        // Test with different data
+        ApiResponse<String> responseDiffData = new ApiResponse<>();
+        responseDiffData.setSuccess(true);
+        responseDiffData.setMessage("test");
+        responseDiffData.setData("different");
+        
+        assertNotEquals(response1, responseDiffData);
+        
+        // Test with null message
+        ApiResponse<String> responseNullMessage1 = new ApiResponse<>();
+        responseNullMessage1.setSuccess(true);
+        responseNullMessage1.setMessage(null);
+        responseNullMessage1.setData("data");
+        
+        ApiResponse<String> responseNullMessage2 = new ApiResponse<>();
+        responseNullMessage2.setSuccess(true);
+        responseNullMessage2.setMessage(null);
+        responseNullMessage2.setData("data");
+        
+        assertEquals(responseNullMessage1, responseNullMessage2);
+        assertEquals(responseNullMessage1.hashCode(), responseNullMessage2.hashCode());
+        
+        // Test with null data
+        ApiResponse<String> responseNullData1 = new ApiResponse<>();
+        responseNullData1.setSuccess(true);
+        responseNullData1.setMessage("test");
+        responseNullData1.setData(null);
+        
+        ApiResponse<String> responseNullData2 = new ApiResponse<>();
+        responseNullData2.setSuccess(true);
+        responseNullData2.setMessage("test");
+        responseNullData2.setData(null);
+        
+        assertEquals(responseNullData1, responseNullData2);
+        assertEquals(responseNullData1.hashCode(), responseNullData2.hashCode());
+        
+        // Test null vs non-null message
+        ApiResponse<String> responseMessageNull = new ApiResponse<>();
+        responseMessageNull.setMessage(null);
+        
+        ApiResponse<String> responseMessageNotNull = new ApiResponse<>();
+        responseMessageNotNull.setMessage("message");
+        
+        assertNotEquals(responseMessageNull, responseMessageNotNull);
+        assertNotEquals(responseMessageNotNull, responseMessageNull);
+        
+        // Test null vs non-null data
+        ApiResponse<String> responseDataNull = new ApiResponse<>();
+        responseDataNull.setData(null);
+        
+        ApiResponse<String> responseDataNotNull = new ApiResponse<>();
+        responseDataNotNull.setData("data");
+        
+        assertNotEquals(responseDataNull, responseDataNotNull);
+        assertNotEquals(responseDataNotNull, responseDataNull);
+        
+        // Test hashCode consistency
+        int hashCode1 = response1.hashCode();
+        int hashCode2 = response1.hashCode();
+        assertEquals(hashCode1, hashCode2);
     }
     
     @Test

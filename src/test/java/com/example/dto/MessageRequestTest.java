@@ -63,9 +63,84 @@ class MessageRequestTest {
         request2.setContent("test content");
         request2.setSearchEnabled(true);
         
+        MessageRequest request3 = new MessageRequest();
+        request3.setContent("different content");
+        request3.setSearchEnabled(true);
+        
         // Then
         assertEquals(request1, request2);
         assertEquals(request1.hashCode(), request2.hashCode());
+        assertNotEquals(request1, request3);
+        
+        // Test equals with null
+        assertNotEquals(request1, null);
+        
+        // Test equals with different class
+        assertNotEquals(request1, "not a request");
+        
+        // Test equals with same object
+        assertEquals(request1, request1);
+        
+        // Test canEqual method
+        assertTrue(request1.canEqual(request2));
+        assertFalse(request1.canEqual("not a request"));
+        assertFalse(request1.canEqual(null));
+        
+        // Test with different searchEnabled
+        MessageRequest requestDiffSearch = new MessageRequest();
+        requestDiffSearch.setContent("test content");
+        requestDiffSearch.setSearchEnabled(false);
+        
+        assertNotEquals(request1, requestDiffSearch);
+        
+        // Test with null content
+        MessageRequest requestNullContent1 = new MessageRequest();
+        requestNullContent1.setContent(null);
+        requestNullContent1.setSearchEnabled(true);
+        
+        MessageRequest requestNullContent2 = new MessageRequest();
+        requestNullContent2.setContent(null);
+        requestNullContent2.setSearchEnabled(true);
+        
+        assertEquals(requestNullContent1, requestNullContent2);
+        assertEquals(requestNullContent1.hashCode(), requestNullContent2.hashCode());
+        
+        // Test with null searchEnabled
+        MessageRequest requestNullSearch1 = new MessageRequest();
+        requestNullSearch1.setContent("content");
+        requestNullSearch1.setSearchEnabled(null);
+        
+        MessageRequest requestNullSearch2 = new MessageRequest();
+        requestNullSearch2.setContent("content");
+        requestNullSearch2.setSearchEnabled(null);
+        
+        assertEquals(requestNullSearch1, requestNullSearch2);
+        assertEquals(requestNullSearch1.hashCode(), requestNullSearch2.hashCode());
+        
+        // Test null vs non-null content
+        MessageRequest requestContentNull = new MessageRequest();
+        requestContentNull.setContent(null);
+        
+        MessageRequest requestContentNotNull = new MessageRequest();
+        requestContentNotNull.setContent("content");
+        
+        assertNotEquals(requestContentNull, requestContentNotNull);
+        assertNotEquals(requestContentNotNull, requestContentNull);
+        
+        // Test null vs non-null searchEnabled
+        MessageRequest requestSearchNull = new MessageRequest();
+        requestSearchNull.setSearchEnabled(null);
+        
+        MessageRequest requestSearchNotNull = new MessageRequest();
+        requestSearchNotNull.setSearchEnabled(true);
+        
+        assertNotEquals(requestSearchNull, requestSearchNotNull);
+        assertNotEquals(requestSearchNotNull, requestSearchNull);
+        
+        // Test hashCode consistency
+        int hashCode1 = request1.hashCode();
+        int hashCode2 = request1.hashCode();
+        assertEquals(hashCode1, hashCode2);
     }
     
     @Test
