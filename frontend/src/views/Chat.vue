@@ -297,63 +297,76 @@ export default {
     const setupSSE = (conversationId) => {
       const eventSource = chatStore.connectSSE(conversationId)
       
-      eventSource.addEventListener('message', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          handleSSEMessage(data)
-        } catch (error) {
-          console.error('Parse SSE message error:', error)
-        }
-      })
+      // 监听所有事件类型
+      eventSource.addEventListener('start', handleSSEMessage)
+      eventSource.addEventListener('chunk', handleSSEMessage)
+      eventSource.addEventListener('end', handleSSEMessage)
+      eventSource.addEventListener('search', handleSSEMessage)
+      eventSource.addEventListener('error', handleSSEMessage)
       
-      eventSource.addEventListener('search', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          handleSearchEvent(data)
-        } catch (error) {
-          console.error('Parse search event error:', error)
-        }
-      })
-      
-      eventSource.addEventListener('error', (event) => {
-        console.error('SSE error:', event)
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error)
         chatStore.setLoading(false)
-      })
+        ElMessage.error('连接断开，请刷新页面重试')
+      }
       
-      eventSource.onerror = () => {
-        chatStore.setLoading(false)
+      eventSource.onopen = () => {
+        console.log('SSE connection established')
       }
     }
     
     // 处理SSE消息
-    const handleSSEMessage = (data) => {
-      switch (data.type) {
-        case 'start':
-          // 开始接收AI回复，添加空消息
-          chatStore.addMessage({
-            id: 'temp-' + Date.now(),
-            role: 'assistant',
-            content: '',
-            createdAt: new Date()
-          })
-          break
-          
-        case 'chunk':
-          // 追加消息内容
-          chatStore.updateLastMessage(data.content)
-          scrollToBottom()
-          break
-          
-        case 'end':
-          // 消息结束，更新消息ID
-          if (chatStore.messages.length > 0) {
-            const lastMessage = chatStore.messages[chatStore.messages.length - 1]
-            if (data.messageId) {
-              lastMessage.id = data.messageId
+    const handleSSEMessage = (event) => {
+      try {
+        const eventType = event.type
+        let data
+        
+        try {
+          data = JSON.parse(event.data)
+        } catch (e) {
+          // 如果不是JSON，直接使用字符串
+          data = event.data
+        }
+        
+        switch (eventType) {
+          case 'start':
+            // 开始接收AI回复，添加空消息
+            chatStore.addMessage({
+              id: 'temp-' + Date.now(),
+              role: 'assistant',
+              content: '',
+              createdAt: new Date()
+            })
+            break
+            
+          case 'chunk':
+            // 追加消息内容
+            chatStore.updateLastMessage(data)
+            scrollToBottom()
+            break
+            
+          case 'end':
+            // 消息结束，更新消息ID
+            if (chatStore.messages.length > 0) {
+              const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+              if (data.messageId) {
+                lastMessage.id = data.messageId
+              }
             }
-          }
-          chatStore.setLoading(false)
-          break
+            chatStore.setLoading(false)
+            break
+            
+          case 'search':
+            handleSearchEvent(data)
+            break
+            
+          case 'error':
+            ElMessage.error(data)
+            chatStore.setLoading(false)
+            break
+        }
+      } catch (error) {
+        console.error('Handle SSE message error:', error)
       }
     }
     

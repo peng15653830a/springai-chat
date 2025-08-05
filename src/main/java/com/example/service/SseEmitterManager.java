@@ -16,7 +16,7 @@ public class SseEmitterManager {
         if (conversationId == null || conversationId <= 0) {
             throw new IllegalArgumentException("会话ID无效");
         }
-        SseEmitter emitter = new SseEmitter(30000L); // 30秒超时
+        SseEmitter emitter = new SseEmitter(300000L); // 5分钟超时，给AI回复足够时间
         
         emitter.onCompletion(() -> {
             emitters.remove(conversationId);

@@ -92,5 +92,5 @@ search:
 app:
   chat:
     max-history-size: 20
-    response-timeout: 30s
-    sse-timeout: 30s
+    response-timeout: 300s
+    sse-timeout: 300s
