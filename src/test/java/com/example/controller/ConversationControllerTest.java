@@ -384,4 +384,81 @@ public class ConversationControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("对话ID无效"));
     }
+    
+    // 直接测试Controller方法以覆盖null值分支
+    @Test
+    void testDirectCall_GetConversations_NullUserId() {
+        // Given
+        ConversationController controller = new ConversationController();
+        // 使用反射设置conversationService
+        try {
+            java.lang.reflect.Field field = ConversationController.class.getDeclaredField("conversationService");
+            field.setAccessible(true);
+            field.set(controller, conversationService);
+        } catch (Exception e) {
+            // 忽略反射异常
+        }
+
+        // When & Then
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            controller.getConversations(null);
+        });
+    }
+    
+    @Test
+    void testDirectCall_CreateConversation_NullUserId() {
+        // Given
+        ConversationController controller = new ConversationController();
+        // 使用反射设置conversationService
+        try {
+            java.lang.reflect.Field field = ConversationController.class.getDeclaredField("conversationService");
+            field.setAccessible(true);
+            field.set(controller, conversationService);
+        } catch (Exception e) {
+            // 忽略反射异常
+        }
+
+        // When & Then
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            controller.createConversation(null, conversationRequest);
+        });
+    }
+    
+    @Test
+    void testDirectCall_DeleteConversation_NullId() {
+        // Given
+        ConversationController controller = new ConversationController();
+        // 使用反射设置conversationService
+        try {
+            java.lang.reflect.Field field = ConversationController.class.getDeclaredField("conversationService");
+            field.setAccessible(true);
+            field.set(controller, conversationService);
+        } catch (Exception e) {
+            // 忽略反射异常
+        }
+
+        // When & Then
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            controller.deleteConversation(null);
+        });
+    }
+    
+    @Test
+    void testDirectCall_GetMessages_NullId() {
+        // Given
+        ConversationController controller = new ConversationController();
+        // 使用反射设置conversationService
+        try {
+            java.lang.reflect.Field field = ConversationController.class.getDeclaredField("conversationService");
+            field.setAccessible(true);
+            field.set(controller, conversationService);
+        } catch (Exception e) {
+            // 忽略反射异常
+        }
+
+        // When & Then
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            controller.getMessages(null);
+        });
+    }
 }

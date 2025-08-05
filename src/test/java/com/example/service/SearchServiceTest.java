@@ -569,4 +569,77 @@ public class SearchServiceTest {
         
         return results;
     }
+    
+    @Test
+    void testCallMetasoAPI_Non200StatusCode() throws Exception {
+        // Given - 设置一个会导致非200状态码的API密钥
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "unauthorized-key");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // 非200状态码应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+    
+    @Test
+    void testCallMetasoAPI_ConnectionException() throws Exception {
+        // Given - 通过设置无效的objectMapper来触发异常
+        Object originalMapper = ReflectionTestUtils.getField(searchService, "objectMapper");
+        ReflectionTestUtils.setField(searchService, "objectMapper", null);
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "test-key");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // 异常情况应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "objectMapper", originalMapper);
+    }
+    
+    @Test
+    void testCallMetasoAPI_IOExceptionHandling() throws Exception {
+        // Given - 设置一个会导致IO异常的配置
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "io-exception-test-key");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // IO异常应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+    
+    @Test
+    void testCallMetasoAPI_RuntimeExceptionHandling() throws Exception {
+        // Given - 设置一个会导致运行时异常的配置
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "runtime-exception-test-key");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // 运行时异常应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
 }
