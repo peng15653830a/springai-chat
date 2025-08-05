@@ -392,4 +392,29 @@ public class UserTest {
         assertNotNull(userWithMaxValues.toString());
         assertNotEquals(0, userWithMaxValues.hashCode());
     }
+    
+    @Test
+    void testEqualsWithCanEqualFalse() {
+        // Create a mock object that returns false for canEqual
+        User user1 = new User() {
+            @Override
+            public boolean canEqual(Object other) {
+                return false;
+            }
+        };
+        user1.setId(1L);
+        user1.setUsername("test");
+        
+        User user2 = new User();
+        user2.setId(1L);
+        user2.setUsername("test");
+        
+        // Test the canEqual method directly
+        assertFalse(user1.canEqual(user2));
+        assertTrue(user2.canEqual(user1));
+        
+        // Test equals - user2.equals(user1) should return false because user1.canEqual(user2) returns false
+        assertEquals(user1, user2); // user1.equals(user2) - user1 doesn't check canEqual on user2
+        assertNotEquals(user2, user1); // user2.equals(user1) - user2 calls user1.canEqual(user2) which returns false
+    }
 }

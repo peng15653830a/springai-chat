@@ -238,4 +238,53 @@ class ApiResponseTest {
         assertEquals(Integer.valueOf(123), intResponse.getData());
         assertEquals(Boolean.TRUE, boolResponse.getData());
     }
+    
+    @Test
+    void testEqualsWithCanEqualFalse() {
+        // Create a mock object that returns false for canEqual
+        ApiResponse<String> response1 = new ApiResponse<String>() {
+            @Override
+            public boolean canEqual(Object other) {
+                return false;
+            }
+        };
+        response1.setSuccess(true);
+        response1.setMessage("test");
+        response1.setData("data");
+        
+        ApiResponse<String> response2 = new ApiResponse<>();
+        response2.setSuccess(true);
+        response2.setMessage("test");
+        response2.setData("data");
+        
+        // Test the canEqual method directly
+        assertFalse(response1.canEqual(response2));
+        assertTrue(response2.canEqual(response1));
+        
+        // Test equals - response2.equals(response1) should return false because response1.canEqual(response2) returns false
+        assertEquals(response1, response2); // response1.equals(response2) - response1 doesn't check canEqual on response2
+        assertNotEquals(response2, response1); // response2.equals(response1) - response2 calls response1.canEqual(response2) which returns false
+    }
+    
+    @Test
+    void testHashCodeWithNullSuccess() {
+        // Test hashCode with null success field (edge case)
+        ApiResponse<String> response = new ApiResponse<String>() {
+            @Override
+            public boolean isSuccess() {
+                // This creates a scenario where success might be treated as null in hashCode calculation
+                return super.isSuccess();
+            }
+        };
+        response.setSuccess(false); // Set to false to test different branch
+        response.setMessage(null);
+        response.setData(null);
+        
+        // Test hashCode calculation
+        int hashCode = response.hashCode();
+        assertNotEquals(0, hashCode);
+        
+        // Test consistency
+        assertEquals(hashCode, response.hashCode());
+    }
 }

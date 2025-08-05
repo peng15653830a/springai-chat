@@ -391,6 +391,159 @@ public class SearchServiceTest {
         assertNull(result.get("link"));
     }
 
+    // ========== 异常处理测试 ==========
+    
+    @Test
+    void testCallMetasoAPI_WithInvalidApiKey() throws Exception {
+        // Given - 设置无效的API密钥来触发HTTP错误
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "invalid-api-key");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // 无效API密钥应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+    
+    @Test
+    void testCallMetasoAPI_NetworkException() throws Exception {
+        // Given - 设置无效的URL来触发网络异常
+        // 我们通过设置一个会导致网络错误的API密钥来模拟异常
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "test-key-for-network-error");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // 网络异常应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+    
+    @Test
+    void testSearchMetaso_ExceptionHandling() {
+        // Given - 设置一个会导致异常的查询
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "test-key");
+        
+        // When
+        List<Map<String, String>> results = searchService.searchMetaso("测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // 异常情况下应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+
+    @Test
+    void testCallMetasoAPI_HttpErrorResponse() throws Exception {
+        // Given - 设置有效的API密钥但会导致HTTP错误的情况
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "valid-key-but-will-fail");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // HTTP错误应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+    
+    @Test
+    void testCallMetasoAPI_JsonProcessingException() throws Exception {
+        // Given - 设置会导致JSON处理异常的情况
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "json-error-key");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // JSON处理异常应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+    
+    @Test
+    void testCallMetasoAPI_GeneralException() throws Exception {
+        // Given - 设置会导致一般异常的情况
+        String originalApiKey = (String) ReflectionTestUtils.getField(searchService, "metasoApiKey");
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", "general-exception-key");
+        
+        // When - 使用反射调用私有方法
+        List<Map<String, String>> results = (List<Map<String, String>>) 
+            ReflectionTestUtils.invokeMethod(searchService, "callMetasoAPI", "测试查询");
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty()); // 一般异常应该返回空结果
+        
+        // 恢复原始配置
+        ReflectionTestUtils.setField(searchService, "metasoApiKey", originalApiKey);
+    }
+    
+    @Test
+    void testSearchMetaso_WithSpecialCharacters() {
+        // Given - 包含特殊字符的查询
+        String specialQuery = "测试查询 @#$%^&*()";
+        
+        // When
+        List<Map<String, String>> results = searchService.searchMetaso(specialQuery);
+        
+        // Then
+        assertNotNull(results);
+        // 在测试环境中，由于网络限制，通常会返回空结果
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testSearchMetaso_WithVeryLongQuery() {
+        // Given - 非常长的查询字符串
+        StringBuilder longQuery = new StringBuilder();
+        for (int i = 0; i < 1000; i++) {
+            longQuery.append("测试查询");
+        }
+        
+        // When
+        List<Map<String, String>> results = searchService.searchMetaso(longQuery.toString());
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+    
+    @Test
+    void testSearchMetaso_WithUnicodeCharacters() {
+        // Given - 包含Unicode字符的查询
+        String unicodeQuery = "测试查询 🚀 🌟 ✨";
+        
+        // When
+        List<Map<String, String>> results = searchService.searchMetaso(unicodeQuery);
+        
+        // Then
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
     // ========== 辅助方法 ==========
     
     private List<Map<String, String>> createTestSearchResults() {

@@ -358,4 +358,30 @@ public class ConversationControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("系统运行异常: Database error"));
-    }}
+    }
+    
+    @Test
+    void testGetUserConversations_NullUserId() throws Exception {
+        // When & Then - 当userId参数缺失时，Spring会返回500错误
+        mockMvc.perform(get("/api/conversations"))
+                .andExpect(status().isInternalServerError());
+    }
+    
+    @Test
+    void testCreateConversation_NullUserId() throws Exception {
+        // When & Then - 当userId参数缺失时，Spring会返回500错误
+        mockMvc.perform(post("/api/conversations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(conversationRequest)))
+                .andExpect(status().isInternalServerError());
+    }
+    
+    @Test
+    void testGetConversationMessages_NegativeId() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/api/conversations/-1/messages"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("对话ID无效"));
+    }
+}

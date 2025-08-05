@@ -161,4 +161,27 @@ class ConversationRequestTest {
         // Then
         assertEquals(whitespaceTitle, request.getTitle());
     }
+    
+    @Test
+    void testEqualsWithCanEqualFalse() {
+        // Create a mock object that returns false for canEqual
+        ConversationRequest request1 = new ConversationRequest() {
+            @Override
+            public boolean canEqual(Object other) {
+                return false;
+            }
+        };
+        request1.setTitle("test");
+        
+        ConversationRequest request2 = new ConversationRequest();
+        request2.setTitle("test");
+        
+        // Test the canEqual method directly
+        assertFalse(request1.canEqual(request2));
+        assertTrue(request2.canEqual(request1));
+        
+        // Test equals - request2.equals(request1) should return false because request1.canEqual(request2) returns false
+        assertEquals(request1, request2); // request1.equals(request2) - request1 doesn't check canEqual on request2
+        assertNotEquals(request2, request1); // request2.equals(request1) - request2 calls request1.canEqual(request2) which returns false
+    }
 }

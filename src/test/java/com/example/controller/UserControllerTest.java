@@ -74,12 +74,14 @@ public class UserControllerTest {
     void testLogin_EmptyUsername() throws Exception {
         // Given
         loginRequest.setUsername("");
+        when(userService.loginOrCreate("", "TestUser")).thenReturn(testUser);
 
         // When & Then
         mockMvc.perform(post("/api/users/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk()); // 实际的controller没有验证，所以返回200
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
 
         verify(userService).loginOrCreate("", "TestUser");
     }
@@ -88,12 +90,14 @@ public class UserControllerTest {
     void testLogin_EmptyNickname() throws Exception {
         // Given
         loginRequest.setNickname("");
+        when(userService.loginOrCreate("testuser", "")).thenReturn(testUser);
 
         // When & Then
         mockMvc.perform(post("/api/users/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk()); // 实际的controller没有验证，所以返回200
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
 
         verify(userService).loginOrCreate("testuser", "");
     }

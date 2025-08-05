@@ -430,4 +430,29 @@ public class ConversationTest {
             });
         }
     }
+    
+    @Test
+    void testEqualsWithCanEqualFalse() {
+        // Create a mock object that returns false for canEqual
+        Conversation conv1 = new Conversation() {
+            @Override
+            public boolean canEqual(Object other) {
+                return false;
+            }
+        };
+        conv1.setId(1L);
+        conv1.setTitle("test");
+        
+        Conversation conv2 = new Conversation();
+        conv2.setId(1L);
+        conv2.setTitle("test");
+        
+        // Test the canEqual method directly
+        assertFalse(conv1.canEqual(conv2));
+        assertTrue(conv2.canEqual(conv1));
+        
+        // Test equals - conv2.equals(conv1) should return false because conv1.canEqual(conv2) returns false
+        assertEquals(conv1, conv2); // conv1.equals(conv2) - conv1 doesn't check canEqual on conv2
+        assertNotEquals(conv2, conv1); // conv2.equals(conv1) - conv2 calls conv1.canEqual(conv2) which returns false
+    }
 }
