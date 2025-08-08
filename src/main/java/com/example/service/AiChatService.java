@@ -336,11 +336,16 @@ public class AiChatService {
                                         Map<String, Object> delta = (Map<String, Object>) choice.get("delta");
                                         
                                         if (delta != null && delta.containsKey("content")) {
-                                            String content = (String) delta.get("content");
-                                            if (content != null) {
-                                                fullResponse.append(content);
-                                                // 实时发送chunk到前端
-                                                sseEmitterManager.sendMessage(conversationId, "chunk", content);
+                                            Object contentObj = delta.get("content");
+                                            if (contentObj != null) {
+                                                // 确保内容是字符串格式
+                                                String content = String.valueOf(contentObj);
+                                                if (!content.isEmpty() && !content.equals("null")) {
+                                                    fullResponse.append(content);
+                                                    // 实时发送chunk到前端 - 确保数据格式正确
+                                                    log.debug("发送chunk内容: '{}' (类型: {})", content, contentObj.getClass().getSimpleName());
+                                                    sseEmitterManager.sendMessage(conversationId, "chunk", content);
+                                                }
                                             }
                                         }
                                     }

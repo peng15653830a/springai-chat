@@ -28,7 +28,7 @@
             @click.stop="deleteConversation(conversation.id)"
             type="danger"
             size="small"
-            text
+            link
             class="delete-btn"
           >
             <el-icon><Delete /></el-icon>
@@ -79,17 +79,28 @@
                   v-show="expandedThinking.has(message.id)" 
                   class="thinking-content"
                 >
-                  <div class="thinking-body" v-html="formatMessage(message.thinking)"></div>
+                  <v-md-preview 
+                    :text="message.thinking || ''"
+                    class="thinking-body"
+                  />
                 </div>
               </div>
               
               <div class="message-text">
-                <div class="message-body" v-html="formatMessage(message.processedContent)"></div>
+                <!-- 使用 v-md-preview 组件 -->
+                <div v-if="message.role === 'user'" class="message-body">
+                  {{ message.content }}
+                </div>
+                <v-md-preview 
+                  v-else
+                  :text="message.content || ''"
+                  class="message-body markdown-content"
+                />
                 <div class="message-actions">
                   <el-button
-                    type="text"
+                    link
                     size="small"
-                    @click="copyMessage(message.processedContent)"
+                    @click="copyMessage(message.content)"
                     class="copy-btn"
                     title="复制"
                   >
@@ -167,33 +178,33 @@
 </template>
 
 <script>
-import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { ref, onMounted, nextTick, watch, computed, getCurrentInstance } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
 import { conversationApi, chatApi } from '../api'
-import MarkdownIt from 'markdown-it'
+import VMdPreview from '@kangc/v-md-editor/lib/preview'
+import '@kangc/v-md-editor/lib/style/preview.css'
+import githubTheme from '@kangc/v-md-editor/lib/theme/github.js'
+import '@kangc/v-md-editor/lib/theme/style/github.css'
+import { debounce } from 'lodash-es'
+
+// 使用 GitHub 主题
+VMdPreview.use(githubTheme)
 
 export default {
   name: 'Chat',
-  setup() {
+  components: {
+    VMdPreview
+  },
+  setup(props, { emit }) {
     const userStore = useUserStore()
     const chatStore = useChatStore()
     const inputMessage = ref('')
     const messageList = ref()
     const searchEnabled = ref(true) // 默认开启搜索
     const expandedThinking = ref(new Set()) // 展开的推理过程ID集合
-    
-    // 初始化Markdown渲染器
-    const md = new MarkdownIt({
-      html: true,          // 启用HTML标签
-      breaks: true,        // 将换行符转换为<br>
-      linkify: true,       // 自动识别链接
-      typographer: false   // 关闭智能引号避免冲突
-    })
-    
-    // 不使用commonmark配置，使用默认配置
-    console.log('MarkdownIt initialized:', md)
+    const sseInstance = ref(null) // 存储$sse实例
     
     // 加载对话列表
     const loadConversations = async () => {
@@ -240,8 +251,8 @@ export default {
         console.error('Load messages error:', error)
       }
       
-      // 建立SSE连接
-      setupSSE(conversation.id)
+      // 使用vue-sse建立连接
+      setupVueSSE(conversation.id)
     }
     
     // 删除对话
@@ -293,82 +304,150 @@ export default {
       }
     }
     
-    // 设置SSE连接
-    const setupSSE = (conversationId) => {
-      const eventSource = chatStore.connectSSE(conversationId)
-      
-      // 监听所有事件类型
-      eventSource.addEventListener('start', handleSSEMessage)
-      eventSource.addEventListener('chunk', handleSSEMessage)
-      eventSource.addEventListener('end', handleSSEMessage)
-      eventSource.addEventListener('search', handleSSEMessage)
-      eventSource.addEventListener('error', handleSSEMessage)
-      
-      eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error)
-        chatStore.setLoading(false)
-        ElMessage.error('连接断开，请刷新页面重试')
+    // 使用vue-sse建立连接 - 修复版本
+    const setupVueSSE = (conversationId) => {
+      // 断开之前的连接
+      if (chatStore.sseClient) {
+        chatStore.sseClient.disconnect()
       }
       
-      eventSource.onopen = () => {
-        console.log('SSE connection established')
+      // 检查$sse实例是否可用
+      if (!sseInstance.value) {
+        console.error('SSE instance not available')
+        ElMessage.error('SSE服务不可用')
+        return
       }
-    }
-    
-    // 处理SSE消息
-    const handleSSEMessage = (event) => {
-      try {
-        const eventType = event.type
-        let data
+      
+      // 创建新的SSE客户端 - 修复配置
+      const sseClient = sseInstance.value.create({
+        url: `/api/chat/stream/${conversationId}`,
+        format: 'plain', // 改为plain格式，因为chunk数据是纯字符串
+        withCredentials: false,
+        polyfill: true
+      })
+      
+      // 处理SSE事件
+      sseClient.on('start', (data) => {
+        console.log('🎯 SSE start event received:', data)
+        // start事件只是通知开始，实际消息在chunk中创建
+      })
+      
+      sseClient.on('chunk', (data) => {
+        console.log('🔥 SSE chunk event received:', data)
         
         try {
-          data = JSON.parse(event.data)
-        } catch (e) {
-          // 如果不是JSON，直接使用字符串
-          data = event.data
-        }
-        
-        switch (eventType) {
-          case 'start':
-            // 开始接收AI回复，添加空消息
-            chatStore.addMessage({
+          // 解析JSON格式的chunk数据
+          let chunkContent = ''
+          try {
+            // 尝试解析JSON（后端使用JSON包装的情况）
+            const parsed = typeof data === 'string' ? JSON.parse(data) : data
+            chunkContent = parsed.content || ''
+            console.log('📦 Parsed chunk content:', chunkContent.substring(0, 100))
+          } catch (e) {
+            // 如果不是JSON，直接使用原始数据（向后兼容）
+            chunkContent = String(data || '')
+            console.log('📝 Raw chunk content:', chunkContent.substring(0, 100))
+          }
+          
+          if (!chunkContent) return
+          
+          // 获取最后一条消息
+          let lastMessage = chatStore.messages[chatStore.messages.length - 1]
+          
+          // 如果不是assistant消息，创建新的
+          if (!lastMessage || lastMessage.role !== 'assistant') {
+            const newMessage = {
               id: 'temp-' + Date.now(),
               role: 'assistant',
               content: '',
               createdAt: new Date()
-            })
-            break
-            
-          case 'chunk':
-            // 追加消息内容
-            chatStore.updateLastMessage(data)
-            scrollToBottom()
-            break
-            
-          case 'end':
-            // 消息结束，更新消息ID
-            if (chatStore.messages.length > 0) {
-              const lastMessage = chatStore.messages[chatStore.messages.length - 1]
-              if (data.messageId) {
-                lastMessage.id = data.messageId
-              }
             }
-            chatStore.setLoading(false)
-            break
-            
-          case 'search':
-            handleSearchEvent(data)
-            break
-            
-          case 'error':
-            ElMessage.error(data)
-            chatStore.setLoading(false)
-            break
+            chatStore.addMessage(newMessage)
+            lastMessage = newMessage
+          }
+          
+          // 更新内容 - v-md-preview会自动处理渲染
+          if (lastMessage && lastMessage.role === 'assistant') {
+            lastMessage.content = (lastMessage.content || '') + chunkContent
+            // 触发响应式更新
+            chatStore.messages = [...chatStore.messages]
+            scrollToBottom()
+          }
+        } catch (error) {
+          console.error('❌ Error processing chunk:', error)
         }
-      } catch (error) {
-        console.error('Handle SSE message error:', error)
-      }
+      })
+      
+      sseClient.on('end', (data) => {
+        console.log('🏁 SSE end event received:', data)
+        try {
+          let parsedData = data
+          if (typeof data === 'string') {
+            try {
+              parsedData = JSON.parse(data)
+            } catch (e) {
+              // 如果不是JSON，包装成对象
+              parsedData = { message: data }
+            }
+          }
+          
+          // 更新消息ID（如果提供）
+          if (chatStore.messages.length > 0 && parsedData.messageId) {
+            const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+            if (lastMessage.role === 'assistant') {
+              lastMessage.id = parsedData.messageId
+            }
+          }
+          
+          chatStore.setLoading(false)
+          scrollToBottom()
+        } catch (error) {
+          console.error('❌ Error parsing end event:', error, data)
+          chatStore.setLoading(false)
+        }
+      })
+      
+      sseClient.on('search', (data) => {
+        console.log('🔍 SSE search event:', data)
+        try {
+          let parsedData = data
+          if (typeof data === 'string') {
+            try {
+              parsedData = JSON.parse(data)
+            } catch (e) {
+              parsedData = { type: 'info', message: data }
+            }
+          }
+          handleSearchEvent(parsedData)
+        } catch (error) {
+          console.error('❌ Error parsing search event:', error, data)
+        }
+      })
+      
+      // 添加通用消息监听器
+      sseClient.on('message', (data) => {
+        console.log('SSE generic message event:', data)
+      })
+      
+      sseClient.on('error', (error) => {
+        console.error('SSE error:', error)
+        chatStore.setLoading(false)
+        ElMessage.error('连接断开，请刷新页面重试')
+      })
+      
+      // 连接到服务器
+      sseClient.connect()
+        .then(() => {
+          console.log('SSE connected successfully')
+          chatStore.sseClient = sseClient
+        })
+        .catch((error) => {
+          console.error('Failed to connect SSE:', error)
+          ElMessage.error('无法连接到服务器')
+        })
     }
+    
+
     
     // 处理搜索事件
     const handleSearchEvent = (data) => {
@@ -465,17 +544,9 @@ export default {
       return { thinking: null, content: content }
     }
     
-    // 处理消息，提取推理过程
+    // 直接使用chatStore.messages
     const processedMessages = computed(() => {
-      return chatStore.messages.map(message => {
-        // 对于所有消息，直接使用原始内容，不进行推理过程提取
-        // 这样确保markdown格式不被破坏
-        return {
-          ...message,
-          processedContent: message.content || '',
-          thinking: null // 暂时禁用推理过程显示，确保基础markdown正常工作
-        }
-      })
+      return chatStore.messages
     })
     
     // 切换推理过程展开状态
@@ -487,19 +558,6 @@ export default {
       }
     }
     
-    // 使用Markdown渲染器格式化消息内容
-    const formatMessage = (content) => {
-      if (!content) return ''
-      
-      try {
-        // 确保内容是字符串并直接渲染
-        return md.render(String(content))
-      } catch (error) {
-        console.error('Markdown render error:', error)
-        // 降级处理：保持原始换行格式
-        return String(content).replace(/\n/g, '<br>')
-      }
-    }
     
     // 监听消息变化，自动滚动
     watch(() => chatStore.messages.length, () => {
@@ -514,6 +572,12 @@ export default {
       }
       loadConversations()
       loadSearchSettings()
+      
+      // 获取$sse实例
+      const instance = getCurrentInstance()
+      if (instance) {
+        sseInstance.value = instance.appContext.app.config.globalProperties.$sse
+      }
     })
     
     return {
@@ -531,7 +595,6 @@ export default {
       onSearchToggle,
       copyMessage,
       formatTime,
-      formatMessage,
       toggleThinking
     }
   }
@@ -806,16 +869,22 @@ export default {
 .message-body {
   line-height: 1.6;
   word-wrap: break-word;
-  white-space: normal;
+  white-space: pre-line !important; /* 保持换行，但合并空格 */
+  overflow-wrap: break-word; /* 长单词换行 */
 }
 
 .message-body p {
-  margin: 0 0 12px 0;
+  margin: 0 0 16px 0;
   display: block;
+  line-height: 1.6;
 }
 
 .message-body p:last-child {
   margin-bottom: 0;
+}
+
+.message-body p:first-child {
+  margin-top: 0;
 }
 
 /* 确保标题样式正确 */
@@ -893,6 +962,26 @@ export default {
   border-radius: 3px;
   font-family: 'Monaco', 'Consolas', monospace;
   font-size: 0.9em;
+  white-space: pre-wrap; /* 保持代码中的换行和空格 */
+}
+
+/* 代码块样式 */
+.message-body pre {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 12px 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.message-body pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.85em;
 }
 
 .message-body strong {
@@ -906,6 +995,15 @@ export default {
 /* 用户消息中的样式调整 */
 .message-item.user .message-body code {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.message-item.user .message-body pre {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-item.user .message-body pre code {
+  background: none;
 }
 
 .message-item.user .message-body hr {
@@ -1000,5 +1098,75 @@ export default {
   padding: 8px;
   margin: 8px 0;
   overflow-x: auto;
+}
+
+/* v-md-preview 组件样式调整 */
+.markdown-content {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.markdown-content :deep(.v-md-preview) {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-content :deep(.vuepress-markdown-body) {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 表格样式 */
+.markdown-content :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.markdown-content :deep(th), 
+.markdown-content :deep(td) {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-content :deep(th) {
+  background-color: #f2f2f2;
+  font-weight: 600;
+}
+
+/* 代码块样式 */
+.markdown-content :deep(pre) {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 10px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.markdown-content :deep(code) {
+  background-color: #f5f5f5;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+.markdown-content :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+
+/* 用户消息中移除v-md-preview的默认样式 */
+.message-item.user .markdown-content :deep(th),
+.message-item.user .markdown-content :deep(td) {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-item.user .markdown-content :deep(th) {
+  background: rgba(255, 255, 255, 0.15);
 }
 </style>

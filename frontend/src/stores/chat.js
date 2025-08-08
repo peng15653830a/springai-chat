@@ -7,7 +7,8 @@ export const useChatStore = defineStore('chat', {
     messages: [],
     isLoading: false,
     isConnected: false,
-    eventSource: null
+    eventSource: null,
+    sseClient: null
   }),
   
   actions: {
@@ -44,6 +45,10 @@ export const useChatStore = defineStore('chat', {
         const lastMessage = this.messages[this.messages.length - 1]
         if (lastMessage.role === 'assistant') {
           lastMessage.content += content
+          // 触发实时渲染更新
+          if (window.updateMessageContent) {
+            window.updateMessageContent(lastMessage.id, lastMessage.content)
+          }
         }
       }
     },
@@ -67,6 +72,10 @@ export const useChatStore = defineStore('chat', {
       if (this.eventSource) {
         this.eventSource.close()
         this.eventSource = null
+      }
+      if (this.sseClient) {
+        this.sseClient.disconnect()
+        this.sseClient = null
       }
       this.isConnected = false
     }
