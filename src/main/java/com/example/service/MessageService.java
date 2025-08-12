@@ -1,53 +1,62 @@
 package com.example.service;
 
 import com.example.entity.Message;
-import com.example.mapper.MessageMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import java.util.List;
 
-@Service
-public class MessageService {
-    
-    @Autowired
-    private MessageMapper messageMapper;
-    
-    public Message saveMessage(Long conversationId, String role, String content) {
-        return saveMessage(conversationId, role, content, null);
-    }
-    
-    public Message saveMessage(Long conversationId, String role, String content, String searchResults) {
-        return saveMessage(conversationId, role, content, null, searchResults);
-    }
-    
-    public Message saveMessage(Long conversationId, String role, String content, String thinking, String searchResults) {
-        if (conversationId == null || conversationId <= 0) {
-            throw new IllegalArgumentException("对话ID无效");
-        }
-        if (role == null || role.trim().isEmpty()) {
-            throw new IllegalArgumentException("消息角色不能为空");
-        }
-        if (content == null || content.trim().isEmpty()) {
-            throw new IllegalArgumentException("消息内容不能为空");
-        }
-        
-        Message message = new Message();
-        message.setConversationId(conversationId);
-        message.setRole(role);
-        message.setContent(content);
-        message.setThinking(thinking);
-        message.setSearchResults(searchResults);
-        messageMapper.insert(message);
-        return message;
-    }
-    
-    public Message getMessageById(Long messageId) {
-        return messageMapper.selectById(messageId);
-    }
-    
-    public java.util.List<com.example.entity.Message> getMessagesByConversationId(Long conversationId) {
-        if (conversationId == null || conversationId <= 0) {
-            throw new IllegalArgumentException("对话ID无效");
-        }
-        return messageMapper.selectByConversationId(conversationId);
-    }
+/**
+ * 消息服务接口
+ *
+ * @author xupeng
+ */
+public interface MessageService {
+
+  /**
+   * 保存消息
+   *
+   * @param conversationId 会话ID
+   * @param role 消息角色
+   * @param content 消息内容
+   * @return 消息实体
+   */
+  Message saveMessage(Long conversationId, String role, String content);
+
+  /**
+   * 保存消息
+   *
+   * @param conversationId 会话ID
+   * @param role 消息角色
+   * @param content 消息内容
+   * @param searchResults 搜索结果
+   * @return 消息实体
+   */
+  Message saveMessage(Long conversationId, String role, String content, String searchResults);
+
+  /**
+   * 保存消息
+   *
+   * @param conversationId 会话ID
+   * @param role 消息角色
+   * @param content 消息内容
+   * @param thinking 思考过程
+   * @param searchResults 搜索结果
+   * @return 消息实体
+   */
+  Message saveMessage(
+      Long conversationId, String role, String content, String thinking, String searchResults);
+
+  /**
+   * 根据ID获取消息
+   *
+   * @param messageId 消息ID
+   * @return 消息实体
+   */
+  Message getMessageById(Long messageId);
+
+  /**
+   * 根据会话ID获取消息列表
+   *
+   * @param conversationId 会话ID
+   * @return 消息列表
+   */
+  List<Message> getMessagesByConversationId(Long conversationId);
 }

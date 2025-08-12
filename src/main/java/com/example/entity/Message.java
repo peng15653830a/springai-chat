@@ -1,15 +1,33 @@
 package com.example.entity;
 
-import lombok.Data;
 import java.time.LocalDateTime;
+import lombok.Data;
 
+/**
+ * 消息实体类，表示一次对话中的消息
+ *
+ * @author xupeng
+ */
 @Data
 public class Message {
-    private Long id;
-    private Long conversationId;
-    private String role;
-    private String content;
-    private String thinking; // AI推理过程
-    private String searchResults;
-    private LocalDateTime createdAt;
+  /** 消息ID */
+  private Long id;
+  
+  /** 会话ID */
+  private Long conversationId;
+  
+  /** 消息角色（用户或AI） */
+  private String role;
+  
+  /** 消息内容 */
+  private String content;
+  
+  /** AI推理过程 */
+  private String thinking;
+  
+  /** 搜索结果 */
+  private String searchResults;
+  
+  /** 创建时间 */
+  private LocalDateTime createdAt;
 }

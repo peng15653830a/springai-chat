@@ -86,6 +86,13 @@
                 </div>
               </div>
               
+              <!-- 搜索结果展示（仅AI消息且有搜索结果时显示） -->
+              <SearchResults 
+                v-if="message.searchResults && message.role === 'assistant'" 
+                :results="parseSearchResults(message.searchResults)"
+                :defaultExpanded="false"
+              />
+              
               <div class="message-text">
                 <!-- 使用 v-md-preview 组件 -->
                 <div v-if="message.role === 'user'" class="message-body">
@@ -187,15 +194,20 @@ import VMdPreview from '@kangc/v-md-editor/lib/preview'
 import '@kangc/v-md-editor/lib/style/preview.css'
 import githubTheme from '@kangc/v-md-editor/lib/theme/github.js'
 import '@kangc/v-md-editor/lib/theme/style/github.css'
+import hljs from 'highlight.js'
 import { debounce } from 'lodash-es'
+import SearchResults from '../components/SearchResults.vue'
 
-// 使用 GitHub 主题
-VMdPreview.use(githubTheme)
+// 使用 GitHub 主题，配置代码高亮
+VMdPreview.use(githubTheme, {
+  Hljs: hljs,
+})
 
 export default {
   name: 'Chat',
   components: {
-    VMdPreview
+    VMdPreview,
+    SearchResults
   },
   setup(props, { emit }) {
     const userStore = useUserStore()
@@ -222,7 +234,7 @@ export default {
     const createNewConversation = async () => {
       try {
         const response = await conversationApi.create(userStore.currentUser.id, {
-          title: '新对话'
+          title: null // 不传递硬编码标题，让后端自动生成
         })
         if (response.success) {
           chatStore.addConversation(response.data)
@@ -298,6 +310,9 @@ export default {
           content: message,
           searchEnabled: searchEnabled.value
         })
+        
+        // 重新加载对话列表以获取更新的标题
+        loadConversations()
       } catch (error) {
         ElMessage.error('发送消息失败')
         chatStore.setLoading(false)
@@ -424,15 +439,62 @@ export default {
         }
       })
       
+      // 处理搜索结果事件
+      sseClient.on('search_results', (data) => {
+        console.log('📋 SSE search_results event:', data)
+        try {
+          let parsedData = data
+          if (typeof data === 'string') {
+            try {
+              parsedData = JSON.parse(data)
+            } catch (e) {
+              console.error('❌ Failed to parse search_results data:', e)
+              return
+            }
+          }
+          
+          // 处理搜索结果数据 - 更新当前正在构建的assistant消息
+          if (parsedData && parsedData.results) {
+            const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+            if (lastMessage && lastMessage.role === 'assistant') {
+              // 将搜索结果数据存储到消息中
+              lastMessage.searchResults = JSON.stringify(parsedData.results)
+              // 触发响应式更新
+              chatStore.messages = [...chatStore.messages]
+              console.log('✅ 搜索结果已添加到消息:', parsedData.results.length, '条结果')
+            } else {
+              // 如果没有assistant消息，创建一个临时消息来存储搜索结果
+              const newMessage = {
+                id: 'temp-search-' + Date.now(),
+                role: 'assistant',
+                content: '',
+                searchResults: JSON.stringify(parsedData.results),
+                createdAt: new Date()
+              }
+              chatStore.addMessage(newMessage)
+              console.log('✅ 创建新消息存储搜索结果:', parsedData.results.length, '条结果')
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error processing search_results event:', error, data)
+        }
+      })
+      
       // 添加通用消息监听器
       sseClient.on('message', (data) => {
         console.log('SSE generic message event:', data)
       })
       
       sseClient.on('error', (error) => {
-        console.error('SSE error:', error)
-        chatStore.setLoading(false)
-        ElMessage.error('连接断开，请刷新页面重试')
+        // 只在真正有错误信息时处理，避免undefined错误
+        if (error && error !== 'undefined') {
+          console.error('SSE error:', error)
+          chatStore.setLoading(false)
+          ElMessage.error('连接断开，请刷新页面重试')
+        } else {
+          // 正常连接结束，无需显示错误
+          console.debug('SSE connection ended normally')
+        }
       })
       
       // 连接到服务器
@@ -580,6 +642,28 @@ export default {
       }
     })
     
+    // 解析搜索结果JSON数据
+    const parseSearchResults = (searchResultsData) => {
+      if (!searchResultsData) return []
+      
+      try {
+        // 如果已经是对象数组，直接返回
+        if (Array.isArray(searchResultsData)) {
+          return searchResultsData
+        }
+        
+        // 如果是字符串，尝试解析JSON
+        if (typeof searchResultsData === 'string') {
+          return JSON.parse(searchResultsData)
+        }
+        
+        return []
+      } catch (error) {
+        console.error('解析搜索结果失败:', error)
+        return []
+      }
+    }
+
     return {
       userStore,
       chatStore,
@@ -588,6 +672,7 @@ export default {
       searchEnabled,
       expandedThinking,
       processedMessages,
+      parseSearchResults,
       createNewConversation,
       selectConversation,
       deleteConversation,
@@ -865,161 +950,12 @@ export default {
   padding: 0 16px;
 }
 
-/* 消息格式化样式 */
+/* 用户消息格式化样式 - 只用于用户消息的纯文本显示 */
 .message-body {
   line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-line !important; /* 保持换行，但合并空格 */
   overflow-wrap: break-word; /* 长单词换行 */
-}
-
-.message-body p {
-  margin: 0 0 16px 0;
-  display: block;
-  line-height: 1.6;
-}
-
-.message-body p:last-child {
-  margin-bottom: 0;
-}
-
-.message-body p:first-child {
-  margin-top: 0;
-}
-
-/* 确保标题样式正确 */
-.message-body h1, .message-body h2, .message-body h3, .message-body h4, .message-body h5, .message-body h6 {
-  margin: 16px 0 8px 0;
-  font-weight: bold;
-  line-height: 1.4;
-}
-
-.message-body h1 { font-size: 1.6em; }
-.message-body h2 { font-size: 1.4em; }
-.message-body h3 { font-size: 1.2em; }
-.message-body h4 { font-size: 1.1em; }
-.message-body h5 { font-size: 1.05em; }
-.message-body h6 { font-size: 1em; }
-
-.message-body h1:first-child, .message-body h2:first-child, .message-body h3:first-child,
-.message-body h4:first-child, .message-body h5:first-child, .message-body h6:first-child {
-  margin-top: 0;
-}
-
-/* 分隔线样式 */
-.message-body hr {
-  border: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.15);
-  margin: 16px 0;
-}
-
-/* 列表样式 */
-.message-body ul, .message-body ol {
-  margin: 8px 0;
-  padding-left: 20px;
-}
-
-.message-body ol {
-  list-style-type: decimal;
-}
-
-.message-body ul {
-  list-style-type: disc;
-}
-
-.message-body li {
-  margin: 4px 0;
-  line-height: 1.5;
-}
-
-/* 表格样式 */
-.message-body table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 12px 0;
-  font-size: 14px;
-}
-
-.message-body th, .message-body td {
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.message-body th {
-  background: rgba(0, 0, 0, 0.05);
-  font-weight: 600;
-}
-
-.message-body tr:nth-child(even) {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-/* 代码样式 */
-.message-body code {
-  background: rgba(0, 0, 0, 0.1);
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 0.9em;
-  white-space: pre-wrap; /* 保持代码中的换行和空格 */
-}
-
-/* 代码块样式 */
-.message-body pre {
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
-  padding: 12px;
-  margin: 12px 0;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.message-body pre code {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  font-size: 0.85em;
-}
-
-.message-body strong {
-  font-weight: 600;
-}
-
-.message-body em {
-  font-style: italic;
-}
-
-/* 用户消息中的样式调整 */
-.message-item.user .message-body code {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.message-item.user .message-body pre {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.message-item.user .message-body pre code {
-  background: none;
-}
-
-.message-item.user .message-body hr {
-  border-top-color: rgba(255, 255, 255, 0.3);
-}
-
-.message-item.user .message-body th, .message-item.user .message-body td {
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.message-item.user .message-body th {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.message-item.user .message-body tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.08);
 }
 
 /* 推理过程样式 - 按照业界最佳实践 */
@@ -1119,54 +1055,37 @@ export default {
   line-height: 1.6;
 }
 
-/* 表格样式 */
-.markdown-content :deep(table) {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 12px 0;
+/* 修复表格对齐问题 - 覆盖github-markdown-body的display: block */
+.markdown-content :deep(.github-markdown-body table) {
+  display: table !important;
+  table-layout: fixed !important;
+  width: 100% !important;
+  border-collapse: collapse !important;
+  overflow: visible !important;
 }
 
-.markdown-content :deep(th), 
-.markdown-content :deep(td) {
-  border: 1px solid #ddd;
-  padding: 8px 12px;
-  text-align: left;
+.markdown-content :deep(.github-markdown-body thead) {
+  display: table-header-group !important;
 }
 
-.markdown-content :deep(th) {
-  background-color: #f2f2f2;
-  font-weight: 600;
+.markdown-content :deep(.github-markdown-body tbody) {
+  display: table-row-group !important;
 }
 
-/* 代码块样式 */
-.markdown-content :deep(pre) {
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  padding: 10px;
-  overflow-x: auto;
-  margin: 12px 0;
+.markdown-content :deep(.github-markdown-body tr) {
+  display: table-row !important;
 }
 
-.markdown-content :deep(code) {
-  background-color: #f5f5f5;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 0.9em;
+.markdown-content :deep(.github-markdown-body th),
+.markdown-content :deep(.github-markdown-body td) {
+  display: table-cell !important;
+  box-sizing: border-box !important;
+  padding: 8px 12px !important;
+  text-align: left !important;
+  vertical-align: top !important;
+  border: 1px solid #d0d7de !important;
 }
 
-.markdown-content :deep(pre code) {
-  background: none;
-  padding: 0;
-}
 
-/* 用户消息中移除v-md-preview的默认样式 */
-.message-item.user .markdown-content :deep(th),
-.message-item.user .markdown-content :deep(td) {
-  border-color: rgba(255, 255, 255, 0.3);
-}
 
-.message-item.user .markdown-content :deep(th) {
-  background: rgba(255, 255, 255, 0.15);
-}
 </style>

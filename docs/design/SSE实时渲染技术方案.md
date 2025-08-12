@@ -1,4 +1,4 @@
-# SSE 实时渲染 Markdown 方案
+# SSE 实时渲染 Markdown 技术方案
 
 ## 问题背景
 
@@ -58,14 +58,17 @@ public class SseEmitterManager {
             try {
                 Object sendData = data;
                 
-                if ("chunk".equals(eventName)) {
+                if (SSE_EVENT_CHUNK.equals(eventName)) {
                     // 对于chunk事件，使用JSON包装以保留换行符
                     if (data != null) {
-                        Map<String, String> wrapper = new HashMap<>();
+                        Map<String, String> wrapper = new HashMap<>(2);
                         wrapper.put("content", String.valueOf(data));
                         // JSON序列化会自动转义换行符，避免SSE协议冲突
                         sendData = objectMapper.writeValueAsString(wrapper);
                     }
+                } else if (!(data instanceof String) && data != null) {
+                    // 对于非chunk事件的非字符串数据，也进行JSON序列化
+                    sendData = objectMapper.writeValueAsString(data);
                 }
                 
                 emitter.send(SseEmitter.event()
@@ -73,6 +76,8 @@ public class SseEmitterManager {
                     .data(sendData));
                     
             } catch (Exception e) {
+                log.error("发送SSE事件失败，会话ID: {}, 事件类型: {}", 
+                          conversationId, eventName, e);
                 emitters.remove(conversationId);
                 emitter.completeWithError(e);
             }
@@ -99,11 +104,27 @@ sseClient.on('chunk', (data) => {
         
         if (!chunkContent) return
         
-        // 更新消息内容
+        // 获取最后一条消息
+        let lastMessage = chatStore.messages[chatStore.messages.length - 1]
+        
+        // 如果不是assistant消息，创建新的
+        if (!lastMessage || lastMessage.role !== 'assistant') {
+            const newMessage = {
+                id: 'temp-' + Date.now(),
+                role: 'assistant',
+                content: '',
+                createdAt: new Date()
+            }
+            chatStore.addMessage(newMessage)
+            lastMessage = newMessage
+        }
+        
+        // 更新内容 - v-md-preview会自动处理渲染
         if (lastMessage && lastMessage.role === 'assistant') {
             lastMessage.content = (lastMessage.content || '') + chunkContent
             // 触发响应式更新
             chatStore.messages = [...chatStore.messages]
+            scrollToBottom()
         }
     } catch (error) {
         console.error('Error processing chunk:', error)

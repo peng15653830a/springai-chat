@@ -1,27 +1,51 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
-      "Bash(mvn clean:*)",
-      "Bash(rm:*)",
-      "Bash(mvn:*)",
-      "Bash(curl:*)",
-      "Bash(lsof:*)",
-      "Bash(npm create:*)",
-      "Bash(npm install:*)",
-      "Bash(chmod:*)",
-      "Bash(mv:*)",
-      "Bash(choco install:*)",
-      "Bash(ls:*)",
-      "Bash(echo $HOME)",
-      "Bash(gh auth:*)",
-      "Bash(git add:*)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:ithy.com)",
-      "Bash(pkill:*)",
-      "Bash(./start.sh:*)",
-      "Bash(./stop.sh)"
+      "Bash(mkdir:*)"
     ],
-    "deny": []
+    "deny": [],
+    "ask": []
+  },
+  "hooks": {
+    "post-edit": [
+      {
+        "name": "阿里巴巴P3C快速检查",
+        "command": "./scripts/code-review.sh p3c",
+        "workingDirectory": ".",
+        "patterns": [
+          "**/*.java"
+        ],
+        "timeout": 30000,
+        "failOnError": false,
+        "description": "Java文件修改后自动执行P3C代码规范检查"
+      }
+    ],
+    "pre-commit": [
+      {
+        "name": "完整代码质量检查",
+        "command": "./scripts/code-review.sh",
+        "workingDirectory": ".",
+        "timeout": 60000,
+        "failOnError": true,
+        "description": "提交前执行完整的代码质量检查，包括P3C、编译、格式化等"
+      }
+    ]
+  },
+  "mcpServers": {
+    "mysql": {
+      "command": "uv",
+      "args": [
+        "run",
+        "mysql_mcp_server"
+      ],
+      "env": {
+        "MYSQL_HOST": "localhost",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "root",
+        "MYSQL_PASSWORD": "xupeng2016",
+        "MYSQL_DATABASE": "ai_chat"
+      },
+      "description": "UV run MySQL MCP server for ai_chat database"
+    }
   }
 }
