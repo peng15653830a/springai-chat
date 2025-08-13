@@ -6,9 +6,7 @@ export const useChatStore = defineStore('chat', {
     currentConversation: null,
     messages: [],
     isLoading: false,
-    isConnected: false,
-    eventSource: null,
-    sseClient: null
+    isConnected: false
   }),
   
   actions: {
@@ -57,27 +55,8 @@ export const useChatStore = defineStore('chat', {
       this.isLoading = loading
     },
     
-    connectSSE(conversationId) {
-      if (this.eventSource) {
-        this.eventSource.close()
-      }
-      
-      this.eventSource = new EventSource(`/api/chat/stream/${conversationId}`)
-      this.isConnected = true
-      
-      return this.eventSource
-    },
-    
-    disconnectSSE() {
-      if (this.eventSource) {
-        this.eventSource.close()
-        this.eventSource = null
-      }
-      if (this.sseClient) {
-        this.sseClient.disconnect()
-        this.sseClient = null
-      }
-      this.isConnected = false
+    setConnected(connected) {
+      this.isConnected = connected
     }
   }
 })

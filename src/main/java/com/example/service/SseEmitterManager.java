@@ -1,9 +1,7 @@
 package com.example.service;
 
-import static com.example.service.constants.AiChatConstants.SSE_EVENT_CHUNK;
-
+import com.example.service.dto.SseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
@@ -89,41 +87,26 @@ public class SseEmitterManager {
   }
 
   /**
-   * 向指定会话的客户端发送消息
+   * 向指定会话的客户端发送标准SSE事件
    *
    * @param conversationId 会话ID
-   * @param eventName 事件名称
-   * @param data 消息数据
+   * @param sseEvent SSE事件对象
    */
-  public void sendMessage(Long conversationId, String eventName, Object data) {
+  public void sendEvent(Long conversationId, SseEvent sseEvent) {
     SseEmitter emitter = emitters.get(conversationId);
     if (emitter != null) {
       try {
-        Object sendData = data;
-
-        // 处理chunk事件
-        if (SSE_EVENT_CHUNK.equals(eventName)) {
-          // 对于chunk事件，使用JSON包装以保留换行符
-          if (data != null) {
-            // 指定HashMap初始容量为2
-            Map<String, String> wrapper = new HashMap<>(2);
-            wrapper.put("content", String.valueOf(data));
-            // JSON序列化会自动转义换行符，避免SSE协议冲突
-            sendData = objectMapper.writeValueAsString(wrapper);
-          } else {
-            return;
-          }
-        } else if (!(data instanceof String) && data != null) {
-          // 对于非chunk事件的非字符串数据，也进行JSON序列化
-          sendData = objectMapper.writeValueAsString(data);
-        }
-
-        // 发送事件数据
-        emitter.send(SseEmitter.event().name(eventName).data(sendData));
+        // 将SseEvent序列化为JSON字符串，作为标准SSE的data字段
+        String jsonData = objectMapper.writeValueAsString(sseEvent);
+        
+        // 发送标准SSE格式：只使用data字段，不使用自定义事件名
+        emitter.send(SseEmitter.event().data(jsonData));
+        
+        log.debug("发送SSE事件成功，会话ID: {}, 事件类型: {}", conversationId, sseEvent.getType());
 
       } catch (Exception e) {
         log.error("发送SSE事件失败，会话ID: {}, 事件类型: {}, 错误: {}", 
-                  conversationId, eventName, e.getMessage(), e);
+                  conversationId, sseEvent.getType(), e.getMessage(), e);
         emitters.remove(conversationId);
         try {
           emitter.completeWithError(e);
@@ -132,6 +115,17 @@ public class SseEmitterManager {
         }
       }
     }
+  }
+
+  /**
+   * 向指定会话的客户端发送消息 (保持向后兼容)
+   * @deprecated 请使用 sendEvent(Long, SseEvent) 方法
+   */
+  @Deprecated
+  public void sendMessage(Long conversationId, String eventName, Object data) {
+    // 为了向后兼容，将旧格式转换为新格式
+    SseEvent event = new SseEvent(eventName, data);
+    sendEvent(conversationId, event);
   }
 
   /**

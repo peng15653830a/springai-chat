@@ -27,6 +27,9 @@ public class ConversationController {
 
   @Autowired private MessageService messageService;
 
+  /** 默认对话标题 */
+  private static final String DEFAULT_CONVERSATION_TITLE = "新对话";
+
   /**
    * 获取用户对话列表
    *
@@ -62,16 +65,14 @@ public class ConversationController {
       throw new IllegalArgumentException("用户ID无效");
     }
 
-    // 允许标题为空，后续根据第一条消息自动生成
     String title = request.getTitle();
-    if (title != null) {
-      title = title.trim();
+    
+    // 验证标题是否有效
+    if (title == null || title.trim().isEmpty()) {
+      throw new IllegalArgumentException("对话标题不能为空");
     }
     
-    // 如果标题为空或者是"新对话"，设为null，让系统自动生成
-    if (title == null || title.isEmpty() || "新对话".equals(title)) {
-      title = null;
-    }
+    title = title.trim();
 
     Conversation conversation = conversationService.createConversation(userId, title);
     log.info("对话创建成功，对话ID: {}", conversation.getId());

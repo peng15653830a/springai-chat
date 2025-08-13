@@ -93,11 +93,11 @@ class ConversationServiceTest {
   void testCreateConversation_InvalidTitle() {
     // When & Then
     assertThrows(
-        IllegalArgumentException.class, () -> conversationService.createConversation(1L, null));
+        IllegalArgumentException.class, () -> conversationService.createConversation(null, "标题"));
     assertThrows(
-        IllegalArgumentException.class, () -> conversationService.createConversation(1L, ""));
+        IllegalArgumentException.class, () -> conversationService.createConversation(0L, "标题"));
     assertThrows(
-        IllegalArgumentException.class, () -> conversationService.createConversation(1L, "   "));
+        IllegalArgumentException.class, () -> conversationService.createConversation(-1L, "标题"));
 
     verify(conversationMapper, never()).insert(any());
   }

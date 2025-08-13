@@ -18,8 +18,8 @@ public class JacksonConfig {
   public ObjectMapper objectMapper() {
     ObjectMapper mapper = new ObjectMapper();
 
-    // 配置JSON序列化行为
-    mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+    // 配置JSON序列化行为 - 使用驼峰命名策略，符合阿里巴巴代码规范
+    mapper.setPropertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE);
     
     // 启用JSR310模块以支持Java 8时间类型
     mapper.findAndRegisterModules();

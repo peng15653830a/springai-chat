@@ -33,6 +33,11 @@ public final class AiChatConstants {
   public static final String SSE_EVENT_SEARCH = "search";
   
   /**
+   * SSE事件类型 - 思考
+   */
+  public static final String SSE_EVENT_THINKING = "thinking";
+  
+  /**
    * SSE事件类型 - 消息
    */
   public static final String SSE_EVENT_MESSAGE = "message";

@@ -28,10 +28,15 @@ public class ConversationServiceImpl implements ConversationService {
       throw new IllegalArgumentException("用户ID无效");
     }
 
+    // 验证标题是否有效
+    if (title == null || title.trim().isEmpty()) {
+      throw new IllegalArgumentException("对话标题不能为空");
+    }
+
     Conversation conversation = new Conversation();
     conversation.setUserId(userId);
-    // 允许标题为null，后续根据第一条消息自动生成
-    conversation.setTitle(title != null ? title.trim() : null);
+    // 标题不能为空，需要去除首尾空格
+    conversation.setTitle(title.trim());
     conversationMapper.insert(conversation);
     return conversation;
   }

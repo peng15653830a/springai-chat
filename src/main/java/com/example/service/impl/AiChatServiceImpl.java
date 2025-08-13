@@ -48,6 +48,9 @@ import org.springframework.util.StringUtils;
 @Service
 public class AiChatServiceImpl implements AiChatService {
 
+  /** 用于存储当前线程处理的用户消息ID，便于错误回滚 */
+  private static final ThreadLocal<Long> CURRENT_USER_MESSAGE_ID = new ThreadLocal<>();
+
   @Autowired private AiConfig aiConfig;
 
   @Autowired private ObjectMapper objectMapper;
@@ -106,11 +109,14 @@ public class AiChatServiceImpl implements AiChatService {
     // 立即生成对话标题（基于用户问题）
     generateConversationTitleIfNeeded(conversationId, content);
 
-    // 异步处理AI回复
-    processAiResponseAsync(conversationId, content, searchEnabled);
+    // 异步处理AI回复，传递用户消息ID用于错误回滚
+    processAiResponseAsync(conversationId, content, searchEnabled, userMessage.getId());
 
     return userMessage;
   }
+
+  /** 默认流式响应分块大小 */
+  private static final int DEFAULT_STREAMING_CHUNK_SIZE = 50;
 
   @Override
   public List<String> splitResponseForStreaming(String response) {
@@ -120,7 +126,7 @@ public class AiChatServiceImpl implements AiChatService {
 
     List<String> chunks = new ArrayList<>();
     // 可配置的块大小
-    int chunkSize = 50;
+    int chunkSize = DEFAULT_STREAMING_CHUNK_SIZE;
 
     for (int i = 0; i < response.length(); i += chunkSize) {
       int end = Math.min(i + chunkSize, response.length());
@@ -283,43 +289,50 @@ public class AiChatServiceImpl implements AiChatService {
   /** 处理流式响应 */
   private void processStreamingResponse(CloseableHttpResponse response, Long conversationId, List<SearchResult> searchResults) {
     StringBuilder fullResponse = new StringBuilder();
+    StringBuilder thinkingContent = new StringBuilder();
     
     StreamingResponseHandler handler = new StreamingResponseHandler(
         objectMapper,
         // onChunk: 收到内容块时的处理
         chunk -> {
           fullResponse.append(chunk);
-          sendSseEvent(conversationId, SSE_EVENT_CHUNK, chunk);
+          sendSseEvent(conversationId, SseEvent.chunk(chunk));
+        },
+        // onThinking: 收到思考内容时的处理
+        thinking -> {
+          thinkingContent.append(thinking);
+          sendSseEvent(conversationId, SseEvent.thinking(thinking));
         },
         // onComplete: 流式响应完成时的处理
         () -> {
           try {
-            // 保存完整的AI回复，包括搜索结果
+            // 保存完整的AI回复，包括thinking内容和搜索结果
             Message aiMessage;
+            String thinking = thinkingContent.length() > 0 ? thinkingContent.toString() : null;
+            
             if (searchResults != null && !searchResults.isEmpty()) {
               String searchResultsJson = objectMapper.writeValueAsString(searchResults);
-              aiMessage = messageService.saveMessage(conversationId, ROLE_ASSISTANT, fullResponse.toString(), searchResultsJson);
-              log.debug("流式AI回复保存成功（含搜索结果），消息ID: {}, 搜索结果数量: {}", aiMessage.getId(), searchResults.size());
+              aiMessage = messageService.saveMessage(conversationId, ROLE_ASSISTANT, fullResponse.toString(), thinking, searchResultsJson);
+              log.debug("流式AI回复保存成功（含thinking和搜索结果），消息ID: {}, 搜索结果数量: {}", aiMessage.getId(), searchResults.size());
             } else {
-              aiMessage = messageService.saveMessage(conversationId, ROLE_ASSISTANT, fullResponse.toString());
-              log.debug("流式AI回复保存成功，消息ID: {}", aiMessage.getId());
+              aiMessage = messageService.saveMessage(conversationId, ROLE_ASSISTANT, fullResponse.toString(), thinking, null);
+              log.debug("流式AI回复保存成功（含thinking），消息ID: {}", aiMessage.getId());
             }
             
             // 标题已在用户发送消息时生成，无需重复处理
 
             // 发送结束事件
-            SseEvent.EndEventData endData = new SseEvent.EndEventData(aiMessage.getId());
-            sendSseEvent(conversationId, SSE_EVENT_END, endData);
+            sendSseEvent(conversationId, SseEvent.end(aiMessage.getId()));
             log.debug("流式AI回复发送完成，会话ID: {}", conversationId);
           } catch (Exception e) {
             log.error("保存流式AI回复时发生异常，会话ID: {}", conversationId, e);
-            sendSseEvent(conversationId, SSE_EVENT_ERROR, ERROR_AI_SERVICE_EXCEPTION + e.getMessage());
+            handleAiResponseError(conversationId, e);
           }
         },
         // onError: 流式响应出错时的处理
         error -> {
           log.error("处理流式响应时发生异常，会话ID: {}", conversationId, error);
-          sendSseEvent(conversationId, SSE_EVENT_ERROR, ERROR_AI_SERVICE_EXCEPTION + error.getMessage());
+          handleAiResponseError(conversationId, error);
         }
     );
     
@@ -336,14 +349,17 @@ public class AiChatServiceImpl implements AiChatService {
 
   /** 异步处理AI回复 */
   private void processAiResponseAsync(
-      Long conversationId, String userMessage, boolean searchEnabled) {
+      Long conversationId, String userMessage, boolean searchEnabled, Long userMessageId) {
     CompletableFuture.runAsync(
         () -> {
           try {
+            // 设置当前线程的用户消息ID
+            CURRENT_USER_MESSAGE_ID.set(userMessageId);
+            
             log.info("开始处理AI回复，会话ID: {}, 搜索开启: {}", conversationId, searchEnabled);
 
             // 发送开始事件
-            sendSseEvent(conversationId, SSE_EVENT_START, DEFAULT_START_MESSAGE);
+            sendSseEvent(conversationId, SseEvent.start(DEFAULT_START_MESSAGE));
 
             List<SearchResult> searchResults = null;
             String searchContext = "";
@@ -360,11 +376,34 @@ public class AiChatServiceImpl implements AiChatService {
             log.debug("AI回复流式发送完成，会话ID: {}", conversationId);
 
           } catch (Exception e) {
-            log.error("处理AI回复时发生异常，会话ID: {}", conversationId, e);
-            sendSseEvent(
-                conversationId, SSE_EVENT_ERROR, ERROR_AI_SERVICE_EXCEPTION + e.getMessage());
+            handleAiResponseError(conversationId, e);
+          } finally {
+            // 清理ThreadLocal
+            CURRENT_USER_MESSAGE_ID.remove();
           }
         });
+  }
+
+  /** 处理AI回复错误并回滚用户消息 */
+  private void handleAiResponseError(Long conversationId, Exception e) {
+    Long userMessageId = CURRENT_USER_MESSAGE_ID.get();
+    log.error("处理AI回复时发生异常，会话ID: {}, 需要回滚用户消息ID: {}", conversationId, userMessageId, e);
+    
+    if (userMessageId != null) {
+      // 回滚用户消息
+      try {
+        messageService.deleteMessage(userMessageId);
+        log.info("回滚用户消息成功，消息ID: {}", userMessageId);
+        
+        // 发送回滚通知
+        sendSseEvent(conversationId, SseEvent.error("网络错误，消息已回滚，请重试"));
+      } catch (Exception rollbackException) {
+        log.error("回滚用户消息失败，消息ID: {}", userMessageId, rollbackException);
+        sendSseEvent(conversationId, SseEvent.error(ERROR_AI_SERVICE_EXCEPTION + e.getMessage()));
+      }
+    } else {
+      sendSseEvent(conversationId, SseEvent.error(ERROR_AI_SERVICE_EXCEPTION + e.getMessage()));
+    }
   }
 
   /** 处理搜索（如果启用） */
@@ -375,8 +414,7 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     log.info("开始搜索相关信息，会话ID: {}", conversationId);
-    SseEvent.SearchEventData startData = new SseEvent.SearchEventData(SEARCH_STATUS_START);
-    sendSseEvent(conversationId, SSE_EVENT_SEARCH, startData);
+    sendSseEvent(conversationId, SseEvent.search(SEARCH_STATUS_START));
 
     List<SearchResult> searchResults = searchService.searchMetaso(userMessage);
     String searchContext = searchService.formatSearchResults(searchResults);
@@ -384,17 +422,14 @@ public class AiChatServiceImpl implements AiChatService {
     // 发送搜索结果给前端
     if (searchResults != null && !searchResults.isEmpty()) {
       try {
-        String searchResultsJson = objectMapper.writeValueAsString(searchResults);
-        SseEvent.SearchResultsEventData searchResultsData = new SseEvent.SearchResultsEventData(searchResults);
-        sendSseEvent(conversationId, "search_results", searchResultsData);
+        sendSseEvent(conversationId, SseEvent.searchResults(searchResults));
         log.debug("发送搜索结果，数量: {}, 会话ID: {}", searchResults.size(), conversationId);
       } catch (Exception e) {
         log.error("序列化搜索结果失败: {}", e.getMessage());
       }
     }
 
-    SseEvent.SearchEventData completeData = new SseEvent.SearchEventData(SEARCH_STATUS_COMPLETE);
-    sendSseEvent(conversationId, SSE_EVENT_SEARCH, completeData);
+    sendSseEvent(conversationId, SseEvent.search(SEARCH_STATUS_COMPLETE));
     log.debug("搜索完成，上下文长度: {}, 会话ID: {}", searchContext.length(), conversationId);
 
     return new SearchContextResult(searchContext, searchResults);
@@ -433,11 +468,12 @@ public class AiChatServiceImpl implements AiChatService {
       // 使用真正的流式处理
       sendStreamingChatRequest(request, conversationId, searchResults);
       
-      return ""; // 流式处理中内容已经通过SSE发送，这里返回空字符串
+      // 流式处理中内容已经通过SSE发送，这里返回空字符串
+      return "";
       
     } catch (Exception e) {
       log.error("流式AI聊天请求失败: {}", e.getMessage(), e);
-      sendSseEvent(conversationId, SSE_EVENT_ERROR, ERROR_AI_SERVICE_EXCEPTION + e.getMessage());
+      handleAiResponseError(conversationId, e);
       return DEFAULT_SORRY_MESSAGE;
     }
   }
@@ -482,6 +518,19 @@ public class AiChatServiceImpl implements AiChatService {
     }
   }
   
+  /** 短消息标题最大长度 */
+  private static final int SHORT_TITLE_MAX_LENGTH = 20;
+  /** 第一句话标题最大长度 */
+  private static final int FIRST_SENTENCE_MAX_LENGTH = 25;
+  /** 长文本截取长度 */
+  private static final int LONG_TEXT_TRUNCATE_LENGTH = 20;
+  /** 长文本截取检查结束位置 */
+  private static final int LONG_TEXT_TRUNCATE_END_POS = 18;
+  /** 长文本截取检查开始位置 */
+  private static final int LONG_TEXT_TRUNCATE_START_POS = 10;
+  /** 长文本截取标点符号正则表达式 */
+  private static final String LONG_TEXT_PUNCTUATION_REGEX = ".*[。！？，、；：]$";
+
   /** 从用户消息生成简洁标题 */
   private String generateTitleFromMessage(String message) {
     if (message == null || message.trim().isEmpty()) {
@@ -491,15 +540,15 @@ public class AiChatServiceImpl implements AiChatService {
     String cleanMessage = message.trim();
     
     // 如果消息很短（20字以内），直接使用
-    if (cleanMessage.length() <= 20) {
+    if (cleanMessage.length() <= SHORT_TITLE_MAX_LENGTH) {
       return cleanMessage;
     }
     
     // 尝试找到第一句话（以句号、问号、感叹号、换行结尾）
-    String[] sentences = cleanMessage.split("[。！？\\n]");
+    String[] sentences = cleanMessage.split("[。！？\n]");
     if (sentences.length > 0 && !sentences[0].trim().isEmpty()) {
       String firstSentence = sentences[0].trim();
-      if (firstSentence.length() <= 25) {
+      if (firstSentence.length() <= FIRST_SENTENCE_MAX_LENGTH) {
         return firstSentence;
       }
     }
@@ -507,12 +556,12 @@ public class AiChatServiceImpl implements AiChatService {
     // 对于长文本，智能截取：
     // 1. 优先在标点符号处截断
     // 2. 避免截断单词（中文字符或英文单词边界）
-    if (cleanMessage.length() > 20) {
-      String truncated = cleanMessage.substring(0, Math.min(20, cleanMessage.length()));
+    if (cleanMessage.length() > LONG_TEXT_TRUNCATE_LENGTH) {
+      String truncated = cleanMessage.substring(0, Math.min(LONG_TEXT_TRUNCATE_LENGTH, cleanMessage.length()));
       // 如果截断位置不是标点，尝试找到合适的截断点
-      if (cleanMessage.length() > 20 && !truncated.matches(".*[。！？，、；：]$")) {
+      if (cleanMessage.length() > LONG_TEXT_TRUNCATE_LENGTH && !truncated.matches(LONG_TEXT_PUNCTUATION_REGEX)) {
         // 尝试在18字符内找到标点符号
-        for (int i = Math.min(18, truncated.length() - 1); i >= 10; i--) {
+        for (int i = Math.min(LONG_TEXT_TRUNCATE_END_POS, truncated.length() - 1); i >= LONG_TEXT_TRUNCATE_START_POS; i--) {
           char c = truncated.charAt(i);
           if (c == '，' || c == '、' || c == '；' || c == '：') {
             return truncated.substring(0, i + 1);
@@ -526,11 +575,18 @@ public class AiChatServiceImpl implements AiChatService {
   }
 
   /** 发送SSE事件 */
-  private void sendSseEvent(Long conversationId, String eventType, Object data) {
+  private void sendSseEvent(Long conversationId, SseEvent sseEvent) {
     try {
-      sseEmitterManager.sendMessage(conversationId, eventType, data);
+      sseEmitterManager.sendEvent(conversationId, sseEvent);
     } catch (Exception e) {
-      log.error("发送SSE事件失败，会话ID: {}, 事件类型: {}", conversationId, eventType, e);
+      log.error("发送SSE事件失败，会话ID: {}, 事件类型: {}", conversationId, sseEvent.getType(), e);
     }
+  }
+
+  /** 发送SSE事件 (保持向后兼容) */
+  @Deprecated
+  private void sendSseEvent(Long conversationId, String eventType, Object data) {
+    SseEvent event = new SseEvent(eventType, data);
+    sendSseEvent(conversationId, event);
   }
 }

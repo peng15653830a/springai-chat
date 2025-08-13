@@ -43,6 +43,24 @@ public class SseEvent {
     return new SseEvent("search", data);
   }
 
+  /** 创建内容块事件 */
+  public static SseEvent chunk(String content) {
+    ChunkEventData data = new ChunkEventData(content);
+    return new SseEvent("chunk", data);
+  }
+
+  /** 创建思考事件 */
+  public static SseEvent thinking(String content) {
+    ThinkingEventData data = new ThinkingEventData(content);
+    return new SseEvent("thinking", data);
+  }
+
+  /** 创建搜索结果事件 */
+  public static SseEvent searchResults(List<SearchResult> results) {
+    SearchResultsEventData data = new SearchResultsEventData(results);
+    return new SseEvent("search_results", data);
+  }
+
   /** 结束事件数据 */
   @Data
   @NoArgsConstructor
@@ -57,6 +75,22 @@ public class SseEvent {
   @AllArgsConstructor
   public static class SearchEventData {
     private String type;
+  }
+
+  /** 内容块事件数据 */
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class ChunkEventData {
+    private String content;
+  }
+
+  /** 思考事件数据 */
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class ThinkingEventData {
+    private String content;
   }
 
   /** 搜索结果事件数据 */

@@ -59,4 +59,11 @@ public interface MessageService {
    * @return 消息列表
    */
   List<Message> getMessagesByConversationId(Long conversationId);
+
+  /**
+   * 删除消息
+   *
+   * @param messageId 消息ID
+   */
+  void deleteMessage(Long messageId);
 }

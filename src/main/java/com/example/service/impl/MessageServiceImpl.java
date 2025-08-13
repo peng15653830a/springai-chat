@@ -63,4 +63,12 @@ public class MessageServiceImpl implements MessageService {
     }
     return messageMapper.selectByConversationId(conversationId);
   }
+
+  @Override
+  public void deleteMessage(Long messageId) {
+    if (messageId == null || messageId <= 0) {
+      throw new IllegalArgumentException("消息ID无效");
+    }
+    messageMapper.deleteById(messageId);
+  }
 }

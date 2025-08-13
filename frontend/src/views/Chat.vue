@@ -59,6 +59,14 @@
               <el-avatar v-else :size="32" class="ai-avatar">AI</el-avatar>
             </div>
             <div class="message-content">
+              <!-- 搜索指示器（仅AI消息且有搜索结果时显示） -->
+              <SearchIndicator 
+                v-if="message.searchResults && message.role === 'assistant'" 
+                :results="parseSearchResults(message.searchResults)"
+                :messageId="message.id"
+                @click="handleSearchIndicatorClick"
+              />
+              
               <!-- 推理过程 (仅AI消息且有推理内容时显示) -->
               <div v-if="message.thinking && message.role === 'assistant'" class="thinking-section">
                 <div 
@@ -85,13 +93,6 @@
                   />
                 </div>
               </div>
-              
-              <!-- 搜索结果展示（仅AI消息且有搜索结果时显示） -->
-              <SearchResults 
-                v-if="message.searchResults && message.role === 'assistant'" 
-                :results="parseSearchResults(message.searchResults)"
-                :defaultExpanded="false"
-              />
               
               <div class="message-text">
                 <!-- 使用 v-md-preview 组件 -->
@@ -181,11 +182,18 @@
         </div>
       </div>
     </div>
+    
+    <!-- 右侧面板 -->
+    <RightPanel 
+      ref="rightPanel"
+      :searchResults="currentSearchResults"
+      :currentMessageId="currentSearchMessageId"
+    />
   </div>
 </template>
 
 <script>
-import { ref, onMounted, nextTick, watch, computed, getCurrentInstance } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
@@ -196,7 +204,8 @@ import githubTheme from '@kangc/v-md-editor/lib/theme/github.js'
 import '@kangc/v-md-editor/lib/theme/style/github.css'
 import hljs from 'highlight.js'
 import { debounce } from 'lodash-es'
-import SearchResults from '../components/SearchResults.vue'
+import SearchIndicator from '../components/SearchIndicator.vue'
+import RightPanel from '../components/RightPanel.vue'
 
 // 使用 GitHub 主题，配置代码高亮
 VMdPreview.use(githubTheme, {
@@ -207,16 +216,22 @@ export default {
   name: 'Chat',
   components: {
     VMdPreview,
-    SearchResults
+    SearchIndicator,
+    RightPanel
   },
   setup(props, { emit }) {
     const userStore = useUserStore()
     const chatStore = useChatStore()
     const inputMessage = ref('')
     const messageList = ref()
+    const rightPanel = ref() // 右侧面板引用
     const searchEnabled = ref(true) // 默认开启搜索
     const expandedThinking = ref(new Set()) // 展开的推理过程ID集合
-    const sseInstance = ref(null) // 存储$sse实例
+    const eventSource = ref(null) // 存储EventSource实例
+    
+    // 右侧面板状态管理
+    const currentSearchResults = ref([])
+    const currentSearchMessageId = ref(null)
     
     // 加载对话列表
     const loadConversations = async () => {
@@ -245,26 +260,65 @@ export default {
       }
     }
     
-    // 选择对话
+    // 选择对话 - 使用标准EventSource
     const selectConversation = async (conversation) => {
+      // 防止重复点击同一对话
+      if (chatStore.currentConversation?.id === conversation.id) {
+        console.log('⚠️ 已经是当前对话，跳过切换')
+        return
+      }
+      
+      console.log('🔄 切换到对话:', conversation.id)
       chatStore.setCurrentConversation(conversation)
       
       // 断开之前的SSE连接
-      chatStore.disconnectSSE()
+      disconnectSSE()
       
       // 加载消息历史
       try {
         const response = await conversationApi.getMessages(conversation.id)
         if (response.success) {
           chatStore.setMessages(response.data)
+          
+          // 自动展开所有包含thinking的消息
+          response.data.forEach(msg => {
+            if (msg.role === 'assistant' && msg.thinking) {
+              expandedThinking.value.add(msg.id)
+            }
+          })
+          
+          // 自动显示最新的搜索结果
+          const latestMessageWithSearch = response.data
+            .filter(msg => msg.role === 'assistant' && msg.searchResults)
+            .pop() // 获取最新的一条
+          
+          if (latestMessageWithSearch) {
+            const searchResults = parseSearchResults(latestMessageWithSearch.searchResults)
+            currentSearchResults.value = searchResults
+            currentSearchMessageId.value = latestMessageWithSearch.id
+          } else {
+            // 清空右侧面板并确保收起状态
+            currentSearchResults.value = []
+            currentSearchMessageId.value = null
+          }
+          
           scrollToBottom()
         }
       } catch (error) {
         console.error('Load messages error:', error)
       }
       
-      // 使用vue-sse建立连接
-      setupVueSSE(conversation.id)
+      // 建立标准SSE连接
+      setupEventSource(conversation.id)
+    }
+    
+    // 断开SSE连接
+    const disconnectSSE = () => {
+      if (eventSource.value) {
+        console.log('🔌 断开SSE连接')
+        eventSource.value.close()
+        eventSource.value = null
+      }
     }
     
     // 删除对话
@@ -319,205 +373,234 @@ export default {
       }
     }
     
-    // 使用vue-sse建立连接 - 修复版本
-    const setupVueSSE = (conversationId) => {
-      // 断开之前的连接
-      if (chatStore.sseClient) {
-        chatStore.sseClient.disconnect()
-      }
+    // 建立标准EventSource连接
+    const setupEventSource = (conversationId) => {
+      // 先断开现有连接
+      disconnectSSE()
       
-      // 检查$sse实例是否可用
-      if (!sseInstance.value) {
-        console.error('SSE instance not available')
-        ElMessage.error('SSE服务不可用')
-        return
-      }
+      console.log('🔗 建立SSE连接到对话:', conversationId)
       
-      // 创建新的SSE客户端 - 修复配置
-      const sseClient = sseInstance.value.create({
-        url: `/api/chat/stream/${conversationId}`,
-        format: 'plain', // 改为plain格式，因为chunk数据是纯字符串
-        withCredentials: false,
-        polyfill: true
-      })
+      // 创建标准EventSource
+      const source = new EventSource(`/api/chat/stream/${conversationId}`)
+      eventSource.value = source
       
-      // 处理SSE事件
-      sseClient.on('start', (data) => {
-        console.log('🎯 SSE start event received:', data)
-        // start事件只是通知开始，实际消息在chunk中创建
-      })
-      
-      sseClient.on('chunk', (data) => {
-        console.log('🔥 SSE chunk event received:', data)
-        
+      // 统一SSE事件分发器
+      source.onmessage = (event) => {
         try {
-          // 解析JSON格式的chunk数据
-          let chunkContent = ''
-          try {
-            // 尝试解析JSON（后端使用JSON包装的情况）
-            const parsed = typeof data === 'string' ? JSON.parse(data) : data
-            chunkContent = parsed.content || ''
-            console.log('📦 Parsed chunk content:', chunkContent.substring(0, 100))
-          } catch (e) {
-            // 如果不是JSON，直接使用原始数据（向后兼容）
-            chunkContent = String(data || '')
-            console.log('📝 Raw chunk content:', chunkContent.substring(0, 100))
+          // 解析标准SSE事件数据
+          const sseEvent = JSON.parse(event.data)
+          const { type, data } = sseEvent
+          
+          console.log('📨 收到SSE事件:', type, data)
+          
+          // 根据事件类型分发处理
+          switch (type) {
+            case 'start':
+              handleStartEvent(data)
+              break
+            case 'chunk':
+              handleChunkEvent(data)
+              break
+            case 'thinking':
+              handleThinkingEvent(data)
+              break
+            case 'search':
+              handleSearchEvent(data)
+              break
+            case 'search_results':
+              handleSearchResultsEvent(data)
+              break
+            case 'end':
+              handleEndEvent(data)
+              break
+            case 'error':
+              handleErrorEvent(data)
+              break
+            default:
+              console.warn('未知SSE事件类型:', type)
           }
-          
-          if (!chunkContent) return
-          
+        } catch (error) {
+          console.error('❌ 解析SSE事件失败:', error, event.data)
+        }
+      }
+      
+      source.onerror = (error) => {
+        console.error('❌ SSE连接错误:', error)
+        chatStore.setLoading(false)
+        chatStore.setConnected(false)
+        
+        // 只在真正的连接错误时显示提示
+        if (source.readyState === EventSource.CLOSED) {
+          console.debug('🔌 SSE连接正常关闭')
+        } else {
+          ElMessage.error('连接异常，请刷新页面重试')
+        }
+      }
+      
+      source.onopen = () => {
+        console.log('✅ SSE连接已建立')
+        chatStore.setConnected(true)
+      }
+    }
+    
+    // SSE事件处理函数
+    const handleStartEvent = (data) => {
+      console.log('🎯 SSE start event received:', data)
+      // start事件只是通知开始，实际消息在chunk中创建
+    }
+    
+    const handleChunkEvent = (data) => {
+      console.log('🔥 SSE chunk event received:', data)
+      
+      try {
+        // 从标准SSE事件数据中获取内容
+        const chunkContent = data?.content || ''
+        console.log('📦 Chunk content:', chunkContent.substring(0, 100))
+        
+        if (!chunkContent) return
+        
+        // 获取最后一条消息
+        let lastMessage = chatStore.messages[chatStore.messages.length - 1]
+        
+        // 如果不是assistant消息，创建新的
+        if (!lastMessage || lastMessage.role !== 'assistant') {
+          const newMessage = {
+            id: 'temp-' + Date.now(),
+            role: 'assistant',
+            content: '',
+            createdAt: new Date()
+          }
+          chatStore.addMessage(newMessage)
+          lastMessage = newMessage
+        }
+        
+        // 更新内容 - v-md-preview会自动处理渲染
+        if (lastMessage && lastMessage.role === 'assistant') {
+          lastMessage.content = (lastMessage.content || '') + chunkContent
+          // 触发响应式更新
+          chatStore.messages = [...chatStore.messages]
+          scrollToBottom()
+        }
+      } catch (error) {
+        console.error('❌ Error processing chunk:', error)
+      }
+    }
+    
+    const handleEndEvent = (data) => {
+      console.log('🏁 SSE end event received:', data)
+      try {
+        // 更新消息ID（如果提供）
+        if (chatStore.messages.length > 0 && data?.messageId) {
+          const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+          if (lastMessage.role === 'assistant') {
+            lastMessage.id = data.messageId
+          }
+        }
+        
+        chatStore.setLoading(false)
+        scrollToBottom()
+      } catch (error) {
+        console.error('❌ Error parsing end event:', error, data)
+        chatStore.setLoading(false)
+      }
+    }
+    
+    const handleSearchEvent = (data) => {
+      console.log('🔍 SSE search event:', data)
+      try {
+        // 处理搜索状态事件
+        if (data?.type === 'start') {
+          ElMessage.info('正在搜索相关信息...')
+        } else if (data?.type === 'complete') {
+          ElMessage.success('搜索完成')
+        }
+      } catch (error) {
+        console.error('❌ Error parsing search event:', error, data)
+      }
+    }
+    
+    const handleSearchResultsEvent = (data) => {
+      console.log('📋 SSE search_results event:', data)
+      try {
+        // 处理搜索结果数据 - 更新当前正在构建的assistant消息
+        if (data && data.results) {
+          const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+          if (lastMessage && lastMessage.role === 'assistant') {
+            // 将搜索结果数据存储到消息中
+            lastMessage.searchResults = JSON.stringify(data.results)
+            // 触发响应式更新
+            chatStore.messages = [...chatStore.messages]
+            console.log('✅ 搜索结果已添加到消息:', data.results.length, '条结果')
+          } else {
+            // 如果没有assistant消息，创建一个临时消息来存储搜索结果
+            const newMessage = {
+              id: 'temp-search-' + Date.now(),
+              role: 'assistant',
+              content: '',
+              searchResults: JSON.stringify(data.results),
+              createdAt: new Date()
+            }
+            chatStore.addMessage(newMessage)
+            console.log('✅ 创建新消息存储搜索结果:', data.results.length, '条结果')
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error processing search_results event:', error, data)
+      }
+    }
+    
+    const handleThinkingEvent = (data) => {
+      console.log('🧠 SSE thinking event received:', data)
+      try {
+        // 从标准SSE事件数据中获取thinking内容
+        const thinkingContent = data?.content || ''
+        
+        if (thinkingContent) {
           // 获取最后一条消息
           let lastMessage = chatStore.messages[chatStore.messages.length - 1]
           
           // 如果不是assistant消息，创建新的
           if (!lastMessage || lastMessage.role !== 'assistant') {
             const newMessage = {
-              id: 'temp-' + Date.now(),
+              id: 'temp-thinking-' + Date.now(),
               role: 'assistant',
               content: '',
+              thinking: '',
               createdAt: new Date()
             }
             chatStore.addMessage(newMessage)
             lastMessage = newMessage
+            
+            // thinking开始时自动展开推理过程
+            expandedThinking.value.add(lastMessage.id)
           }
           
-          // 更新内容 - v-md-preview会自动处理渲染
+          // 累加thinking内容 - 与chunk处理完全一致
           if (lastMessage && lastMessage.role === 'assistant') {
-            lastMessage.content = (lastMessage.content || '') + chunkContent
+            lastMessage.thinking = (lastMessage.thinking || '') + thinkingContent
             // 触发响应式更新
             chatStore.messages = [...chatStore.messages]
             scrollToBottom()
+            console.log('✅ Thinking内容已累加，当前长度:', lastMessage.thinking.length)
           }
-        } catch (error) {
-          console.error('❌ Error processing chunk:', error)
         }
-      })
-      
-      sseClient.on('end', (data) => {
-        console.log('🏁 SSE end event received:', data)
-        try {
-          let parsedData = data
-          if (typeof data === 'string') {
-            try {
-              parsedData = JSON.parse(data)
-            } catch (e) {
-              // 如果不是JSON，包装成对象
-              parsedData = { message: data }
-            }
-          }
-          
-          // 更新消息ID（如果提供）
-          if (chatStore.messages.length > 0 && parsedData.messageId) {
-            const lastMessage = chatStore.messages[chatStore.messages.length - 1]
-            if (lastMessage.role === 'assistant') {
-              lastMessage.id = parsedData.messageId
-            }
-          }
-          
-          chatStore.setLoading(false)
-          scrollToBottom()
-        } catch (error) {
-          console.error('❌ Error parsing end event:', error, data)
-          chatStore.setLoading(false)
-        }
-      })
-      
-      sseClient.on('search', (data) => {
-        console.log('🔍 SSE search event:', data)
-        try {
-          let parsedData = data
-          if (typeof data === 'string') {
-            try {
-              parsedData = JSON.parse(data)
-            } catch (e) {
-              parsedData = { type: 'info', message: data }
-            }
-          }
-          handleSearchEvent(parsedData)
-        } catch (error) {
-          console.error('❌ Error parsing search event:', error, data)
-        }
-      })
-      
-      // 处理搜索结果事件
-      sseClient.on('search_results', (data) => {
-        console.log('📋 SSE search_results event:', data)
-        try {
-          let parsedData = data
-          if (typeof data === 'string') {
-            try {
-              parsedData = JSON.parse(data)
-            } catch (e) {
-              console.error('❌ Failed to parse search_results data:', e)
-              return
-            }
-          }
-          
-          // 处理搜索结果数据 - 更新当前正在构建的assistant消息
-          if (parsedData && parsedData.results) {
-            const lastMessage = chatStore.messages[chatStore.messages.length - 1]
-            if (lastMessage && lastMessage.role === 'assistant') {
-              // 将搜索结果数据存储到消息中
-              lastMessage.searchResults = JSON.stringify(parsedData.results)
-              // 触发响应式更新
-              chatStore.messages = [...chatStore.messages]
-              console.log('✅ 搜索结果已添加到消息:', parsedData.results.length, '条结果')
-            } else {
-              // 如果没有assistant消息，创建一个临时消息来存储搜索结果
-              const newMessage = {
-                id: 'temp-search-' + Date.now(),
-                role: 'assistant',
-                content: '',
-                searchResults: JSON.stringify(parsedData.results),
-                createdAt: new Date()
-              }
-              chatStore.addMessage(newMessage)
-              console.log('✅ 创建新消息存储搜索结果:', parsedData.results.length, '条结果')
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error processing search_results event:', error, data)
-        }
-      })
-      
-      // 添加通用消息监听器
-      sseClient.on('message', (data) => {
-        console.log('SSE generic message event:', data)
-      })
-      
-      sseClient.on('error', (error) => {
-        // 只在真正有错误信息时处理，避免undefined错误
-        if (error && error !== 'undefined') {
-          console.error('SSE error:', error)
-          chatStore.setLoading(false)
-          ElMessage.error('连接断开，请刷新页面重试')
-        } else {
-          // 正常连接结束，无需显示错误
-          console.debug('SSE connection ended normally')
-        }
-      })
-      
-      // 连接到服务器
-      sseClient.connect()
-        .then(() => {
-          console.log('SSE connected successfully')
-          chatStore.sseClient = sseClient
-        })
-        .catch((error) => {
-          console.error('Failed to connect SSE:', error)
-          ElMessage.error('无法连接到服务器')
-        })
+      } catch (error) {
+        console.error('❌ Error processing thinking event:', error, data)
+      }
     }
     
-
-    
-    // 处理搜索事件
-    const handleSearchEvent = (data) => {
-      if (data.type === 'start') {
-        ElMessage.info('正在搜索相关信息...')
-      } else if (data.type === 'complete') {
-        ElMessage.success('搜索完成')
+    const handleErrorEvent = (data) => {
+      console.error('❌ SSE error event received:', data)
+      
+      // 显示错误信息
+      if (typeof data === 'string' && data.trim()) {
+        ElMessage.error(data)
+      } else {
+        ElMessage.error('发生未知错误')
       }
+      
+      // 停止加载状态
+      chatStore.setLoading(false)
     }
     
     // 滚动到底部
@@ -620,6 +703,16 @@ export default {
       }
     }
     
+    // 处理搜索指示器点击
+    const handleSearchIndicatorClick = ({ messageId, results }) => {
+      currentSearchResults.value = results
+      currentSearchMessageId.value = messageId
+      // 展开右侧面板
+      if (rightPanel.value) {
+        rightPanel.value.expand()
+      }
+    }
+    
     
     // 监听消息变化，自动滚动
     watch(() => chatStore.messages.length, () => {
@@ -635,11 +728,13 @@ export default {
       loadConversations()
       loadSearchSettings()
       
-      // 获取$sse实例
-      const instance = getCurrentInstance()
-      if (instance) {
-        sseInstance.value = instance.appContext.app.config.globalProperties.$sse
-      }
+      // EventSource无需全局配置
+    })
+    
+    // 组件销毁前确保断开SSE连接
+    onBeforeUnmount(() => {
+      console.log('🗑️ 组件销毁，断开SSE连接')
+      disconnectSSE()
     })
     
     // 解析搜索结果JSON数据
@@ -669,6 +764,7 @@ export default {
       chatStore,
       inputMessage,
       messageList,
+      rightPanel,
       searchEnabled,
       expandedThinking,
       processedMessages,
@@ -680,7 +776,10 @@ export default {
       onSearchToggle,
       copyMessage,
       formatTime,
-      toggleThinking
+      toggleThinking,
+      currentSearchResults,
+      currentSearchMessageId,
+      handleSearchIndicatorClick
     }
   }
 }

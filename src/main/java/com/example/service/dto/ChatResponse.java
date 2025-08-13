@@ -72,6 +72,10 @@ public class ChatResponse {
 
     /** 思考过程 */
     private String thinking;
+
+    /** 推理内容（Qwen模型专用） */
+    @JsonProperty("reasoning_content")
+    private String reasoningContent;
   }
 
   /** 使用统计数据传输对象 */
