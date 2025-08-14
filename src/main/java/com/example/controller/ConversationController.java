@@ -67,12 +67,12 @@ public class ConversationController {
 
     String title = request.getTitle();
     
-    // 验证标题是否有效
+    // 如果标题为空，使用默认标题"新对话"，后续会在发送第一条消息时自动生成
     if (title == null || title.trim().isEmpty()) {
-      throw new IllegalArgumentException("对话标题不能为空");
+      title = "新对话";
+    } else {
+      title = title.trim();
     }
-    
-    title = title.trim();
 
     Conversation conversation = conversationService.createConversation(userId, title);
     log.info("对话创建成功，对话ID: {}", conversation.getId());

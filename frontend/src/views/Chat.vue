@@ -863,6 +863,8 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .welcome {
@@ -884,10 +886,16 @@ export default {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  max-width: calc(100% - 40px);
+  margin: 0 auto;
 }
 
 .message-item {
   display: flex;
+  margin-bottom: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 20px;
 }
 
@@ -904,11 +912,13 @@ export default {
 }
 
 .message-content {
-  max-width: 70%;
+  max-width: 600px;
+  flex: 1;
 }
 
 .message-item.user .message-content {
   text-align: right;
+  max-width: 600px;
 }
 
 .message-text {
@@ -916,7 +926,10 @@ export default {
   padding: 10px 15px;
   border-radius: 10px;
   word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
   position: relative;
+  max-width: 100%;
 }
 
 .message-actions {

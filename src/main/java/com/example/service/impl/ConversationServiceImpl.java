@@ -28,14 +28,13 @@ public class ConversationServiceImpl implements ConversationService {
       throw new IllegalArgumentException("用户ID无效");
     }
 
-    // 验证标题是否有效
+    // 如果标题为空，使用默认标题"新对话"
     if (title == null || title.trim().isEmpty()) {
-      throw new IllegalArgumentException("对话标题不能为空");
+      title = "新对话";
     }
 
     Conversation conversation = new Conversation();
     conversation.setUserId(userId);
-    // 标题不能为空，需要去除首尾空格
     conversation.setTitle(title.trim());
     conversationMapper.insert(conversation);
     return conversation;
