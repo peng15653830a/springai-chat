@@ -58,19 +58,23 @@ const handleClick = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 12px 16px;
   margin: 8px 0;
   background: linear-gradient(135deg, #f0f9f4 0%, #f6ffed 100%);
-  border: 1px solid #b7eb8f;
-  border-radius: 6px;
+  border: 1px solid #d9f7be;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .search-indicator:hover {
   background: linear-gradient(135deg, #ecf5ff 0%, #f0f9f4 100%);
-  border-color: #73d13d;
-  box-shadow: 0 2px 4px rgba(82, 196, 26, 0.1);
+  border-color: #52c41a;
+  box-shadow: 0 3px 12px rgba(82, 196, 26, 0.15);
+  transform: translateY(-1px);
 }
 
 .search-info {

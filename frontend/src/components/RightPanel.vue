@@ -1,17 +1,17 @@
 <template>
-  <div class="right-panel" :class="{ collapsed: isCollapsed }">
+  <div class="right-panel" :class="{ collapsed: props.collapsed }">
     <div class="panel-header">
       <h3 class="panel-title">搜索详情</h3>
       <el-button
         @click="togglePanel"
-        :icon="isCollapsed ? ArrowLeft : ArrowRight"
+        :icon="props.collapsed ? ArrowLeft : ArrowRight"
         size="small"
         text
         class="collapse-btn"
       />
     </div>
     
-    <div v-show="!isCollapsed" class="panel-content">
+    <div v-show="!props.collapsed" class="panel-content">
       <!-- 搜索结果详情 -->
       <div v-if="currentSearchResults && currentSearchResults.length > 0" class="search-detail-section">
         <div class="search-info">
@@ -87,11 +87,15 @@ const props = defineProps({
   currentMessageId: {
     type: Number,
     default: null
+  },
+  collapsed: {
+    type: Boolean,
+    default: true
   }
 })
 
-// 响应式数据
-const isCollapsed = ref(true) // 默认收起
+// Emits
+const emit = defineEmits(['toggle'])
 
 // 计算属性
 const currentSearchResults = computed(() => {
@@ -100,7 +104,7 @@ const currentSearchResults = computed(() => {
 
 // 方法
 const togglePanel = () => {
-  isCollapsed.value = !isCollapsed.value
+  emit('toggle')
 }
 
 const formatDomain = (url) => {
@@ -120,16 +124,19 @@ const getScoreType = (score) => {
   return 'info'
 }
 
-// 监听搜索结果变化，有结果时自动展开面板
-watch(() => props.searchResults, (newResults) => {
-  if (newResults && newResults.length > 0) {
-    isCollapsed.value = false
+// 监听搜索结果变化，仅在从无到有时自动展开面板
+watch(() => props.searchResults, (newResults, oldResults) => {
+  // 只有当之前没有结果，现在有结果时才自动展开（表示新的搜索）
+  // 避免在切换历史对话时自动展开
+  if (newResults && newResults.length > 0 && 
+      (!oldResults || oldResults.length === 0)) {
+    emit('toggle') // 通知父组件展开
   }
 }, { deep: true })
 
 // 暴露展开方法供父组件调用
 const expand = () => {
-  isCollapsed.value = false
+  emit('toggle') // 通知父组件展开
 }
 
 // 定义暴露的方法
@@ -150,7 +157,7 @@ defineExpose({
 }
 
 .right-panel.collapsed {
-  width: 50px;
+  width: 60px;
 }
 
 .right-panel.collapsed .panel-title {

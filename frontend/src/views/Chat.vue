@@ -1,21 +1,31 @@
 <template>
   <div class="chat-container">
     <!-- 侧边栏 -->
-    <div class="sidebar">
+    <div class="sidebar" :class="{ collapsed: leftSidebarCollapsed }">
       <div class="sidebar-header">
-        <div class="user-info">
+        <div v-if="!leftSidebarCollapsed" class="user-info">
           <el-avatar :size="40" :src="userStore.currentUser?.avatar">
             {{ userStore.currentUser?.nickname?.charAt(0) }}
           </el-avatar>
           <span class="username">{{ userStore.currentUser?.nickname }}</span>
         </div>
-        <el-button @click="createNewConversation" type="primary" size="small">
-          <el-icon><Plus /></el-icon>
-          新对话
-        </el-button>
+        <div class="sidebar-controls">
+          <el-button v-if="!leftSidebarCollapsed" @click="createNewConversation" type="primary" size="small">
+            <el-icon><Plus /></el-icon>
+            新对话
+          </el-button>
+          <el-button 
+            @click="toggleLeftSidebar" 
+            size="small" 
+            class="collapse-btn"
+            :icon="leftSidebarCollapsed ? 'ArrowRight' : 'ArrowLeft'"
+          >
+            <el-icon><ArrowLeft v-if="!leftSidebarCollapsed" /><ArrowRight v-else /></el-icon>
+          </el-button>
+        </div>
       </div>
       
-      <div class="conversation-list">
+      <div v-if="!leftSidebarCollapsed" class="conversation-list">
         <div
           v-for="conversation in chatStore.conversations"
           :key="conversation.id"
@@ -52,12 +62,6 @@
             :key="message.id"
             :class="['message-item', message.role]"
           >
-            <div class="message-avatar">
-              <el-avatar v-if="message.role === 'user'" :size="32">
-                {{ userStore.currentUser?.nickname?.charAt(0) }}
-              </el-avatar>
-              <el-avatar v-else :size="32" class="ai-avatar">AI</el-avatar>
-            </div>
             <div class="message-content">
               <!-- 搜索指示器（仅AI消息且有搜索结果时显示） -->
               <SearchIndicator 
@@ -122,9 +126,6 @@
           
           <!-- 加载中 -->
           <div v-if="chatStore.isLoading" class="message-item assistant">
-            <div class="message-avatar">
-              <el-avatar :size="32" class="ai-avatar">AI</el-avatar>
-            </div>
             <div class="message-content">
               <div class="typing-indicator">
                 <span></span>
@@ -188,6 +189,8 @@
       ref="rightPanel"
       :searchResults="currentSearchResults"
       :currentMessageId="currentSearchMessageId"
+      :collapsed="rightSidebarCollapsed"
+      @toggle="toggleRightSidebar"
     />
   </div>
 </template>
@@ -228,6 +231,20 @@ export default {
     const searchEnabled = ref(true) // 默认开启搜索
     const expandedThinking = ref(new Set()) // 展开的推理过程ID集合
     const eventSource = ref(null) // 存储EventSource实例
+    
+    // 侧边栏收缩状态
+    const leftSidebarCollapsed = ref(false)
+    // 右侧搜索面板默认收起
+    const rightSidebarCollapsed = ref(true)
+    
+    // 侧边栏收缩功能
+    const toggleLeftSidebar = () => {
+      leftSidebarCollapsed.value = !leftSidebarCollapsed.value
+    }
+    
+    const toggleRightSidebar = () => {
+      rightSidebarCollapsed.value = !rightSidebarCollapsed.value
+    }
     
     // 右侧面板状态管理
     const currentSearchResults = ref([])
@@ -282,8 +299,9 @@ export default {
           
           // 自动展开所有包含thinking的消息
           response.data.forEach(msg => {
-            if (msg.role === 'assistant' && msg.thinking) {
+            if (msg.role === 'assistant' && msg.thinking && msg.thinking.trim()) {
               expandedThinking.value.add(msg.id)
+              console.log('🔍 自动展开thinking消息:', msg.id, msg.thinking.substring(0, 50))
             }
           })
           
@@ -297,7 +315,7 @@ export default {
             currentSearchResults.value = searchResults
             currentSearchMessageId.value = latestMessageWithSearch.id
           } else {
-            // 清空右侧面板并确保收起状态
+            // 清空右侧面板内容，但保持用户设置的展开/收起状态
             currentSearchResults.value = []
             currentSearchMessageId.value = null
           }
@@ -779,7 +797,11 @@ export default {
       toggleThinking,
       currentSearchResults,
       currentSearchMessageId,
-      handleSearchIndicatorClick
+      handleSearchIndicatorClick,
+      leftSidebarCollapsed,
+      rightSidebarCollapsed,
+      toggleLeftSidebar,
+      toggleRightSidebar
     }
   }
 }
@@ -797,11 +819,35 @@ export default {
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
+  transition: width 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+  min-width: 60px;
 }
 
 .sidebar-header {
   padding: 20px;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 10px;
+}
+
+.sidebar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar.collapsed .sidebar-controls {
+  align-items: center;
+}
+
+.collapse-btn {
+  margin-top: 10px;
 }
 
 .user-info {
@@ -821,19 +867,25 @@ export default {
 }
 
 .conversation-item {
-  padding: 15px 20px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
   position: relative;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  margin: 4px 8px;
+  border-bottom: none;
 }
 
 .conversation-item:hover {
-  background: #f0f0f0;
+  background: #f8f9fa;
+  transform: translateX(2px);
 }
 
 .conversation-item.active {
-  background: #e3f2fd;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
+  border-left: 3px solid #409eff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
 }
 
 .conversation-title {
@@ -842,8 +894,9 @@ export default {
 }
 
 .conversation-time {
-  font-size: 12px;
-  color: #666;
+  font-size: 11px;
+  color: #999;
+  opacity: 0.8;
 }
 
 .delete-btn {
@@ -885,59 +938,67 @@ export default {
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
-  max-width: calc(100% - 40px);
-  margin: 0 auto;
+  padding: 20px 3% 20px 3%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .message-item {
   display: flex;
-  margin-bottom: 20px;
+  flex-direction: column;
+  margin-bottom: 12px;
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: 20px;
+  width: 100%;
 }
 
 .message-item.user {
-  flex-direction: row-reverse;
+  align-items: flex-end;
 }
 
-.message-avatar {
-  margin: 0 10px;
-}
-
-.ai-avatar {
-  background: #409eff;
+.message-item.assistant {
+  align-items: flex-start;
 }
 
 .message-content {
-  max-width: 600px;
-  flex: 1;
+  width: auto;
 }
 
 .message-item.user .message-content {
-  text-align: right;
-  max-width: 600px;
+  max-width: 70%;
+  margin-left: auto;
+}
+
+.message-item.assistant .message-content {
+  max-width: 100%;
+  width: 100%;
 }
 
 .message-text {
-  background: #f0f0f0;
-  padding: 10px 15px;
-  border-radius: 10px;
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 16px;
   word-wrap: break-word;
   word-break: break-word;
   overflow-wrap: break-word;
   position: relative;
-  max-width: 100%;
+  display: inline-block;
+  width: fit-content;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.message-item.assistant .message-text {
+  width: 100%;
 }
 
 .message-actions {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 6px;
+  right: 8px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease;
 }
 
 .message-text:hover .message-actions {
@@ -945,20 +1006,28 @@ export default {
 }
 
 .copy-btn {
-  padding: 4px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.8);
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
   color: #666;
+  backdrop-filter: blur(4px);
 }
 
 .copy-btn:hover {
   background: rgba(255, 255, 255, 1);
   color: #409eff;
+  transform: scale(1.05);
 }
 
 .message-item.user .message-text {
-  background: #409eff;
+  background: linear-gradient(135deg, #409eff 0%, #5dade2 100%);
   color: white;
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+.message-item.assistant .message-text {
+  border-radius: 16px 16px 16px 4px;
 }
 
 .message-item.user .copy-btn {
@@ -972,16 +1041,18 @@ export default {
 }
 
 .message-time {
-  font-size: 12px;
-  color: #666;
-  margin-top: 5px;
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
 }
 
 .typing-indicator {
-  display: flex;
-  padding: 10px 15px;
+  display: inline-flex;
+  padding: 12px 16px;
   background: #f0f0f0;
-  border-radius: 10px;
+  border-radius: 12px 12px 12px 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .typing-indicator span {
@@ -1025,6 +1096,10 @@ export default {
   background: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e9ecef;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 15px;
 }
 
 .search-toggle {
@@ -1049,6 +1124,10 @@ export default {
   display: flex;
   gap: 10px;
   align-items: flex-end;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .send-area {
@@ -1073,10 +1152,13 @@ export default {
 /* 推理过程样式 - 按照业界最佳实践 */
 .thinking-section {
   margin-bottom: 12px;
-  border: 1px solid #e1e4e8;
-  border-radius: 8px;
-  background: #f6f8fa;
+  border: 1px solid #e8ecf0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafe 0%, #f0f7ff 100%);
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .thinking-header {
