@@ -13,9 +13,9 @@ spring:
     
   # 数据源配置
   datasource:
-    # MySQL数据库配置
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/ai_chat?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false&createDatabaseIfNotExist=true
+    # PostgreSQL数据库配置
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/ai_chat
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:xupeng2016}
   
@@ -24,7 +24,7 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
-    database-platform: org.hibernate.dialect.MySQL8Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     
   # SQL初始化配置
   sql:
