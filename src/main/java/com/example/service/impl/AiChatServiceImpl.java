@@ -11,7 +11,7 @@ import com.example.service.ConversationService;
 import com.example.service.MessageService;
 import com.example.service.SearchService;
 import com.example.service.SseEmitterManager;
-import com.example.service.StreamingResponseHandler;
+import org.springframework.ai.chat.client.ChatClient;
 import com.example.service.dto.AiChatRequest;
 import com.example.service.dto.ChatMessage;
 import com.example.service.dto.ChatResponse;
@@ -19,22 +19,12 @@ import com.example.service.dto.SearchResult;
 import com.example.service.dto.SseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
-import org.apache.http.ssl.SSLContextBuilder;
-import javax.net.ssl.SSLContext;
-import org.apache.http.util.EntityUtils;
+import reactor.core.publisher.Flux;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -63,6 +53,8 @@ public class AiChatServiceImpl implements AiChatService {
 
   @Autowired private SseEmitterManager sseEmitterManager;
 
+  @Autowired private ChatClient chatClient;
+
   @Override
   public AiResponse chat(Long conversationId, String userMessage, String searchContext) {
     List<Message> history = getConversationHistory(conversationId);
@@ -81,11 +73,10 @@ public class AiChatServiceImpl implements AiChatService {
 
     try {
       List<ChatMessage> messages = buildMessageList(message, history, searchContext);
-      AiChatRequest request = createChatRequest(messages);
 
-      log.debug("发送AI聊天请求: {}", objectMapper.writeValueAsString(request));
+      log.debug("发送Spring AI聊天请求，消息数量: {}", messages.size());
 
-      return sendChatRequest(request);
+      return sendChatRequest(messages, searchContext);
 
     } catch (Exception e) {
       log.error("AI聊天请求失败: {}", e.getMessage(), e);
@@ -174,170 +165,187 @@ public class AiChatServiceImpl implements AiChatService {
     return messages;
   }
 
-  /** 创建聊天请求 */
-  private AiChatRequest createChatRequest(List<ChatMessage> messages) {
-    return AiChatRequest.create(
-        aiConfig.getModel(), messages, aiConfig.getTemperature(), aiConfig.getMaxTokens(), true);
-  }
 
-  /** 发送聊天请求 */
-  private AiResponse sendChatRequest(AiChatRequest request) throws IOException {
-    try (CloseableHttpClient httpClient = createSslFriendlyHttpClient()) {
-      HttpPost post = createHttpPost(request);
-
-      try (CloseableHttpResponse response = httpClient.execute(post)) {
-        return processHttpResponse(response);
-      }
-    }
-  }
-
-  /** 发送流式聊天请求 */
-  private void sendStreamingChatRequest(AiChatRequest request, Long conversationId, List<SearchResult> searchResults) throws IOException {
-    try (CloseableHttpClient httpClient = createSslFriendlyHttpClient()) {
-      HttpPost post = createHttpPost(request);
-
-      try (CloseableHttpResponse response = httpClient.execute(post)) {
-        processStreamingResponse(response, conversationId, searchResults);
-      }
-    }
-  }
-
-  /** 创建SSL友好的HttpClient */
-  private CloseableHttpClient createSslFriendlyHttpClient() {
+  /** 使用Spring AI发送同步聊天请求 */
+  private AiResponse sendChatRequest(List<ChatMessage> messages, String searchContext) {
     try {
-      SSLContext sslContext = SSLContextBuilder.create()
-          .loadTrustMaterial(new TrustSelfSignedStrategy())
-          .build();
+      String fullMessage = buildChatPrompt(messages, searchContext);
       
-      SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(
-          sslContext, 
-          SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER
-      );
+      log.debug("发送AI请求，消息长度: {}", fullMessage.length());
       
-      return HttpClients.custom()
-          .setSSLSocketFactory(socketFactory)
-          .build();
+      String response = chatClient.prompt()
+          .user(fullMessage)
+          .call()
+          .content();
+      
+      log.debug("AI响应成功，响应长度: {}", response != null ? response.length() : 0);
+      return new AiResponse(response, null);
+      
     } catch (Exception e) {
-      log.warn("创建SSL友好的HttpClient失败，使用默认配置: {}", e.getMessage());
-      return HttpClients.createDefault();
+      log.error("Spring AI同步聊天请求失败: {}", e.getMessage(), e);
+      return createErrorResponse(e);
     }
   }
-
-  /** 创建HTTP请求 */
-  private HttpPost createHttpPost(AiChatRequest request) throws IOException {
-    HttpPost post = new HttpPost(aiConfig.getChatApiUrl());
-
-    // 设置请求头
-    post.setHeader(HTTP_HEADER_CONTENT_TYPE, HTTP_CONTENT_TYPE_JSON);
-    post.setHeader(HTTP_HEADER_AUTHORIZATION, HTTP_AUTH_BEARER_PREFIX + aiConfig.getApiKey());
-
-    // 设置请求体
-    String jsonRequest = objectMapper.writeValueAsString(request);
-    post.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
-
-    return post;
-  }
-
-  /** 处理HTTP响应 */
-  private AiResponse processHttpResponse(CloseableHttpResponse response) throws IOException {
-    int statusCode = response.getStatusLine().getStatusCode();
-
-    if (statusCode != HTTP_STATUS_OK) {
-      log.warn("AI服务返回非200状态码: {}", statusCode);
-      return new AiResponse(DEFAULT_SORRY_MESSAGE, null);
-    }
-
-    HttpEntity entity = response.getEntity();
-    if (entity == null) {
-      log.warn("AI服务响应为空");
-      return new AiResponse(DEFAULT_SORRY_MESSAGE, null);
-    }
-
-    String responseString = EntityUtils.toString(entity, StandardCharsets.UTF_8);
-    return parseAiResponse(responseString);
-  }
-
-  /** 解析AI响应 */
-  private AiResponse parseAiResponse(String responseString) {
-    try {
-      ChatResponse chatResponse = objectMapper.readValue(responseString, ChatResponse.class);
-
-      if (chatResponse.getChoices() == null || chatResponse.getChoices().isEmpty()) {
-        log.warn("AI响应中choices为空");
-        return new AiResponse(DEFAULT_SORRY_MESSAGE, null);
-      }
-
-      ChatResponse.Choice firstChoice = chatResponse.getChoices().get(0);
-      ChatResponse.ResponseMessage message = firstChoice.getMessage();
-
-      if (message == null) {
-        log.warn("AI响应中message为空");
-        return new AiResponse(DEFAULT_SORRY_MESSAGE, null);
-      }
-
-      String content = message.getContent();
-      String thinking = message.getThinking();
-
-      return new AiResponse(content != null ? content : DEFAULT_SORRY_MESSAGE, thinking);
-
-    } catch (Exception e) {
-      log.error("解析AI响应失败: {}", e.getMessage(), e);
-      return new AiResponse(DEFAULT_SORRY_MESSAGE, null);
-    }
-  }
-
-  /** 处理流式响应 */
-  private void processStreamingResponse(CloseableHttpResponse response, Long conversationId, List<SearchResult> searchResults) {
-    StringBuilder fullResponse = new StringBuilder();
-    StringBuilder thinkingContent = new StringBuilder();
+  
+  /** 构建聊天提示 */
+  private String buildChatPrompt(List<ChatMessage> messages, String searchContext) {
+    StringBuilder prompt = new StringBuilder();
     
-    StreamingResponseHandler handler = new StreamingResponseHandler(
-        objectMapper,
-        // onChunk: 收到内容块时的处理
-        chunk -> {
-          fullResponse.append(chunk);
-          sendSseEvent(conversationId, SseEvent.chunk(chunk));
-        },
-        // onThinking: 收到思考内容时的处理
-        thinking -> {
-          thinkingContent.append(thinking);
-          sendSseEvent(conversationId, SseEvent.thinking(thinking));
-        },
-        // onComplete: 流式响应完成时的处理
-        () -> {
-          try {
-            // 保存完整的AI回复，包括thinking内容和搜索结果
-            Message aiMessage;
-            String thinking = thinkingContent.length() > 0 ? thinkingContent.toString() : null;
-            
-            if (searchResults != null && !searchResults.isEmpty()) {
-              String searchResultsJson = objectMapper.writeValueAsString(searchResults);
-              aiMessage = messageService.saveMessage(conversationId, ROLE_ASSISTANT, fullResponse.toString(), thinking, searchResultsJson);
-              log.debug("流式AI回复保存成功（含thinking和搜索结果），消息ID: {}, 搜索结果数量: {}", aiMessage.getId(), searchResults.size());
-            } else {
-              aiMessage = messageService.saveMessage(conversationId, ROLE_ASSISTANT, fullResponse.toString(), thinking, null);
-              log.debug("流式AI回复保存成功（含thinking），消息ID: {}", aiMessage.getId());
+    // 添加搜索上下文
+    if (StringUtils.hasText(searchContext)) {
+      prompt.append("基于以下搜索结果回答用户问题：\n").append(searchContext).append("\n\n");
+    }
+    
+    // 添加消息历史
+    for (ChatMessage msg : messages) {
+      if ("user".equals(msg.getRole())) {
+        prompt.append("用户: ").append(msg.getContent()).append("\n");
+      } else if ("assistant".equals(msg.getRole())) {
+        prompt.append("助手: ").append(msg.getContent()).append("\n");
+      }
+    }
+    
+    return prompt.toString();
+  }
+
+  /** 使用Spring AI进行流式聊天请求 */
+  private void sendStreamingChatRequest(String userMessage, String searchContext, Long conversationId, List<SearchResult> searchResults) {
+    try {
+      List<Message> history = getConversationHistory(conversationId);
+      String fullPrompt = buildFullPrompt(userMessage, searchContext, history);
+      
+      log.debug("发送流式AI请求，会话ID: {}, 提示长度: {}", conversationId, fullPrompt.length());
+      
+      // 使用Spring AI流式API获取回答内容，同时并行获取推理内容
+      StringBuilder responseBuilder = new StringBuilder();
+      StringBuilder reasoningBuilder = new StringBuilder();
+      
+      chatClient.prompt()
+          .user(fullPrompt)
+          .stream()
+          .chatResponse()
+          .doOnNext(chatResponse -> {
+            try {
+              log.debug("🔍 收到ChatResponse: {}", chatResponse);
+              
+              if (chatResponse != null && chatResponse.getResults() != null && !chatResponse.getResults().isEmpty()) {
+                log.debug("📊 ChatResponse结果数量: {}", chatResponse.getResults().size());
+                
+                var generation = chatResponse.getResults().get(0);
+                log.debug("🎯 Generation对象: {}", generation);
+                log.debug("🎯 Generation类型: {}", generation.getClass().getName());
+                
+                var output = generation.getOutput();
+                log.debug("📝 Output对象: {}", output);
+                log.debug("📝 Output类型: {}", output.getClass().getName());
+                
+                // 处理内容部分
+                if (output instanceof org.springframework.ai.chat.messages.AssistantMessage) {
+                  org.springframework.ai.chat.messages.AssistantMessage assistantMsg = (org.springframework.ai.chat.messages.AssistantMessage) output;
+                  String content = assistantMsg.getText();
+                  log.debug("💬 消息内容: [{}]", content);
+                  
+                  if (content != null && !content.isEmpty()) {
+                    sendSseEvent(conversationId, SseEvent.chunk(content));
+                    responseBuilder.append(content);
+                  }
+                  
+                  // 详细检查metadata
+                  var metadata = assistantMsg.getMetadata();
+                  log.debug("🔧 Metadata对象: {}", metadata);
+                  if (metadata != null) {
+                    log.debug("🔧 Metadata键值对:");
+                    metadata.forEach((key, value) -> {
+                      log.debug("   {} = {} (类型: {})", key, value, value != null ? value.getClass().getName() : "null");
+                    });
+                    
+                    // 检查各种可能的推理内容字段
+                    String reasoning = null;
+                    if (metadata.containsKey("reasoning_content")) {
+                      reasoning = (String) metadata.get("reasoning_content");
+                      log.debug("✅ 找到reasoning_content: [{}]", reasoning);
+                    } else if (metadata.containsKey("reasoningContent")) {
+                      reasoning = (String) metadata.get("reasoningContent");
+                      log.debug("✅ 找到reasoningContent: [{}]", reasoning);
+                    } else if (metadata.containsKey("thinking")) {
+                      reasoning = (String) metadata.get("thinking");
+                      log.debug("✅ 找到thinking: [{}]", reasoning);
+                    } else {
+                      log.debug("❌ 未找到推理内容字段");
+                    }
+                    
+                    if (reasoning != null && !reasoning.isEmpty()) {
+                      reasoningBuilder.append(reasoning);
+                      log.debug("📝 累积推理内容长度: {}", reasoningBuilder.length());
+                    }
+                  } else {
+                    log.debug("❌ Metadata为null");
+                  }
+                } else {
+                  log.debug("❌ Output不是AssistantMessage类型: {}", output.getClass().getName());
+                }
+              } else {
+                log.debug("❌ ChatResponse为空或无结果");
+              }
+            } catch (Exception e) {
+              log.error("处理流式ChatResponse失败: {}", e.getMessage(), e);
             }
-            
-            // 标题已在用户发送消息时生成，无需重复处理
-
-            // 发送结束事件
-            sendSseEvent(conversationId, SseEvent.end(aiMessage.getId()));
-            log.debug("流式AI回复发送完成，会话ID: {}", conversationId);
-          } catch (Exception e) {
-            log.error("保存流式AI回复时发生异常，会话ID: {}", conversationId, e);
-            handleAiResponseError(conversationId, e);
-          }
-        },
-        // onError: 流式响应出错时的处理
-        error -> {
-          log.error("处理流式响应时发生异常，会话ID: {}", conversationId, error);
-          handleAiResponseError(conversationId, error);
-        }
-    );
-    
-    handler.handleResponse(response);
+          })
+          .doOnComplete(() -> {
+            try {
+              // 并行获取推理内容
+              CompletableFuture<String> reasoningTask = CompletableFuture.supplyAsync(() -> {
+                try {
+                  return extractReasoningContentFromModelScope(fullPrompt);
+                } catch (Exception e) {
+                  log.error("提取推理内容失败: {}", e.getMessage(), e);
+                  return "";
+                }
+              });
+              
+              // 流式响应完成后保存完整消息
+              String fullResponse = responseBuilder.toString();
+              
+              if (!fullResponse.isEmpty()) {
+                // 等待推理内容提取完成（最多等待5秒）
+                String reasoning = "";
+                try {
+                  reasoning = reasoningTask.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (Exception e) {
+                  log.warn("获取推理内容超时或失败: {}", e.getMessage());
+                }
+                
+                // 保存消息时包含推理内容
+                String thinkingContent = reasoning.isEmpty() ? null : reasoning;
+                Message aiMessage = messageService.saveMessage(conversationId, ROLE_ASSISTANT, fullResponse, thinkingContent, null);
+                sendSseEvent(conversationId, SseEvent.end(aiMessage.getId()));
+                log.debug("Spring AI流式响应完成，会话ID: {}, 响应长度: {}, 推理长度: {}", 
+                    conversationId, fullResponse.length(), reasoning.length());
+              } else {
+                log.warn("AI响应为空，会话ID: {}", conversationId);
+                sendSseEvent(conversationId, SseEvent.error("AI响应为空，请重试"));
+              }
+            } catch (Exception e) {
+              log.error("保存AI消息失败: {}", e.getMessage(), e);
+              handleAiResponseError(conversationId, e);
+            }
+          })
+          .doOnError(error -> {
+            log.error("Spring AI流式响应失败，会话ID: {}: {}", conversationId, error.getMessage(), error);
+            handleAiResponseError(conversationId, error);
+          })
+          .subscribe(); // 启动流式处理
+          
+    } catch (Exception e) {
+      log.error("Spring AI流式聊天请求失败，会话ID: {}: {}", conversationId, e.getMessage(), e);
+      handleAiResponseError(conversationId, e);
+    }
   }
+
+
+
+
+
 
   /** 创建错误响应 */
   private AiResponse createErrorResponse(Exception e) {
@@ -385,9 +393,12 @@ public class AiChatServiceImpl implements AiChatService {
   }
 
   /** 处理AI回复错误并回滚用户消息 */
-  private void handleAiResponseError(Long conversationId, Exception e) {
+  private void handleAiResponseError(Long conversationId, Throwable e) {
     Long userMessageId = CURRENT_USER_MESSAGE_ID.get();
     log.error("处理AI回复时发生异常，会话ID: {}, 需要回滚用户消息ID: {}", conversationId, userMessageId, e);
+    
+    // 分析错误类型，提供更具体的错误信息
+    String errorMessage = getSpecificErrorMessage(e);
     
     if (userMessageId != null) {
       // 回滚用户消息
@@ -396,14 +407,41 @@ public class AiChatServiceImpl implements AiChatService {
         log.info("回滚用户消息成功，消息ID: {}", userMessageId);
         
         // 发送回滚通知
-        sendSseEvent(conversationId, SseEvent.error("网络错误，消息已回滚，请重试"));
+        sendSseEvent(conversationId, SseEvent.error("处理消息时发生错误: " + errorMessage));
       } catch (Exception rollbackException) {
         log.error("回滚用户消息失败，消息ID: {}", userMessageId, rollbackException);
-        sendSseEvent(conversationId, SseEvent.error(ERROR_AI_SERVICE_EXCEPTION + e.getMessage()));
+        sendSseEvent(conversationId, SseEvent.error("系统错误: " + errorMessage));
       }
     } else {
-      sendSseEvent(conversationId, SseEvent.error(ERROR_AI_SERVICE_EXCEPTION + e.getMessage()));
+      sendSseEvent(conversationId, SseEvent.error("处理消息时发生错误: " + errorMessage));
     }
+  }
+  
+  /** 获取具体的错误信息 */
+  private String getSpecificErrorMessage(Throwable e) {
+    String message = e.getMessage();
+    if (message == null) {
+      message = e.getClass().getSimpleName();
+    }
+    
+    // 检查是否是HTTP错误
+    if (message.contains("400")) {
+      return "400 Bad Request from POST " + aiConfig.getChatApiUrl();
+    } else if (message.contains("401")) {
+      return "API密钥无效，请检查配置";
+    } else if (message.contains("403")) {
+      return "API访问被拒绝，请检查权限";
+    } else if (message.contains("429")) {
+      return "API调用频率超限，请稍后重试";
+    } else if (message.contains("500")) {
+      return "AI服务内部错误，请稍后重试";
+    } else if (message.contains("timeout") || message.contains("Timeout")) {
+      return "请求超时，请检查网络连接";
+    } else if (message.contains("Connection")) {
+      return "网络连接失败，请检查网络";
+    }
+    
+    return message;
   }
 
   /** 处理搜索（如果启用） */
@@ -460,13 +498,8 @@ public class AiChatServiceImpl implements AiChatService {
       List<Message> history = getConversationHistory(conversationId);
       List<ChatMessage> messageHistory = convertMessagesToHistory(history);
 
-      List<ChatMessage> messages = buildMessageList(userMessage, messageHistory, searchContext);
-      AiChatRequest request = createChatRequest(messages);
-
-      log.debug("发送流式AI聊天请求: {}", objectMapper.writeValueAsString(request));
-
-      // 使用真正的流式处理
-      sendStreamingChatRequest(request, conversationId, searchResults);
+      // 使用Spring AI简化的流式处理
+      sendStreamingChatRequest(userMessage, searchContext, conversationId, searchResults);
       
       // 流式处理中内容已经通过SSE发送，这里返回空字符串
       return "";
@@ -476,6 +509,35 @@ public class AiChatServiceImpl implements AiChatService {
       handleAiResponseError(conversationId, e);
       return DEFAULT_SORRY_MESSAGE;
     }
+  }
+
+  /** 构建完整的提示文本，包含历史消息和搜索上下文 */
+  private String buildFullPrompt(String userMessage, String searchContext, List<Message> history) {
+    StringBuilder prompt = new StringBuilder();
+    
+    // 添加搜索上下文（如果有）
+    if (StringUtils.hasText(searchContext)) {
+      prompt.append("基于以下搜索结果回答用户问题：\n").append(searchContext).append("\n\n");
+    }
+    
+    // 添加历史对话（最近10条，避免过长）
+    if (history != null && !history.isEmpty()) {
+      int startIndex = Math.max(0, history.size() - 10);
+      for (int i = startIndex; i < history.size(); i++) {
+        Message msg = history.get(i);
+        if (ROLE_USER.equals(msg.getRole())) {
+          prompt.append("用户: ").append(msg.getContent()).append("\n");
+        } else if (ROLE_ASSISTANT.equals(msg.getRole())) {
+          prompt.append("助手: ").append(msg.getContent()).append("\n");
+        }
+      }
+      prompt.append("\n");
+    }
+    
+    // 添加当前用户消息
+    prompt.append("用户: ").append(userMessage);
+    
+    return prompt.toString();
   }
 
   /** 转换消息为历史记录格式 */
@@ -588,5 +650,85 @@ public class AiChatServiceImpl implements AiChatService {
   private void sendSseEvent(Long conversationId, String eventType, Object data) {
     SseEvent event = new SseEvent(eventType, data);
     sendSseEvent(conversationId, event);
+  }
+
+  /** 从魔搭API提取推理内容 */
+  private String extractReasoningContentFromModelScope(String prompt) throws Exception {
+    log.debug("🔍 开始提取推理内容");
+    
+    // 构建请求体
+    Map<String, Object> requestBody = new HashMap<>();
+    requestBody.put("model", aiConfig.getModel());
+    requestBody.put("messages", List.of(
+        Map.of("role", "system", "content", "你是一个有用的AI助手。"),
+        Map.of("role", "user", "content", prompt)
+    ));
+    requestBody.put("max_tokens", aiConfig.getMaxTokens());
+    requestBody.put("temperature", aiConfig.getTemperature());
+    requestBody.put("stream", true);
+    requestBody.put("reasoning_effort", "high");
+    
+    // 使用RestTemplate调用魔搭API
+    org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+    
+    // 设置请求头
+    org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+    headers.setBearerAuth(aiConfig.getApiKey());
+    
+    org.springframework.http.HttpEntity<Map<String, Object>> entity = 
+        new org.springframework.http.HttpEntity<>(requestBody, headers);
+    
+    StringBuilder reasoningContent = new StringBuilder();
+    
+    try {
+      // 发送请求并处理流式响应
+      restTemplate.execute(
+          aiConfig.getChatApiUrl(),
+          org.springframework.http.HttpMethod.POST,
+          request -> {
+            request.getHeaders().putAll(headers);
+            objectMapper.writeValue(request.getBody(), requestBody);
+          },
+          response -> {
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(response.getBody(), java.nio.charset.StandardCharsets.UTF_8))) {
+              
+              String line;
+              while ((line = reader.readLine()) != null) {
+                if (line.startsWith("data: ") && !line.contains("[DONE]")) {
+                  try {
+                    String jsonData = line.substring(6).trim();
+                    com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(jsonData);
+                    com.fasterxml.jackson.databind.JsonNode choices = root.get("choices");
+                    
+                    if (choices != null && choices.isArray() && choices.size() > 0) {
+                      com.fasterxml.jackson.databind.JsonNode delta = choices.get(0).get("delta");
+                      if (delta != null) {
+                        com.fasterxml.jackson.databind.JsonNode reasoningNode = delta.get("reasoning_content");
+                        if (reasoningNode != null && !reasoningNode.asText().isEmpty()) {
+                          String reasoning = reasoningNode.asText();
+                          reasoningContent.append(reasoning);
+                          log.debug("📝 提取推理片段: [{}]", reasoning);
+                        }
+                      }
+                    }
+                  } catch (Exception e) {
+                    log.debug("解析SSE数据失败: {}", e.getMessage());
+                  }
+                }
+              }
+            }
+            return null;
+          }
+      );
+    } catch (Exception e) {
+      log.error("调用魔搭API失败: {}", e.getMessage(), e);
+      throw e;
+    }
+    
+    String result = reasoningContent.toString();
+    log.debug("✅ 推理内容提取完成，长度: {}", result.length());
+    return result;
   }
 }

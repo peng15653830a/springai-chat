@@ -1,7 +1,11 @@
 package com.example.config;
 
 import lombok.Data;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,6 +15,7 @@ import org.springframework.stereotype.Component;
  */
 @Data
 @Component
+@Configuration
 @ConfigurationProperties(prefix = "spring.ai.openai")
 public class AiConfig {
 
@@ -68,5 +73,12 @@ public class AiConfig {
   /** 获取完整的聊天API URL */
   public String getChatApiUrl() {
     return baseUrl.endsWith("/") ? baseUrl + "chat/completions" : baseUrl + "/chat/completions";
+  }
+
+  @Bean
+  public ChatClient chatClient(ChatModel chatModel) {
+    return ChatClient.builder(chatModel)
+        .defaultSystem("你是一个有用的AI助手。")
+        .build();
   }
 }

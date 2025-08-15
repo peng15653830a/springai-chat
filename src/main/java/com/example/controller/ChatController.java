@@ -54,9 +54,54 @@ public class ChatController {
         request.getContent() != null ? request.getContent().length() : 0,
         request.getSearchEnabled());
 
-    Message userMessage =
-        aiChatService.sendMessage(conversationId, request.getContent(), request.getSearchEnabled());
-    log.info("消息发送处理完成，会话ID: {}", conversationId);
-    return ApiResponse.success("消息发送成功", userMessage);
+    try {
+      Message userMessage =
+          aiChatService.sendMessage(conversationId, request.getContent(), request.getSearchEnabled());
+      log.info("消息发送处理完成，会话ID: {}", conversationId);
+      return ApiResponse.success("消息发送成功", userMessage);
+    } catch (Exception e) {
+      log.error("消息发送失败，会话ID: {}", conversationId, e);
+      return ApiResponse.error("消息发送失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 测试AI配置是否正常
+   *
+   * @return 测试结果
+   */
+  @GetMapping("/test")
+  public ApiResponse<String> testAiConfig() {
+    log.info("测试AI配置");
+    try {
+      // 简单的测试调用
+      var response = aiChatService.chatWithAi("你好，这是一个测试", java.util.Collections.emptyList());
+      return ApiResponse.success("AI配置测试成功", response.getContent());
+    } catch (Exception e) {
+      log.error("AI配置测试失败", e);
+      return ApiResponse.error("AI配置测试失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 查看AI配置信息
+   *
+   * @return 配置信息
+   */
+  @GetMapping("/config")
+  public ApiResponse<java.util.Map<String, Object>> getAiConfig() {
+    java.util.Map<String, Object> config = new java.util.HashMap<>();
+    
+    // 从环境变量和配置文件中获取值
+    config.put("api-key", System.getProperty("spring.ai.openai.api-key", "未设置"));
+    config.put("base-url", System.getProperty("spring.ai.openai.base-url", "未设置"));
+    config.put("model", System.getProperty("spring.ai.openai.chat.options.model", "未设置"));
+    
+    // 从环境变量获取
+    config.put("env-api-key", System.getenv("OPENAI_API_KEY"));
+    config.put("env-base-url", System.getenv("OPENAI_BASE_URL"));
+    config.put("env-model", System.getenv("OPENAI_MODEL"));
+    
+    return ApiResponse.success("AI配置信息", config);
   }
 }

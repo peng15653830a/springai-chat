@@ -1,10 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mvn:*)"
+      "Bash(JAVA_HOME=/Users/pengxu/Library/Java/JavaVirtualMachines/azul-17.0.3/Contents/Home mvn spring-boot:run -Dspring-boot.run.profiles=dev)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/pengxu/.m2"
+    ]
   },
   "hooks": {
     "post-edit": [
