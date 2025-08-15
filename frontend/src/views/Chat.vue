@@ -38,7 +38,7 @@
             @click.stop="deleteConversation(conversation.id)"
             type="danger"
             size="small"
-            link
+            :link="true"
             class="delete-btn"
           >
             <el-icon><Delete /></el-icon>
@@ -91,8 +91,8 @@
                   v-show="expandedThinking.has(message.id)" 
                   class="thinking-content"
                 >
-                  <v-md-preview 
-                    :text="message.thinking || ''"
+                  <VueMarkdownRender 
+                    :source="String(message.thinking || '')"
                     class="thinking-body"
                   />
                 </div>
@@ -103,14 +103,14 @@
                 <div v-if="message.role === 'user'" class="message-body">
                   {{ message.content }}
                 </div>
-                <v-md-preview 
+                <VueMarkdownRender 
                   v-else
-                  :text="message.content || ''"
+                  :source="String(message.content || '')"
                   class="message-body markdown-content"
                 />
                 <div class="message-actions">
                   <el-button
-                    link
+                    :link="true"
                     size="small"
                     @click="copyMessage(message.content)"
                     class="copy-btn"
@@ -201,24 +201,17 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
 import { conversationApi, chatApi } from '../api'
-import VMdPreview from '@kangc/v-md-editor/lib/preview'
-import '@kangc/v-md-editor/lib/style/preview.css'
-import githubTheme from '@kangc/v-md-editor/lib/theme/github.js'
-import '@kangc/v-md-editor/lib/theme/style/github.css'
+import { useEventSource } from '@vueuse/core'
 import hljs from 'highlight.js'
 import { debounce } from 'lodash-es'
 import SearchIndicator from '../components/SearchIndicator.vue'
 import RightPanel from '../components/RightPanel.vue'
-
-// 使用 GitHub 主题，配置代码高亮
-VMdPreview.use(githubTheme, {
-  Hljs: hljs,
-})
+import VueMarkdownRender from 'vue-markdown-render'
 
 export default {
   name: 'Chat',
   components: {
-    VMdPreview,
+    VueMarkdownRender,
     SearchIndicator,
     RightPanel
   },
@@ -230,7 +223,102 @@ export default {
     const rightPanel = ref() // 右侧面板引用
     const searchEnabled = ref(true) // 默认开启搜索
     const expandedThinking = ref(new Set()) // 展开的推理过程ID集合
-    const eventSource = ref(null) // 存储EventSource实例
+    
+    // SSE连接URL - 使用useEventSource
+    const sseUrl = computed(() => 
+      chatStore.currentConversation?.id 
+        ? `/api/chat/stream/${chatStore.currentConversation.id}`
+        : undefined  // 使用undefined而不是null，useEventSource更好处理
+    )
+    
+    // 使用VueUse的专业SSE组件
+    const { data: sseData, status: sseStatus, error: sseError, close: closeSSE, open: openSSE } = useEventSource(
+      sseUrl,
+      [],
+      {
+        immediate: false,  // 不立即连接，等到有有效URL时再连接
+        autoReconnect: {
+          retries: 3,
+          delay: 1000,
+          onFailed() {
+            ElMessage.error('连接失败，请检查网络')
+          }
+        }
+      }
+    )
+    
+    // 监听URL变化，有效时才开启连接
+    watch(sseUrl, (newUrl) => {
+      if (newUrl) {
+        console.log('🔗 开启SSE连接:', newUrl)
+        openSSE()
+      } else {
+        console.log('🔌 关闭SSE连接')
+        closeSSE()
+      }
+    })
+    
+    // 监听SSE数据变化
+    watch(sseData, (newData) => {
+      if (newData) {
+        try {
+          const sseEvent = JSON.parse(newData)
+          handleSSEEvent(sseEvent)
+        } catch (error) {
+          console.error('❌ 解析SSE事件失败:', error, newData)
+        }
+      }
+    })
+    
+    // 监听SSE连接状态
+    watch(sseStatus, (status) => {
+      console.log('📡 SSE状态变化:', status)
+      chatStore.setConnected(status === 'OPEN')
+      if (status === 'CLOSED' || status === 'CONNECTING') {
+        chatStore.setLoading(false)
+      }
+    })
+    
+    // 监听SSE错误
+    watch(sseError, (error) => {
+      if (error) {
+        console.error('❌ SSE连接错误:', error)
+        chatStore.setLoading(false)
+        chatStore.setConnected(false)
+      }
+    })
+    
+    // 统一SSE事件处理器
+    const handleSSEEvent = (sseEvent) => {
+      const { type, data } = sseEvent
+      console.log('📨 收到SSE事件:', type, data)
+      
+      switch (type) {
+        case 'start':
+          handleStartEvent(data)
+          break
+        case 'chunk':
+          handleChunkEvent(data)
+          break
+        case 'thinking':
+          handleThinkingEvent(data)
+          break
+        case 'search':
+          handleSearchEvent(data)
+          break
+        case 'search_results':
+          handleSearchResultsEvent(data)
+          break
+        case 'end':
+          handleEndEvent(data)
+          break
+        case 'error':
+          handleErrorEvent(data)
+          break
+        default:
+          console.warn('未知SSE事件类型:', type)
+      }
+    }
     
     // 侧边栏收缩状态
     const leftSidebarCollapsed = ref(false)
@@ -277,7 +365,7 @@ export default {
       }
     }
     
-    // 选择对话 - 使用标准EventSource
+    // 选择对话 - 使用useEventSource自动管理连接
     const selectConversation = async (conversation) => {
       // 防止重复点击同一对话
       if (chatStore.currentConversation?.id === conversation.id) {
@@ -288,8 +376,7 @@ export default {
       console.log('🔄 切换到对话:', conversation.id)
       chatStore.setCurrentConversation(conversation)
       
-      // 断开之前的SSE连接
-      disconnectSSE()
+      // useEventSource会自动管理连接，无需手动断开
       
       // 加载消息历史
       try {
@@ -326,17 +413,7 @@ export default {
         console.error('Load messages error:', error)
       }
       
-      // 建立标准SSE连接
-      setupEventSource(conversation.id)
-    }
-    
-    // 断开SSE连接
-    const disconnectSSE = () => {
-      if (eventSource.value) {
-        console.log('🔌 断开SSE连接')
-        eventSource.value.close()
-        eventSource.value = null
-      }
+      // useEventSource会根据sseUrl的变化自动建立新连接
     }
     
     // 删除对话
@@ -391,76 +468,6 @@ export default {
       }
     }
     
-    // 建立标准EventSource连接
-    const setupEventSource = (conversationId) => {
-      // 先断开现有连接
-      disconnectSSE()
-      
-      console.log('🔗 建立SSE连接到对话:', conversationId)
-      
-      // 创建标准EventSource
-      const source = new EventSource(`/api/chat/stream/${conversationId}`)
-      eventSource.value = source
-      
-      // 统一SSE事件分发器
-      source.onmessage = (event) => {
-        try {
-          // 解析标准SSE事件数据
-          const sseEvent = JSON.parse(event.data)
-          const { type, data } = sseEvent
-          
-          console.log('📨 收到SSE事件:', type, data)
-          
-          // 根据事件类型分发处理
-          switch (type) {
-            case 'start':
-              handleStartEvent(data)
-              break
-            case 'chunk':
-              handleChunkEvent(data)
-              break
-            case 'thinking':
-              handleThinkingEvent(data)
-              break
-            case 'search':
-              handleSearchEvent(data)
-              break
-            case 'search_results':
-              handleSearchResultsEvent(data)
-              break
-            case 'end':
-              handleEndEvent(data)
-              break
-            case 'error':
-              handleErrorEvent(data)
-              break
-            default:
-              console.warn('未知SSE事件类型:', type)
-          }
-        } catch (error) {
-          console.error('❌ 解析SSE事件失败:', error, event.data)
-        }
-      }
-      
-      source.onerror = (error) => {
-        console.error('❌ SSE连接错误:', error)
-        chatStore.setLoading(false)
-        chatStore.setConnected(false)
-        
-        // 只在真正的连接错误时显示提示
-        if (source.readyState === EventSource.CLOSED) {
-          console.debug('🔌 SSE连接正常关闭')
-        } else {
-          ElMessage.error('连接异常，请刷新页面重试')
-        }
-      }
-      
-      source.onopen = () => {
-        console.log('✅ SSE连接已建立')
-        chatStore.setConnected(true)
-      }
-    }
-    
     // SSE事件处理函数
     const handleStartEvent = (data) => {
       console.log('🎯 SSE start event received:', data)
@@ -486,10 +493,12 @@ export default {
             id: 'temp-' + Date.now(),
             role: 'assistant',
             content: '',
+            thinking: '',  // 确保有thinking字段
             createdAt: new Date()
           }
           chatStore.addMessage(newMessage)
           lastMessage = newMessage
+          console.log('📝 Chunk事件创建新消息:', lastMessage.id)
         }
         
         // 更新内容 - v-md-preview会自动处理渲染
@@ -511,7 +520,18 @@ export default {
         if (chatStore.messages.length > 0 && data?.messageId) {
           const lastMessage = chatStore.messages[chatStore.messages.length - 1]
           if (lastMessage.role === 'assistant') {
-            lastMessage.id = data.messageId
+            const oldId = lastMessage.id
+            const newId = data.messageId
+            
+            // 更新消息ID
+            lastMessage.id = newId
+            
+            // 如果旧ID在expandedThinking中，需要更新为新ID
+            if (expandedThinking.value.has(oldId)) {
+              expandedThinking.value.delete(oldId)
+              expandedThinking.value.add(newId)
+              console.log('✅ 更新推理过程展开状态:', oldId, '->', newId)
+            }
           }
         }
         
@@ -580,7 +600,7 @@ export default {
           // 如果不是assistant消息，创建新的
           if (!lastMessage || lastMessage.role !== 'assistant') {
             const newMessage = {
-              id: 'temp-thinking-' + Date.now(),
+              id: 'temp-' + Date.now(),
               role: 'assistant',
               content: '',
               thinking: '',
@@ -588,9 +608,13 @@ export default {
             }
             chatStore.addMessage(newMessage)
             lastMessage = newMessage
-            
-            // thinking开始时自动展开推理过程
+            console.log('🧠 Thinking事件创建新消息:', lastMessage.id)
+          }
+          
+          // 如果这个消息有thinking内容，自动展开推理过程
+          if (lastMessage && lastMessage.role === 'assistant' && !expandedThinking.value.has(lastMessage.id)) {
             expandedThinking.value.add(lastMessage.id)
+            console.log('🧠 自动展开推理过程:', lastMessage.id, '当前展开列表:', Array.from(expandedThinking.value))
           }
           
           // 累加thinking内容 - 与chunk处理完全一致
@@ -749,10 +773,9 @@ export default {
       // EventSource无需全局配置
     })
     
-    // 组件销毁前确保断开SSE连接
+    // 组件销毁时useEventSource会自动清理连接
     onBeforeUnmount(() => {
-      console.log('🗑️ 组件销毁，断开SSE连接')
-      disconnectSSE()
+      console.log('🗑️ 组件销毁，useEventSource自动清理连接')
     })
     
     // 解析搜索结果JSON数据
