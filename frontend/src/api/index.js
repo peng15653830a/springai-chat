@@ -44,12 +44,9 @@ export const conversationApi = {
   getMessages: (id) => api.get(`/conversations/${id}/messages`)
 }
 
-// 聊天API
+// 聊天API  
 export const chatApi = {
-  sendMessage: (conversationId, data) => api.post(`/chat/conversations/${conversationId}/messages`, data),
-  connectSSE: (conversationId) => {
-    return new EventSource(`/api/chat/stream/${conversationId}`)
-  }
+  // 这里不需要API方法了，直接使用useEventSource管理SSE连接
 }
 
 export default api

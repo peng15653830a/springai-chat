@@ -138,25 +138,48 @@
         
         <!-- 输入区域 -->
         <div class="input-area">
-          <!-- 搜索设置栏 -->
-          <div class="search-settings">
-            <div class="search-toggle">
-              <el-switch
-                v-model="searchEnabled"
-                inline-prompt
-                active-text="🔍"
-                inactive-text="🚫"
-                @change="onSearchToggle"
-              />
-              <span class="search-label">
-                {{ searchEnabled ? '联网搜索已开启' : '联网搜索已关闭' }}
-              </span>
+          <!-- 功能设置栏 -->
+          <div class="function-settings">
+            <div class="setting-group">
+              <div class="setting-toggle">
+                <el-switch
+                  v-model="searchEnabled"
+                  inline-prompt
+                  active-text="🔍"
+                  inactive-text="🚫"
+                  @change="onSearchToggle"
+                />
+                <span class="setting-label">
+                  {{ searchEnabled ? '联网搜索已开启' : '联网搜索已关闭' }}
+                </span>
+              </div>
+              <div class="setting-status" v-if="searchEnabled">
+                <el-tag size="small" type="success">
+                  <el-icon><Connection /></el-icon>
+                  智能搜索
+                </el-tag>
+              </div>
             </div>
-            <div class="search-status" v-if="searchEnabled">
-              <el-tag size="small" type="success">
-                <el-icon><Connection /></el-icon>
-                智能搜索
-              </el-tag>
+            
+            <div class="setting-group">
+              <div class="setting-toggle">
+                <el-switch
+                  v-model="deepThinking"
+                  inline-prompt
+                  active-text="🧠"
+                  inactive-text="💭"
+                  @change="onDeepThinkingToggle"
+                />
+                <span class="setting-label">
+                  {{ deepThinking ? '深度思考已开启' : '深度思考已关闭' }}
+                </span>
+              </div>
+              <div class="setting-status" v-if="deepThinking">
+                <el-tag size="small" type="warning">
+                  <el-icon><Operation /></el-icon>
+                  推理模式
+                </el-tag>
+              </div>
             </div>
           </div>
           
@@ -222,43 +245,53 @@ export default {
     const messageList = ref()
     const rightPanel = ref() // 右侧面板引用
     const searchEnabled = ref(true) // 默认开启搜索
+    const deepThinking = ref(false) // 默认关闭深度思考
     const expandedThinking = ref(new Set()) // 展开的推理过程ID集合
     
-    // SSE连接URL - 使用useEventSource
-    const sseUrl = computed(() => 
-      chatStore.currentConversation?.id 
-        ? `/api/chat/stream/${chatStore.currentConversation.id}`
-        : undefined  // 使用undefined而不是null，useEventSource更好处理
-    )
+    // 待发送的消息（用于触发SSE连接）
+    const pendingMessage = ref('')
+    const pendingSearchEnabled = ref(false)
+    const pendingDeepThinking = ref(false)
     
-    // 使用VueUse的专业SSE组件
-    const { data: sseData, status: sseStatus, error: sseError, close: closeSSE, open: openSSE } = useEventSource(
+    // 动态SSE URL - 只在有待发送消息时才建立连接
+    const sseUrl = computed(() => {
+      if (!chatStore.currentConversation?.id || !pendingMessage.value) {
+        return undefined // 无消息时不建立连接
+      }
+      
+      const params = new URLSearchParams({
+        message: pendingMessage.value,
+        searchEnabled: pendingSearchEnabled.value.toString(),
+        deepThinking: pendingDeepThinking.value.toString()
+      })
+      return `/api/chat/stream/${chatStore.currentConversation.id}?${params}`
+    })
+    
+    // 使用useEventSource - 配置为按需连接，减少服务停止后的重连
+    const { data: sseData, status: sseStatus, error: sseError, close: closeSSE } = useEventSource(
       sseUrl,
       [],
       {
-        immediate: false,  // 不立即连接，等到有有效URL时再连接
+        immediate: false, // 不立即连接
         autoReconnect: {
-          retries: 3,
-          delay: 1000,
+          retries: 2, // 最多重试2次
+          delay: 3000, // 3秒重试间隔
           onFailed() {
-            ElMessage.error('连接失败，请检查网络')
+            console.log('🔌 SSE连接最终失败，停止重试')
+            chatStore.setLoading(false)
+            chatStore.setConnected(false)
+            // 清理待发送消息，停止进一步重连
+            pendingMessage.value = ''
+            pendingSearchEnabled.value = false
+            pendingDeepThinking.value = false
+            // 显示用户友好的错误信息
+            ElMessage.warning('服务连接中断，请检查服务是否正在运行')
           }
         }
       }
     )
     
-    // 监听URL变化，有效时才开启连接
-    watch(sseUrl, (newUrl) => {
-      if (newUrl) {
-        console.log('🔗 开启SSE连接:', newUrl)
-        openSSE()
-      } else {
-        console.log('🔌 关闭SSE连接')
-        closeSSE()
-      }
-    })
-    
-    // 监听SSE数据变化
+    // 监听SSE数据
     watch(sseData, (newData) => {
       if (newData) {
         try {
@@ -270,11 +303,16 @@ export default {
       }
     })
     
-    // 监听SSE连接状态
+    // 监听SSE状态
     watch(sseStatus, (status) => {
       console.log('📡 SSE状态变化:', status)
       chatStore.setConnected(status === 'OPEN')
-      if (status === 'CLOSED' || status === 'CONNECTING') {
+      
+      if (status === 'CLOSED') {
+        // 连接关闭后清理待发送消息
+        pendingMessage.value = ''
+        pendingSearchEnabled.value = false
+        pendingDeepThinking.value = false
         chatStore.setLoading(false)
       }
     })
@@ -285,6 +323,10 @@ export default {
         console.error('❌ SSE连接错误:', error)
         chatStore.setLoading(false)
         chatStore.setConnected(false)
+        // 清理待发送消息
+        pendingMessage.value = ''
+        pendingSearchEnabled.value = false
+        pendingDeepThinking.value = false
       }
     })
     
@@ -436,7 +478,7 @@ export default {
     }
     
     // 发送消息
-    const handleSendMessage = async () => {
+    const handleSendMessage = () => {
       if (!inputMessage.value.trim() || !chatStore.currentConversation) return
       
       const message = inputMessage.value.trim()
@@ -453,19 +495,13 @@ export default {
       scrollToBottom()
       chatStore.setLoading(true)
       
-      try {
-        // 发送消息到后端，包含搜索开关状态
-        await chatApi.sendMessage(chatStore.currentConversation.id, {
-          content: message,
-          searchEnabled: searchEnabled.value
-        })
-        
-        // 重新加载对话列表以获取更新的标题
-        loadConversations()
-      } catch (error) {
-        ElMessage.error('发送消息失败')
-        chatStore.setLoading(false)
-      }
+      // 设置待发送消息，触发useEventSource建立SSE连接
+      pendingMessage.value = message
+      pendingSearchEnabled.value = searchEnabled.value
+      pendingDeepThinking.value = deepThinking.value
+      
+      // useEventSource会自动检测到sseUrl变化并建立连接
+      console.log('🚀 触发SSE连接发送消息:', message)
     }
     
     // SSE事件处理函数
@@ -677,6 +713,17 @@ export default {
       localStorage.setItem('searchEnabled', value.toString())
     }
     
+    // 深度思考开关处理
+    const onDeepThinkingToggle = (value) => {
+      if (value) {
+        ElMessage.success('深度思考已开启，AI将显示详细推理过程（响应可能较慢）')
+      } else {
+        ElMessage.info('深度思考已关闭，AI将直接给出答案')
+      }
+      // 保存设置到本地存储
+      localStorage.setItem('deepThinking', value.toString())
+    }
+    
     // 复制消息内容
     const copyMessage = async (content) => {
       try {
@@ -698,11 +745,16 @@ export default {
       }
     }
     
-    // 从本地存储加载搜索设置
-    const loadSearchSettings = () => {
-      const saved = localStorage.getItem('searchEnabled')
-      if (saved !== null) {
-        searchEnabled.value = saved === 'true'
+    // 从本地存储加载设置
+    const loadSettings = () => {
+      const savedSearch = localStorage.getItem('searchEnabled')
+      if (savedSearch !== null) {
+        searchEnabled.value = savedSearch === 'true'
+      }
+      
+      const savedDeepThinking = localStorage.getItem('deepThinking')
+      if (savedDeepThinking !== null) {
+        deepThinking.value = savedDeepThinking === 'true'
       }
     }
     
@@ -768,14 +820,29 @@ export default {
         return
       }
       loadConversations()
-      loadSearchSettings()
+      loadSettings()
       
       // EventSource无需全局配置
     })
     
-    // 组件销毁时useEventSource会自动清理连接
+    // 组件销毁时手动清理连接，防止重连
     onBeforeUnmount(() => {
-      console.log('🗑️ 组件销毁，useEventSource自动清理连接')
+      console.log('🗑️ 组件销毁，清理连接和状态')
+      
+      // 手动关闭SSE连接
+      try {
+        closeSSE()
+        console.log('✅ SSE连接已手动关闭')
+      } catch (e) {
+        console.log('⚠️ 关闭SSE连接时出错:', e.message)
+      }
+      
+      // 清理待发送消息状态，停止重连
+      pendingMessage.value = ''
+      pendingSearchEnabled.value = false
+      pendingDeepThinking.value = false
+      chatStore.setLoading(false)
+      chatStore.setConnected(false)
     })
     
     // 解析搜索结果JSON数据
@@ -807,6 +874,7 @@ export default {
       messageList,
       rightPanel,
       searchEnabled,
+      deepThinking,
       expandedThinking,
       processedMessages,
       parseSearchResults,
@@ -815,6 +883,7 @@ export default {
       deleteConversation,
       handleSendMessage,
       onSearchToggle,
+      onDeepThinkingToggle,
       copyMessage,
       formatTime,
       toggleThinking,

@@ -35,13 +35,14 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:ms-d2ce925e-2397-4c4c-9de2-62e820357af6}
-      base-url: ${OPENAI_BASE_URL:https://api-inference.modelscope.cn}
+      base-url: ${OPENAI_BASE_URL:https://api-inference.modelscope.cn/v1}
       chat:
         options:
           model: ${OPENAI_MODEL:Qwen/Qwen3-235B-A22B-Thinking-2507}
           temperature: 0.7
           max-tokens: 2000
-          reasoning-effort: high
+          enable_thinking: true
+          thinking_budget: 50000
   
   # 异步任务配置
   task:
@@ -84,3 +85,10 @@ app:
     max-history-size: 20
     response-timeout: 300s
     sse-timeout: 300s
+    streaming:
+      chunk-size: 50
+      buffer-timeout: 100ms
+      heartbeat-interval: 30s
+    error:
+      retry-attempts: 3
+      retry-delay: 1000ms
