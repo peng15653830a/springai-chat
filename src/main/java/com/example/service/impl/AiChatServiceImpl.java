@@ -49,16 +49,6 @@ public class AiChatServiceImpl implements AiChatService {
     });
   }
 
-  @Override
-  public Mono<Message> saveUserMessage(Long conversationId, String content) {
-    return messagePersistenceService.saveUserMessage(conversationId, content)
-        .doOnNext(message -> {
-          // 异步生成标题
-          conversationManagementService.generateTitleIfNeeded(conversationId, content)
-              .subscribe();
-        });
-  }
-
   /**
    * 保存用户消息并生成标题
    */

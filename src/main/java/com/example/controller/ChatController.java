@@ -61,18 +61,4 @@ public class ChatController {
         .doOnComplete(() -> log.info("流式聊天完成，会话ID: {}", conversationId));
   }
 
-
-  /**
-   * 测试AI配置是否正常
-   *
-   * @return 测试结果
-   */
-  @GetMapping("/test")
-  public Mono<ApiResponse<String>> testAiConfig() {
-    log.info("测试AI配置");
-    return aiChatService.saveUserMessage(1L, "测试消息")
-        .map(message -> ApiResponse.success("AI配置测试成功", "测试消息已保存"))
-        .onErrorReturn(ApiResponse.error("AI配置测试失败"));
-  }
-
 }

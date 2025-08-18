@@ -1,9 +1,7 @@
 package com.example.service;
 
-import com.example.entity.Message;
 import com.example.service.dto.SseEventResponse;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
  * AI聊天服务接口（响应式架构）
@@ -23,12 +21,4 @@ public interface AiChatService {
    */
   Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, boolean searchEnabled, boolean deepThinking);
 
-  /**
-   * 保存用户消息
-   *
-   * @param conversationId 会话ID
-   * @param content 消息内容
-   * @return 用户消息实体
-   */
-  Mono<Message> saveUserMessage(Long conversationId, String content);
 }
