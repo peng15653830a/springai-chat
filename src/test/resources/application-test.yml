@@ -39,24 +39,11 @@ spring:
     openai:
       api-key: test-openai-key
       base-url: https://api.test.com/v1
-      model: test-model
-      temperature: 0.7
-      max-tokens: 1000
-    moonshot:
-      api-key: sk-yBoOvdiixdvpCG06mwCSGnxt3lxj3ekZ5t6bav3Ii9cS0Ln4
-      base-url: https://api.moonshot.cn/v1
-      model: kimi-k2-0711-preview
-      temperature: 0.7
-      max-tokens: 1000
-
-# AI服务配置 - 直接配置，避免嵌套问题
-ai:
-  moonshot:
-    api-key: sk-yBoOvdiixdvpCG06mwCSGnxt3lxj3ekZ5t6bav3Ii9cS0Ln4
-    base-url: https://api.moonshot.cn/v1
-    model: kimi-k2-0711-preview
-    temperature: 0.7
-    max-tokens: 1000
+      chat:
+        options:
+          model: test-model
+          temperature: 0.7
+          max-tokens: 1000
 
 # MyBatis配置
 mybatis:
@@ -81,9 +68,10 @@ logging:
 # 搜索服务配置
 # 测试环境配置
 search:
-  metaso:
-    api-key: mk-2A24E872A9A815A08EAFFB34AD42381D
-    enabled: true
+  tavily:
+    api-key: test-search-key
+    base-url: https://api.test.com/search
+  enabled: false
   keywords:
     time: "最新,今天,现在,当前,实时,近期,目前,这几天,本周,最近"
     info: "新闻,资讯,消息,报道,动态,头条"

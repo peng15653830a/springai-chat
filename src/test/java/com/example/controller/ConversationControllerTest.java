@@ -128,16 +128,21 @@ public class ConversationControllerTest {
   void testCreateConversation_EmptyTitle() throws Exception {
     // Given
     conversationRequest.setTitle("");
+    when(conversationService.createConversation(1L, "新对话"))
+        .thenReturn(testConversation);
 
-    // When & Then
+    // When & Then - 空标题应该成功创建，使用默认标题"新对话"
     mockMvc
         .perform(
             post("/api/conversations?userId=1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.message").value("对话标题不能为空"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.id").value(1))
+        .andExpect(jsonPath("$.data.title").value("Test Conversation"));
+        
+    verify(conversationService).createConversation(1L, "新对话");
   }
 
   @Test
@@ -239,32 +244,42 @@ public class ConversationControllerTest {
   void testCreateConversation_NullTitle() throws Exception {
     // Given
     conversationRequest.setTitle(null);
+    when(conversationService.createConversation(1L, "新对话"))
+        .thenReturn(testConversation);
 
-    // When & Then
+    // When & Then - null标题应该成功创建，使用默认标题"新对话"
     mockMvc
         .perform(
             post("/api/conversations?userId=1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.message").value("对话标题不能为空"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.id").value(1))
+        .andExpect(jsonPath("$.data.title").value("Test Conversation"));
+        
+    verify(conversationService).createConversation(1L, "新对话");
   }
 
   @Test
   void testCreateConversation_WhitespaceTitle() throws Exception {
     // Given
     conversationRequest.setTitle("   ");
+    when(conversationService.createConversation(1L, "新对话"))
+        .thenReturn(testConversation);
 
-    // When & Then
+    // When & Then - 空白标题应该成功创建，使用默认标题"新对话"
     mockMvc
         .perform(
             post("/api/conversations?userId=1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.message").value("对话标题不能为空"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.id").value(1))
+        .andExpect(jsonPath("$.data.title").value("Test Conversation"));
+        
+    verify(conversationService).createConversation(1L, "新对话");
   }
 
   @Test

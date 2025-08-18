@@ -31,7 +31,7 @@
 
         <!-- Plugin versions -->
         <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-        <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.11</jacoco-maven-plugin.version>
         <p3c-pmd-plugin.version>2.1.1</p3c-pmd-plugin.version>
         <maven-pmd-plugin.version>3.17.0</maven-pmd-plugin.version>
         <spotless-plugin.version>2.27.2</spotless-plugin.version>
