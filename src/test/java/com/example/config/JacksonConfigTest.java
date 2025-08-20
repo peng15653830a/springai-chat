@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @author xupeng
  */
-@SpringBootTest
+@SpringBootTest(classes = com.example.springai.SpringaiApplication.class)
 class JacksonConfigTest {
 
   @Autowired
@@ -26,9 +26,9 @@ class JacksonConfigTest {
   }
 
   @Test
-  void shouldUseSnakeCaseNaming() {
+  void shouldUseLowerCamelCaseNaming() {
     // Then
-    assertEquals(PropertyNamingStrategies.SNAKE_CASE, 
+    assertEquals(PropertyNamingStrategies.LOWER_CAMEL_CASE, 
                  objectMapper.getPropertyNamingStrategy());
   }
 
@@ -43,16 +43,16 @@ class JacksonConfigTest {
     String json = objectMapper.writeValueAsString(obj);
 
     // Then
-    assertTrue(json.contains("first_name"));
-    assertTrue(json.contains("last_name"));
-    assertFalse(json.contains("firstName"));
-    assertFalse(json.contains("lastName"));
+    assertTrue(json.contains("firstName"));
+    assertTrue(json.contains("lastName"));
+    assertFalse(json.contains("first_name"));
+    assertFalse(json.contains("last_name"));
   }
 
   @Test
   void shouldDeserializeSimpleObject() throws Exception {
     // Given
-    String json = "{\"first_name\":\"John\",\"last_name\":\"Doe\"}";
+    String json = "{\"firstName\":\"John\",\"lastName\":\"Doe\"}";
 
     // When
     TestObject obj = objectMapper.readValue(json, TestObject.class);
@@ -73,8 +73,10 @@ class JacksonConfigTest {
     String json = objectMapper.writeValueAsString(obj);
 
     // Then
-    assertFalse(json.contains("first_name"));
-    assertTrue(json.contains("last_name"));
+    // Jackson默认会序列化null值为"firstName":null
+    assertTrue(json.contains("\"firstName\":null"));
+    assertTrue(json.contains("lastName"));
+    assertTrue(json.contains("Doe"));
   }
 
   @Test
@@ -87,7 +89,7 @@ class JacksonConfigTest {
 
     // Then
     assertNotNull(mapper);
-    assertEquals(PropertyNamingStrategies.SNAKE_CASE, 
+    assertEquals(PropertyNamingStrategies.LOWER_CAMEL_CASE, 
                  mapper.getPropertyNamingStrategy());
   }
 

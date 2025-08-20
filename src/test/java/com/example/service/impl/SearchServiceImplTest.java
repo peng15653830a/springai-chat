@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -103,7 +104,7 @@ class SearchServiceImplTest {
   void shouldPerformSuccessfulSearch() throws Exception {
     // Given
     String query = "artificial intelligence";
-    String responseJson = "{\"answer\":\"AI摘要内容\",\"results\":[{\"title\":\"Test Title\",\"url\":\"https://test.com\",\"content\":\"Test content\",\"rawContent\":null,\"publishedDate\":null,\"score\":0.9}]}";
+    String responseJson = "{\"answer\":\"AI摘要内容\",\"results\":[{\"title\":\"Test Title\",\"url\":\"https://test.com\",\"content\":\"Test content\",\"score\":0.9}]}";
     
     TavilyResponse.TavilySearchResult searchResult = new TavilyResponse.TavilySearchResult();
     searchResult.setTitle("Test Title");
@@ -123,11 +124,11 @@ class SearchServiceImplTest {
       when(statusLine.getStatusCode()).thenReturn(200);
       when(httpResponse.getEntity()).thenReturn(httpEntity);
       when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenReturn("{}");
-      when(objectMapper.readValue(anyString(), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
+      when(objectMapper.readValue(eq(responseJson), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
 
       // 创建org.apache.http.util.EntityUtils的模拟
       try (MockedStatic<org.apache.http.util.EntityUtils> entityUtilsMock = mockStatic(org.apache.http.util.EntityUtils.class)) {
-        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(any(HttpEntity.class), any(String.class))).thenReturn(responseJson);
+        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(eq(httpEntity), eq(StandardCharsets.UTF_8))).thenReturn(responseJson);
 
         // When
         List<SearchResult> results = searchService.searchMetaso(query);
@@ -198,7 +199,7 @@ class SearchServiceImplTest {
     try (MockedStatic<HttpClients> httpClientsMock = mockStatic(HttpClients.class)) {
       httpClientsMock.when(HttpClients::createDefault).thenReturn(httpClient);
       
-      when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenThrow(new IOException("JSON serialization failed"));
+      when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenThrow(new RuntimeException("JSON serialization failed"));
 
       // When
       List<SearchResult> results = searchService.searchMetaso(query);
@@ -223,7 +224,7 @@ class SearchServiceImplTest {
       when(statusLine.getStatusCode()).thenReturn(200);
       when(httpResponse.getEntity()).thenReturn(httpEntity);
       when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenReturn("{}");
-      when(objectMapper.readValue(anyString(), eq(TavilyResponse.class))).thenThrow(new IOException("JSON parsing failed"));
+      when(objectMapper.readValue(anyString(), eq(TavilyResponse.class))).thenThrow(new RuntimeException("JSON parsing failed"));
 
       try (MockedStatic<org.apache.http.util.EntityUtils> entityUtilsMock = mockStatic(org.apache.http.util.EntityUtils.class)) {
         entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(any(HttpEntity.class), any(String.class))).thenReturn(invalidJson);
@@ -294,6 +295,8 @@ class SearchServiceImplTest {
   void shouldHandleResponseWithNullAnswer() throws Exception {
     // Given
     String query = "test query";
+    String responseJson = "{\"answer\":null,\"results\":[{\"title\":\"Test Title\",\"url\":\"https://test.com\",\"content\":\"Test content\",\"score\":0.9}]}";
+    
     TavilyResponse.TavilySearchResult searchResult = new TavilyResponse.TavilySearchResult();
     searchResult.setTitle("Test Title");
     searchResult.setUrl("https://test.com");
@@ -312,10 +315,10 @@ class SearchServiceImplTest {
       when(statusLine.getStatusCode()).thenReturn(200);
       when(httpResponse.getEntity()).thenReturn(httpEntity);
       when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenReturn("{}");
-      when(objectMapper.readValue(anyString(), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
+      when(objectMapper.readValue(eq(responseJson), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
 
       try (MockedStatic<org.apache.http.util.EntityUtils> entityUtilsMock = mockStatic(org.apache.http.util.EntityUtils.class)) {
-        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(any(HttpEntity.class), any(String.class))).thenReturn("{}");
+        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(eq(httpEntity), eq(StandardCharsets.UTF_8))).thenReturn(responseJson);
 
         // When
         List<SearchResult> results = searchService.searchMetaso(query);
@@ -332,6 +335,8 @@ class SearchServiceImplTest {
   void shouldHandleResponseWithEmptyResults() throws Exception {
     // Given
     String query = "test query";
+    String responseJson = "{\"answer\":\"AI摘要\",\"results\":[]}";
+    
     TavilyResponse tavilyResponse = new TavilyResponse();
     tavilyResponse.setAnswer("AI摘要");
     tavilyResponse.setResults(Arrays.asList()); // 空结果
@@ -344,10 +349,10 @@ class SearchServiceImplTest {
       when(statusLine.getStatusCode()).thenReturn(200);
       when(httpResponse.getEntity()).thenReturn(httpEntity);
       when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenReturn("{}");
-      when(objectMapper.readValue(anyString(), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
+      when(objectMapper.readValue(eq(responseJson), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
 
       try (MockedStatic<org.apache.http.util.EntityUtils> entityUtilsMock = mockStatic(org.apache.http.util.EntityUtils.class)) {
-        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(any(HttpEntity.class), any(String.class))).thenReturn("{}");
+        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(eq(httpEntity), eq(StandardCharsets.UTF_8))).thenReturn(responseJson);
 
         // When
         List<SearchResult> results = searchService.searchMetaso(query);
@@ -365,6 +370,8 @@ class SearchServiceImplTest {
   void shouldHandleResponseWithNullResults() throws Exception {
     // Given
     String query = "test query";
+    String responseJson = "{\"answer\":\"AI摘要\",\"results\":null}";
+    
     TavilyResponse tavilyResponse = new TavilyResponse();
     tavilyResponse.setAnswer("AI摘要");
     tavilyResponse.setResults(null); // null results
@@ -377,10 +384,10 @@ class SearchServiceImplTest {
       when(statusLine.getStatusCode()).thenReturn(200);
       when(httpResponse.getEntity()).thenReturn(httpEntity);
       when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenReturn("{}");
-      when(objectMapper.readValue(anyString(), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
+      when(objectMapper.readValue(eq(responseJson), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
 
       try (MockedStatic<org.apache.http.util.EntityUtils> entityUtilsMock = mockStatic(org.apache.http.util.EntityUtils.class)) {
-        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(any(HttpEntity.class), any(String.class))).thenReturn("{}");
+        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(eq(httpEntity), eq(StandardCharsets.UTF_8))).thenReturn(responseJson);
 
         // When
         List<SearchResult> results = searchService.searchMetaso(query);
@@ -392,4 +399,78 @@ class SearchServiceImplTest {
       }
     }
   }
+
+  @Test
+  void shouldHandleResponseWithEmptyAnswer() throws Exception {
+    // Given - 测试空字符串answer，覆盖L104的!answer.isEmpty()分支
+    String query = "test query";
+    String responseJson = "{\"answer\":\"\",\"results\":[{\"title\":\"Test Title\",\"url\":\"https://test.com\",\"content\":\"Test content\",\"score\":0.9}]}";
+    
+    TavilyResponse.TavilySearchResult searchResult = new TavilyResponse.TavilySearchResult();
+    searchResult.setTitle("Test Title");
+    searchResult.setUrl("https://test.com");
+    searchResult.setContent("Test content");
+    searchResult.setScore(0.9);
+    
+    TavilyResponse tavilyResponse = new TavilyResponse();
+    tavilyResponse.setAnswer(""); // 空字符串answer
+    tavilyResponse.setResults(Arrays.asList(searchResult));
+
+    try (MockedStatic<HttpClients> httpClientsMock = mockStatic(HttpClients.class)) {
+      httpClientsMock.when(HttpClients::createDefault).thenReturn(httpClient);
+      
+      when(httpClient.execute(any(HttpPost.class))).thenReturn(httpResponse);
+      when(httpResponse.getStatusLine()).thenReturn(statusLine);
+      when(statusLine.getStatusCode()).thenReturn(200);
+      when(httpResponse.getEntity()).thenReturn(httpEntity);
+      when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenReturn("{}");
+      when(objectMapper.readValue(eq(responseJson), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
+
+      try (MockedStatic<org.apache.http.util.EntityUtils> entityUtilsMock = mockStatic(org.apache.http.util.EntityUtils.class)) {
+        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(eq(httpEntity), eq(StandardCharsets.UTF_8))).thenReturn(responseJson);
+
+        // When
+        List<SearchResult> results = searchService.searchMetaso(query);
+
+        // Then
+        assertNotNull(results);
+        assertEquals(1, results.size()); // 只有搜索结果，没有AI摘要（因为answer为空字符串）
+        assertEquals("Test Title", results.get(0).getTitle());
+      }
+    }
+  }
+
+  @Test
+  void shouldHandleResponseWithBothNullAnswerAndNullResults() throws Exception {
+    // Given - 测试answer和results都为null的情况
+    String query = "test query";
+    String responseJson = "{\"answer\":null,\"results\":null}";
+    
+    TavilyResponse tavilyResponse = new TavilyResponse();
+    tavilyResponse.setAnswer(null); // null answer
+    tavilyResponse.setResults(null); // null results
+
+    try (MockedStatic<HttpClients> httpClientsMock = mockStatic(HttpClients.class)) {
+      httpClientsMock.when(HttpClients::createDefault).thenReturn(httpClient);
+      
+      when(httpClient.execute(any(HttpPost.class))).thenReturn(httpResponse);
+      when(httpResponse.getStatusLine()).thenReturn(statusLine);
+      when(statusLine.getStatusCode()).thenReturn(200);
+      when(httpResponse.getEntity()).thenReturn(httpEntity);
+      when(objectMapper.writeValueAsString(any(TavilyRequest.class))).thenReturn("{}");
+      when(objectMapper.readValue(eq(responseJson), eq(TavilyResponse.class))).thenReturn(tavilyResponse);
+
+      try (MockedStatic<org.apache.http.util.EntityUtils> entityUtilsMock = mockStatic(org.apache.http.util.EntityUtils.class)) {
+        entityUtilsMock.when(() -> org.apache.http.util.EntityUtils.toString(eq(httpEntity), eq(StandardCharsets.UTF_8))).thenReturn(responseJson);
+
+        // When
+        List<SearchResult> results = searchService.searchMetaso(query);
+
+        // Then
+        assertNotNull(results);
+        assertEquals(0, results.size()); // 没有AI摘要也没有搜索结果
+      }
+    }
+  }
+
 }

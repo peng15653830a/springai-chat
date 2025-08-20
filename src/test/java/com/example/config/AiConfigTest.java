@@ -2,6 +2,7 @@ package com.example.config;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockitoAnnotations;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 
@@ -357,5 +358,265 @@ class AiConfigTest {
     // Then
     assertNotNull(toString);
     assertTrue(toString.contains("TestAgent/1.0"));
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithSameInstance() {
+    AiConfig config = new AiConfig();
+    config.setApiKey("test");
+    assertEquals(config, config); // Same instance reference
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithNull() {
+    AiConfig config = new AiConfig();
+    assertNotEquals(config, null); // Null comparison
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithDifferentType() {
+    AiConfig config = new AiConfig();
+    assertNotEquals(config, "not an AiConfig"); // Different type
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithCanEqualFalse() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    
+    // Anonymous subclass that overrides canEqual to return false
+    AiConfig config2 = new AiConfig() {
+      @Override
+      public boolean canEqual(Object other) {
+        return false;
+      }
+    };
+    config2.setApiKey("test");
+    
+    assertNotEquals(config1, config2); // canEqual returns false
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithOneNullApiKeyField() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setBaseUrl("url");
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey(null);
+    config2.setBaseUrl("url");
+    
+    assertNotEquals(config1, config2); // One has null apiKey, other doesn't
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithOneNullBaseUrlField() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setBaseUrl("url");
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setBaseUrl(null);
+    
+    assertNotEquals(config1, config2); // One has null baseUrl, other doesn't
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithOneNullModelField() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setModel("gpt-4");
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setModel(null);
+    
+    assertNotEquals(config1, config2); // One has null model, other doesn't
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithOneNullHttpField() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setHttp(new AiConfig.HttpConfig());
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setHttp(null);
+    
+    assertNotEquals(config1, config2); // One has null http, other doesn't
+  }
+
+  @Test
+  void shouldTestAiConfigHashCodeWithAllNullFields() {
+    AiConfig config1 = new AiConfig();
+    config1.setHttp(null);
+    AiConfig config2 = new AiConfig();
+    config2.setHttp(null);
+    
+    assertEquals(config1.hashCode(), config2.hashCode()); // Both have all null fields
+  }
+
+  @Test
+  void shouldTestHttpConfigEqualsWithSameInstance() {
+    AiConfig.HttpConfig config = new AiConfig.HttpConfig();
+    config.setUserAgent("test");
+    assertEquals(config, config); // Same instance reference
+  }
+
+  @Test
+  void shouldTestHttpConfigEqualsWithNull() {
+    AiConfig.HttpConfig config = new AiConfig.HttpConfig();
+    assertNotEquals(config, null); // Null comparison
+  }
+
+  @Test
+  void shouldTestHttpConfigEqualsWithDifferentType() {
+    AiConfig.HttpConfig config = new AiConfig.HttpConfig();
+    assertNotEquals(config, "not an HttpConfig"); // Different type
+  }
+
+  @Test
+  void shouldTestHttpConfigEqualsWithCanEqualFalse() {
+    AiConfig.HttpConfig config1 = new AiConfig.HttpConfig();
+    config1.setUserAgent("test");
+    
+    // Anonymous subclass that overrides canEqual to return false
+    AiConfig.HttpConfig config2 = new AiConfig.HttpConfig() {
+      @Override
+      public boolean canEqual(Object other) {
+        return false;
+      }
+    };
+    config2.setUserAgent("test");
+    
+    assertNotEquals(config1, config2); // canEqual returns false
+  }
+
+  @Test
+  void shouldTestHttpConfigEqualsWithOneNullUserAgentField() {
+    AiConfig.HttpConfig config1 = new AiConfig.HttpConfig();
+    config1.setUserAgent("test");
+    
+    AiConfig.HttpConfig config2 = new AiConfig.HttpConfig();
+    config2.setUserAgent(null);
+    
+    assertNotEquals(config1, config2); // One has null userAgent, other doesn't
+  }
+
+  @Test
+  void shouldTestHttpConfigHashCodeWithAllNullFields() {
+    AiConfig.HttpConfig config1 = new AiConfig.HttpConfig();
+    config1.setUserAgent(null);
+    AiConfig.HttpConfig config2 = new AiConfig.HttpConfig();
+    config2.setUserAgent(null);
+    
+    assertEquals(config1.hashCode(), config2.hashCode()); // Both have null userAgent
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithAllNullFields() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey(null);
+    config1.setBaseUrl(null);
+    config1.setModel(null);
+    config1.setHttp(null);
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey(null);
+    config2.setBaseUrl(null);
+    config2.setModel(null);
+    config2.setHttp(null);
+    
+    assertEquals(config1, config2); // Both have all null fields
+    assertEquals(config1.hashCode(), config2.hashCode());
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithDifferentTemperature() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setTemperature(0.5);
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setTemperature(0.8);
+    
+    assertNotEquals(config1, config2); // Different temperature values
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithDifferentMaxTokens() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setMaxTokens(1000);
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setMaxTokens(2000);
+    
+    assertNotEquals(config1, config2); // Different maxTokens values
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithDifferentTimeoutMs() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setTimeoutMs(30000);
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setTimeoutMs(60000);
+    
+    assertNotEquals(config1, config2); // Different timeoutMs values
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithDifferentMaxRetries() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setMaxRetries(3);
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setMaxRetries(5);
+    
+    assertNotEquals(config1, config2); // Different maxRetries values
+  }
+
+  @Test
+  void shouldTestAiConfigEqualsWithDifferentStreamEnabled() {
+    AiConfig config1 = new AiConfig();
+    config1.setApiKey("test");
+    config1.setStreamEnabled(true);
+    
+    AiConfig config2 = new AiConfig();
+    config2.setApiKey("test");
+    config2.setStreamEnabled(false);
+    
+    assertNotEquals(config1, config2); // Different streamEnabled values
+  }
+
+  @Test
+  void shouldTestHttpConfigEqualsWithDifferentConnectTimeout() {
+    AiConfig.HttpConfig config1 = new AiConfig.HttpConfig();
+    config1.setConnectTimeoutMs(5000);
+    
+    AiConfig.HttpConfig config2 = new AiConfig.HttpConfig();
+    config2.setConnectTimeoutMs(10000);
+    
+    assertNotEquals(config1, config2); // Different connectTimeoutMs values
+  }
+
+  @Test
+  void shouldTestHttpConfigEqualsWithDifferentReadTimeout() {
+    AiConfig.HttpConfig config1 = new AiConfig.HttpConfig();
+    config1.setReadTimeoutMs(30000);
+    
+    AiConfig.HttpConfig config2 = new AiConfig.HttpConfig();
+    config2.setReadTimeoutMs(60000);
+    
+    assertNotEquals(config1, config2); // Different readTimeoutMs values
   }
 }
