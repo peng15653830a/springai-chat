@@ -93,6 +93,7 @@
                 >
                   <VueMarkdownRender 
                     :source="String(message.thinking || '')"
+                    :options="markdownOptions"
                     class="thinking-body"
                   />
                 </div>
@@ -106,6 +107,7 @@
                 <VueMarkdownRender 
                   v-else
                   :source="String(message.content || '')"
+                  :options="markdownOptions"
                   class="message-body markdown-content"
                 />
                 <div class="message-actions">
@@ -138,48 +140,32 @@
         
         <!-- 输入区域 -->
         <div class="input-area">
-          <!-- 功能设置栏 -->
-          <div class="function-settings">
-            <div class="setting-group">
-              <div class="setting-toggle">
-                <el-switch
-                  v-model="searchEnabled"
-                  inline-prompt
-                  active-text="🔍"
-                  inactive-text="🚫"
-                  @change="onSearchToggle"
-                />
-                <span class="setting-label">
-                  {{ searchEnabled ? '联网搜索已开启' : '联网搜索已关闭' }}
-                </span>
-              </div>
-              <div class="setting-status" v-if="searchEnabled">
-                <el-tag size="small" type="success">
-                  <el-icon><Connection /></el-icon>
-                  智能搜索
-                </el-tag>
-              </div>
-            </div>
-            
-            <div class="setting-group">
-              <div class="setting-toggle">
-                <el-switch
-                  v-model="deepThinking"
-                  inline-prompt
-                  active-text="🧠"
-                  inactive-text="💭"
-                  @change="onDeepThinkingToggle"
-                />
-                <span class="setting-label">
-                  {{ deepThinking ? '深度思考已开启' : '深度思考已关闭' }}
-                </span>
-              </div>
-              <div class="setting-status" v-if="deepThinking">
-                <el-tag size="small" type="warning">
-                  <el-icon><Operation /></el-icon>
-                  推理模式
-                </el-tag>
-              </div>
+          <!-- 功能按钮栏 - 借鉴腾讯元宝设计 -->
+          <div class="function-toolbar">
+            <div class="toolbar-left">
+              <el-button
+                :type="deepThinking ? 'primary' : ''"
+                :plain="!deepThinking"
+                size="small"
+                @click="toggleDeepThinking"
+                class="function-btn"
+              >
+                <el-icon><Operation /></el-icon>
+                深度思考
+                <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
+              </el-button>
+              
+              <el-button
+                :type="searchEnabled ? 'success' : ''"
+                :plain="!searchEnabled"
+                size="small"
+                @click="toggleSearch"
+                class="function-btn"
+              >
+                <el-icon><Connection /></el-icon>
+                联网搜索
+                <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
+              </el-button>
             </div>
           </div>
           
@@ -379,6 +365,18 @@ export default {
     // 右侧面板状态管理
     const currentSearchResults = ref([])
     const currentSearchMessageId = ref(null)
+    
+    // Markdown 渲染配置 - 确保支持表格
+    const markdownOptions = {
+      breaks: true,      // 启用换行
+      typographer: true, // 启用排版优化
+      html: false,       // 禁用HTML标签（安全考虑）
+      linkify: true,     // 自动识别链接
+      // 确保表格解析功能开启
+      tables: true,
+      // markdown-it 插件配置
+      plugins: []
+    }
     
     // 加载对话列表
     const loadConversations = async () => {
@@ -724,6 +722,17 @@ export default {
       localStorage.setItem('deepThinking', value.toString())
     }
     
+    // 新的按钮切换方法 - 模仿腾讯元宝交互
+    const toggleDeepThinking = () => {
+      deepThinking.value = !deepThinking.value
+      onDeepThinkingToggle(deepThinking.value)
+    }
+    
+    const toggleSearch = () => {
+      searchEnabled.value = !searchEnabled.value
+      onSearchToggle(searchEnabled.value)
+    }
+    
     // 复制消息内容
     const copyMessage = async (content) => {
       try {
@@ -878,12 +887,15 @@ export default {
       expandedThinking,
       processedMessages,
       parseSearchResults,
+      markdownOptions,
       createNewConversation,
       selectConversation,
       deleteConversation,
       handleSendMessage,
       onSearchToggle,
       onDeepThinkingToggle,
+      toggleDeepThinking,
+      toggleSearch,
       copyMessage,
       formatTime,
       toggleThinking,
@@ -1179,37 +1191,64 @@ export default {
   border-top: 1px solid #e0e0e0;
 }
 
-.search-settings {
+/* 功能工具栏 - 腾讯元宝风格 */
+.function-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 15px;
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
+  margin-bottom: 12px;
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: 15px;
 }
 
-.search-toggle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.search-label {
-  font-size: 14px;
-  color: #495057;
-  font-weight: 500;
-}
-
-.search-status {
+.toolbar-left {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.function-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1px solid #e4e4e7;
+  background: #ffffff;
+  color: #71717a;
+}
+
+.function-btn:hover {
+  border-color: #d4d4d8;
+  background: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.function-btn.el-button--primary {
+  background: linear-gradient(135deg, #409eff 0%, #36a3f7 100%);
+  border-color: #409eff;
+  color: white;
+}
+
+.function-btn.el-button--success {
+  background: linear-gradient(135deg, #67c23a 0%, #5cb85c 100%);
+  border-color: #67c23a;
+  color: white;
+}
+
+.function-btn .dropdown-icon {
+  font-size: 12px;
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.function-btn:hover .dropdown-icon {
+  opacity: 1;
 }
 
 .input-container {
@@ -1293,33 +1332,89 @@ export default {
 }
 
 .thinking-content {
-  padding: 12px;
+  padding: 16px 24px;
   border-top: 1px solid #e8eaed;
   background: #fafbfc;
 }
 
 .thinking-body {
-  font-size: 13px;
-  line-height: 1.5;
-  color: #3c4043;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #2c3e50;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 .thinking-body p {
-  margin: 0 0 8px 0;
+  margin: 0 0 14px 0;
 }
 
 .thinking-body p:last-child {
   margin-bottom: 0;
 }
 
+/* 优化推理过程显示 - 增加层次感和可读性 */
+.thinking-body h1,
+.thinking-body h2,
+.thinking-body h3,
+.thinking-body h4,
+.thinking-body h5,
+.thinking-body h6 {
+  color: #1976d2;
+  margin: 20px 0 12px 0;
+  font-weight: 600;
+}
+
+.thinking-body ul {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.thinking-body ol {
+  margin: 12px 0;
+  padding-left: 48px;
+  list-style-type: decimal !important;
+  list-style-position: outside !important;
+}
+
+.thinking-body li {
+  margin: 8px 0;
+  line-height: 1.7;
+  padding-left: 4px;
+  display: list-item !important;
+}
+
+.thinking-body ol li {
+  list-style-type: decimal !important;
+}
+
+.thinking-body ul li {
+  list-style-type: disc !important;
+}
+
+.thinking-body blockquote {
+  background: #f8f9fa;
+  border-left: 4px solid #1976d2;
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+}
+
 .thinking-body pre {
   background: #f8f9fa;
   border: 1px solid #e8eaed;
-  border-radius: 4px;
-  padding: 8px;
-  margin: 8px 0;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 12px 0;
   overflow-x: auto;
+  font-size: 13px;
+}
+
+.thinking-body code {
+  background: #f1f3f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+  color: #d73a49;
 }
 
 /* v-md-preview 组件样式调整 */
@@ -1341,36 +1436,96 @@ export default {
   line-height: 1.6;
 }
 
-/* 修复表格对齐问题 - 覆盖github-markdown-body的display: block */
-.markdown-content :deep(.github-markdown-body table) {
+/* 表格样式修复 - 确保边框显示 */
+.markdown-content :deep(table),
+.markdown-content :deep(.github-markdown-body table),
+.markdown-content :deep(.v-md-table),
+.markdown-content table {
   display: table !important;
-  table-layout: fixed !important;
+  table-layout: auto !important;
   width: 100% !important;
   border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  margin: 16px 0 !important;
+  border: 1px solid #d0d7de !important;
   overflow: visible !important;
 }
 
-.markdown-content :deep(.github-markdown-body thead) {
+.markdown-content :deep(thead),
+.markdown-content :deep(.github-markdown-body thead),
+.markdown-content thead {
   display: table-header-group !important;
 }
 
-.markdown-content :deep(.github-markdown-body tbody) {
+.markdown-content :deep(tbody),
+.markdown-content :deep(.github-markdown-body tbody),
+.markdown-content tbody {
   display: table-row-group !important;
 }
 
-.markdown-content :deep(.github-markdown-body tr) {
+.markdown-content :deep(tr),
+.markdown-content :deep(.github-markdown-body tr),
+.markdown-content tr {
   display: table-row !important;
+  border-bottom: 1px solid #d0d7de !important;
 }
 
+.markdown-content :deep(th),
+.markdown-content :deep(td),
 .markdown-content :deep(.github-markdown-body th),
-.markdown-content :deep(.github-markdown-body td) {
+.markdown-content :deep(.github-markdown-body td),
+.markdown-content th,
+.markdown-content td {
   display: table-cell !important;
   box-sizing: border-box !important;
   padding: 8px 12px !important;
   text-align: left !important;
   vertical-align: top !important;
   border: 1px solid #d0d7de !important;
+  border-right: 1px solid #d0d7de !important;
+  border-bottom: 1px solid #d0d7de !important;
+  background-color: #ffffff !important;
 }
+
+.markdown-content :deep(th),
+.markdown-content :deep(.github-markdown-body th),
+.markdown-content th {
+  background-color: #f6f8fa !important;
+  font-weight: 600 !important;
+  border-bottom: 2px solid #d0d7de !important;
+}
+
+/* 确保表格第一行和最后一行边框正确 */
+.markdown-content :deep(tr:first-child th),
+.markdown-content :deep(tr:first-child td),
+.markdown-content tr:first-child th,
+.markdown-content tr:first-child td {
+  border-top: 1px solid #d0d7de !important;
+}
+
+.markdown-content :deep(tr:last-child th),
+.markdown-content :deep(tr:last-child td),
+.markdown-content tr:last-child th,
+.markdown-content tr:last-child td {
+  border-bottom: 1px solid #d0d7de !important;
+}
+
+/* 确保表格第一列和最后一列边框正确 */
+.markdown-content :deep(th:first-child),
+.markdown-content :deep(td:first-child),
+.markdown-content th:first-child,
+.markdown-content td:first-child {
+  border-left: 1px solid #d0d7de !important;
+}
+
+.markdown-content :deep(th:last-child),
+.markdown-content :deep(td:last-child),
+.markdown-content th:last-child,
+.markdown-content td:last-child {
+  border-right: 1px solid #d0d7de !important;
+}
+
+/* 表格样式完善 - 移除调试样式，使用正常样式 */
 
 
 
