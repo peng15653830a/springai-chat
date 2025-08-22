@@ -14,14 +14,6 @@
             <el-icon><Plus /></el-icon>
             新对话
           </el-button>
-          <el-button 
-            @click="toggleLeftSidebar" 
-            size="small" 
-            class="collapse-btn"
-            :icon="leftSidebarCollapsed ? 'ArrowRight' : 'ArrowLeft'"
-          >
-            <el-icon><ArrowLeft v-if="!leftSidebarCollapsed" /><ArrowRight v-else /></el-icon>
-          </el-button>
         </div>
       </div>
       
@@ -191,6 +183,21 @@
           </div>
         </div>
       </div>
+    </div>
+    
+    <!-- 左侧悬浮收缩按钮 -->
+    <div class="floating-left-toggle" @click="toggleLeftSidebar">
+      <el-icon>
+        <ArrowLeft v-if="!leftSidebarCollapsed" />
+        <ArrowRight v-else />
+      </el-icon>
+    </div>
+    
+    <!-- 右侧悬浮搜索按钮 -->
+    <div class="floating-right-toggle" @click="toggleRightSidebar">
+      <el-icon>
+        <Search />
+      </el-icon>
     </div>
     
     <!-- 右侧面板 -->
@@ -384,6 +391,16 @@ export default {
         const response = await conversationApi.getList(userStore.currentUser.id)
         if (response.success) {
           chatStore.setConversations(response.data)
+          
+          // 自动选择最新的对话，或者创建新对话
+          if (response.data && response.data.length > 0) {
+            // 如果有对话，选择最新的一个
+            const latestConversation = response.data[0] // 假设已按时间排序
+            selectConversation(latestConversation)
+          } else {
+            // 如果没有对话，自动创建一个新对话
+            await createNewConversation()
+          }
         }
       } catch (error) {
         console.error('Load conversations error:', error)
@@ -950,10 +967,6 @@ export default {
   align-items: center;
 }
 
-.collapse-btn {
-  margin-top: 10px;
-}
-
 .user-info {
   display: flex;
   align-items: center;
@@ -1099,7 +1112,7 @@ export default {
 
 .message-actions {
   position: absolute;
-  top: 6px;
+  top: 8px;
   right: 8px;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -1142,6 +1155,33 @@ export default {
 .message-item.user .copy-btn:hover {
   background: rgba(255, 255, 255, 0.5);
   color: white;
+}
+
+/* 响应式工具栏设计 */
+@media (max-width: 768px) {
+  .message-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .toolbar-actions {
+    align-self: flex-end;
+  }
+  
+  .message-toolbar {
+    opacity: 1; /* 移动端始终显示 */
+  }
+}
+
+/* 工具栏扩展性设计 */
+.toolbar-actions .toolbar-btn + .toolbar-btn {
+  margin-left: 2px;
+}
+
+.toolbar-actions .el-divider {
+  height: 16px;
+  margin: 0 4px;
 }
 
 .message-time {
@@ -1527,6 +1567,67 @@ export default {
 
 /* 表格样式完善 - 移除调试样式，使用正常样式 */
 
+/* 悬浮按钮样式 - VS Code风格 */
+.floating-left-toggle,
+.floating-right-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 0 6px 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
 
+.floating-left-toggle {
+  left: 0;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+}
+
+.floating-right-toggle {
+  right: 0;
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+}
+
+.floating-left-toggle:hover,
+.floating-right-toggle:hover {
+  background: #f8f9fa;
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.floating-left-toggle .el-icon,
+.floating-right-toggle .el-icon {
+  font-size: 14px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.floating-left-toggle:hover .el-icon,
+.floating-right-toggle:hover .el-icon {
+  color: #409eff;
+}
+
+/* 当侧边栏展开时，调整悬浮按钮位置 */
+.sidebar:not(.collapsed) + .chat-area ~ .floating-left-toggle {
+  left: 280px;
+  transition: left 0.3s ease, transform 0.2s ease;
+}
+
+/* 右侧面板展开时，调整右侧按钮位置 */
+.floating-right-toggle {
+  right: 0;
+  transition: right 0.3s ease, transform 0.2s ease;
+}
 
 </style>
