@@ -1,5 +1,6 @@
 package com.example.service.impl;
 
+import com.example.config.ChatStreamingProperties;
 import com.example.entity.Message;
 import com.example.service.*;
 import com.example.service.dto.SseEventResponse;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -31,16 +33,19 @@ import static org.mockito.Mockito.*;
 class AiChatServiceImplTest {
 
   @Mock(lenient = true)
-  private ChatStreamService chatStreamService;
+  private ChatStreamingProperties streamingProperties;
 
   @Mock(lenient = true)
-  private SearchIntegrationService searchIntegrationService;
+  private ModelScopeDirectService modelScopeDirectService;
 
   @Mock(lenient = true)
-  private ConversationManagementService conversationManagementService;
+  private SearchService searchService;
 
   @Mock(lenient = true)
-  private MessagePersistenceService messagePersistenceService;
+  private ConversationService conversationService;
+
+  @Mock(lenient = true)
+  private MessageService messageService;
 
   @InjectMocks
   private AiChatServiceImpl aiChatService;
@@ -51,21 +56,23 @@ class AiChatServiceImplTest {
   @BeforeEach
   void setUp() {
     // Setup default mocks
-    when(messagePersistenceService.saveUserMessage(anyLong(), anyString()))
+    when(messageService.saveUserMessageAsync(anyLong(), anyString()))
         .thenReturn(Mono.just(createMessage(1L, ROLE_USER, userMessage)));
     
-    when(conversationManagementService.generateTitleIfNeeded(anyLong(), anyString()))
+    when(conversationService.generateTitleIfNeededAsync(anyLong(), anyString()))
         .thenReturn(Mono.empty());
     
-    SearchIntegrationService.SearchContextResult searchResult = 
-        new SearchIntegrationService.SearchContextResult("", null, Flux.empty());
-    when(searchIntegrationService.performSearchIfEnabled(anyString(), anyBoolean()))
+    SearchService.SearchContextResult searchResult = 
+        new SearchService.SearchContextResult("", null, Flux.empty());
+    when(searchService.performSearchWithEvents(anyString(), anyBoolean()))
         .thenReturn(Mono.just(searchResult));
     
-    when(messagePersistenceService.getConversationHistory(anyLong()))
+    when(messageService.getConversationHistoryAsync(anyLong()))
         .thenReturn(Mono.just(Arrays.asList()));
     
-    when(chatStreamService.executeStreamingChat(anyString(), anyLong(), anyBoolean()))
+    when(streamingProperties.getResponseTimeout()).thenReturn(Duration.ofSeconds(30));
+    
+    when(modelScopeDirectService.executeDirectStreaming(anyString(), anyLong(), anyBoolean()))
         .thenReturn(Flux.just(SseEventResponse.chunk("Test response")));
   }
 
@@ -76,22 +83,22 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(messagePersistenceService).saveUserMessage(conversationId, userMessage);
-    verify(searchIntegrationService, times(2)).performSearchIfEnabled(userMessage, false);
-    verify(messagePersistenceService).getConversationHistory(conversationId);
-    verify(chatStreamService).executeStreamingChat(anyString(), eq(conversationId), eq(false));
+    verify(messageService).saveUserMessageAsync(conversationId, userMessage);
+    verify(searchService, times(2)).performSearchWithEvents(userMessage, false);
+    verify(messageService).getConversationHistoryAsync(conversationId);
+    verify(modelScopeDirectService).executeDirectStreaming(anyString(), eq(conversationId), eq(false));
   }
 
   @Test
   void shouldStreamChatWithSearchEnabled() {
     // Given
-    SearchIntegrationService.SearchContextResult searchResult = 
-        new SearchIntegrationService.SearchContextResult(
+    SearchService.SearchContextResult searchResult = 
+        new SearchService.SearchContextResult(
             "Search results: AI information", 
             null,
             Flux.just(SseEventResponse.search("Searching for AI..."))
         );
-    when(searchIntegrationService.performSearchIfEnabled(userMessage, true))
+    when(searchService.performSearchWithEvents(userMessage, true))
         .thenReturn(Mono.just(searchResult));
 
     // When & Then
@@ -100,8 +107,8 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(searchIntegrationService, times(2)).performSearchIfEnabled(userMessage, true);
-    verify(chatStreamService).executeStreamingChat(contains("Search results: AI information"), eq(conversationId), eq(false));
+    verify(searchService, times(2)).performSearchWithEvents(userMessage, true);
+    verify(modelScopeDirectService).executeDirectStreaming(contains("Search results: AI information"), eq(conversationId), eq(false));
   }
 
   @Test
@@ -111,7 +118,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(chatStreamService).executeStreamingChat(anyString(), eq(conversationId), eq(true));
+    verify(modelScopeDirectService).executeDirectStreaming(anyString(), eq(conversationId), eq(true));
   }
 
   @Test
@@ -122,7 +129,7 @@ class AiChatServiceImplTest {
         createMessage(2L, ROLE_ASSISTANT, "Previous answer"),
         createMessage(3L, ROLE_USER, "Another question")
     );
-    when(messagePersistenceService.getConversationHistory(conversationId))
+    when(messageService.getConversationHistoryAsync(conversationId))
         .thenReturn(Mono.just(history));
 
     // When & Then
@@ -130,7 +137,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(chatStreamService).executeStreamingChat(
+    verify(modelScopeDirectService).executeDirectStreaming(
         argThat(prompt -> 
             prompt.contains("用户: Previous question") && 
             prompt.contains("助手: Previous answer") &&
@@ -162,7 +169,7 @@ class AiChatServiceImplTest {
         createMessage(14L, ROLE_ASSISTANT, "Response 7"),
         createMessage(15L, ROLE_USER, "Message 8")
     );
-    when(messagePersistenceService.getConversationHistory(conversationId))
+    when(messageService.getConversationHistoryAsync(conversationId))
         .thenReturn(Mono.just(history));
 
     // When & Then
@@ -170,7 +177,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(chatStreamService).executeStreamingChat(
+    verify(modelScopeDirectService).executeDirectStreaming(
         argThat(prompt -> 
             !prompt.contains("Message 1") && // 早期消息不应该包含
             prompt.contains("Message 6") && // 最近10条中的第一条应该包含
@@ -184,36 +191,40 @@ class AiChatServiceImplTest {
   @Test
   void shouldHandleErrorInStreamChat() {
     // Given
-    when(messagePersistenceService.saveUserMessage(anyLong(), anyString()))
+    when(messageService.saveUserMessageAsync(anyLong(), anyString()))
         .thenReturn(Mono.error(new RuntimeException("Database error")));
 
     // When & Then
     StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
-        .expectNext(SseEventResponse.error("聊天服务暂时不可用，请稍后重试"))
+        .expectNext(SseEventResponse.error("AI服务暂时不可用，请稍后重试"))
         .verifyComplete();
   }
 
   @Test
   void shouldHandleErrorInSearchStep() {
     // Given
-    when(searchIntegrationService.performSearchIfEnabled(anyString(), anyBoolean()))
+    when(searchService.performSearchWithEvents(anyString(), anyBoolean()))
         .thenReturn(Mono.error(new RuntimeException("Search error")));
 
     // When & Then
     StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, true, false))
-        .expectNext(SseEventResponse.error("聊天服务暂时不可用，请稍后重试"))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("AI服务暂时不可用"))
         .verifyComplete();
   }
 
   @Test
   void shouldHandleErrorInChatStreamService() {
     // Given
-    when(chatStreamService.executeStreamingChat(anyString(), anyLong(), anyBoolean()))
+    when(modelScopeDirectService.executeDirectStreaming(anyString(), anyLong(), anyBoolean()))
         .thenReturn(Flux.error(new RuntimeException("Chat service error")));
 
     // When & Then
     StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
-        .expectNext(SseEventResponse.error("聊天服务暂时不可用，请稍后重试"))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("AI服务暂时不可用"))
         .verifyComplete();
   }
 
@@ -225,15 +236,15 @@ class AiChatServiceImplTest {
         .verifyComplete();
 
     // Then
-    verify(conversationManagementService).generateTitleIfNeeded(conversationId, userMessage);
+    verify(conversationService).generateTitleIfNeededAsync(conversationId, userMessage);
   }
 
   @Test
   void shouldBuildPromptWithoutSearchContext() {
     // Given
-    SearchIntegrationService.SearchContextResult emptySearchResult = 
-        new SearchIntegrationService.SearchContextResult("", null, Flux.empty());
-    when(searchIntegrationService.performSearchIfEnabled(anyString(), anyBoolean()))
+    SearchService.SearchContextResult emptySearchResult = 
+        new SearchService.SearchContextResult("", null, Flux.empty());
+    when(searchService.performSearchWithEvents(anyString(), anyBoolean()))
         .thenReturn(Mono.just(emptySearchResult));
 
     // When & Then
@@ -241,7 +252,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(chatStreamService).executeStreamingChat(
+    verify(modelScopeDirectService).executeDirectStreaming(
         argThat(prompt -> !prompt.contains("基于以下搜索结果")),
         eq(conversationId),
         eq(false)
@@ -251,9 +262,9 @@ class AiChatServiceImplTest {
   @Test
   void shouldBuildPromptWithSearchContext() {
     // Given
-    SearchIntegrationService.SearchContextResult searchResult = 
-        new SearchIntegrationService.SearchContextResult("AI is a field of computer science", null, Flux.empty());
-    when(searchIntegrationService.performSearchIfEnabled(anyString(), anyBoolean()))
+    SearchService.SearchContextResult searchResult = 
+        new SearchService.SearchContextResult("AI is a field of computer science", null, Flux.empty());
+    when(searchService.performSearchWithEvents(anyString(), anyBoolean()))
         .thenReturn(Mono.just(searchResult));
 
     // When & Then
@@ -261,7 +272,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(chatStreamService).executeStreamingChat(
+    verify(modelScopeDirectService).executeDirectStreaming(
         argThat(prompt -> 
             prompt.contains("基于以下搜索结果回答用户问题：") &&
             prompt.contains("AI is a field of computer science")
@@ -274,7 +285,7 @@ class AiChatServiceImplTest {
   @Test
   void shouldHandleEmptyConversationHistory() {
     // Given
-    when(messagePersistenceService.getConversationHistory(conversationId))
+    when(messageService.getConversationHistoryAsync(conversationId))
         .thenReturn(Mono.just(Arrays.asList()));
 
     // When & Then
@@ -282,7 +293,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(chatStreamService).executeStreamingChat(
+    verify(modelScopeDirectService).executeDirectStreaming(
         argThat(prompt -> prompt.equals("用户: " + userMessage)),
         eq(conversationId),
         eq(false)
@@ -292,7 +303,7 @@ class AiChatServiceImplTest {
   @Test
   void shouldHandleNullConversationHistory() {
     // Given
-    when(messagePersistenceService.getConversationHistory(conversationId))
+    when(messageService.getConversationHistoryAsync(conversationId))
         .thenReturn(Mono.just(Arrays.asList()));
 
     // When & Then
@@ -300,7 +311,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(chatStreamService).executeStreamingChat(
+    verify(modelScopeDirectService).executeDirectStreaming(
         argThat(prompt -> prompt.equals("用户: " + userMessage)),
         eq(conversationId),
         eq(false)
@@ -314,5 +325,180 @@ class AiChatServiceImplTest {
     message.setContent(content);
     message.setCreatedAt(LocalDateTime.now());
     return message;
+  }
+
+  // ========================= 流式处理测试（从 ChatStreamServiceTest 迁移） =========================
+
+  @Test
+  void shouldExecuteStreamingChatSuccessfully() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    // Mock ModelScopeDirectService行为  
+    Flux<SseEventResponse> mockResponse = Flux.just(
+        SseEventResponse.start("AI正在思考中..."),
+        SseEventResponse.chunk("测试响应"),
+        SseEventResponse.end(1L)
+    );
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(mockResponse);
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "start".equals(event.getType()) && 
+            "AI正在思考中...".equals(event.getData()))
+        .expectNextMatches(event -> 
+            "chunk".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleErrorGracefullyInExecuteStreamingChat() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    // Mock ModelScopeDirectService抛出异常
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(Flux.error(new RuntimeException("AI服务不可用")));
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("AI服务暂时不可用"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleDeepThinkingModeInExecuteStreamingChat() {
+    // Given
+    String prompt = "复杂问题需要深度思考";
+    Long conversationId = 1L;
+    
+    // Mock ModelScopeDirectService行为  
+    Flux<SseEventResponse> mockResponse = Flux.just(
+        SseEventResponse.start("AI正在深度思考...")
+    );
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, true))
+        .thenReturn(mockResponse);
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, true))
+        .expectNextMatches(event -> 
+            "start".equals(event.getType()) && 
+            "AI正在深度思考...".equals(event.getData()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandle401ErrorInStreamingChat() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(Flux.error(new RuntimeException("HTTP 401 Unauthorized")));
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("API密钥无效"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandle429ErrorInStreamingChat() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(Flux.error(new RuntimeException("HTTP 429 Too Many Requests")));
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("API调用频率超限"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleTimeoutErrorInStreamingChat() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(Flux.error(new RuntimeException("Request timeout occurred")));
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("请求超时"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleConnectionErrorInStreamingChat() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(Flux.error(new RuntimeException("Connection refused")));
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("网络连接失败"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleTimeoutFromConfiguration() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    // 设置短超时时间
+    when(streamingProperties.getResponseTimeout()).thenReturn(Duration.ofMillis(1));
+    
+    // Mock一个慢速响应
+    Flux<SseEventResponse> slowResponse = Flux.just(SseEventResponse.chunk("慢速响应"))
+        .delayElements(Duration.ofMillis(100));
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(slowResponse);
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleComplexErrorMessageInStreamingChat() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    
+    // 复杂的错误消息包含多个关键词
+    when(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, false))
+        .thenReturn(Flux.error(new RuntimeException("Connection timeout: HTTP 401 error")));
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("API密钥无效")) // 应该优先匹配401错误
+        .verifyComplete();
   }
 }

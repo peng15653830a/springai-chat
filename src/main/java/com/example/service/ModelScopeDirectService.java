@@ -26,7 +26,7 @@ public class ModelScopeDirectService {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    private final MessagePersistenceService messagePersistenceService;
+    private final MessageService messageService;
 
     @Value("${spring.ai.openai.api-key}")
     private String apiKey;
@@ -51,10 +51,10 @@ public class ModelScopeDirectService {
 
     public ModelScopeDirectService(WebClient.Builder webClientBuilder, 
                                   ObjectMapper objectMapper,
-                                  MessagePersistenceService messagePersistenceService) {
+                                  MessageService messageService) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
-        this.messagePersistenceService = messagePersistenceService;
+        this.messageService = messageService;
     }
 
     /**
@@ -239,7 +239,7 @@ public class ModelScopeDirectService {
             return Mono.just(SseEventResponse.end(null));
         }
         
-        return messagePersistenceService.saveAiMessage(conversationId, content.trim(), thinking)
+        return messageService.saveAiMessageAsync(conversationId, content.trim(), thinking)
             .onErrorReturn(SseEventResponse.error("保存AI响应失败"));
     }
 }

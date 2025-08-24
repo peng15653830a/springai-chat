@@ -1,5 +1,6 @@
 package com.example.service.impl;
 
+import com.example.config.ChatStreamingProperties;
 import com.example.entity.Message;
 import com.example.service.*;
 import com.example.service.dto.SseEventResponse;
@@ -15,7 +16,7 @@ import static com.example.service.constants.AiChatConstants.ROLE_ASSISTANT;
 import static com.example.service.constants.AiChatConstants.ROLE_USER;
 
 /**
- * AI聊天服务实现类（纯响应式架构）
+ * AI聊天服务实现类（纯响应式架构，整合了ChatStreamService的流式处理功能）
  *
  * @author xupeng
  */
@@ -23,10 +24,11 @@ import static com.example.service.constants.AiChatConstants.ROLE_USER;
 @Service
 public class AiChatServiceImpl implements AiChatService {
 
-  @Autowired private ChatStreamService chatStreamService;
-  @Autowired private SearchIntegrationService searchIntegrationService;
-  @Autowired private ConversationManagementService conversationManagementService;
-  @Autowired private MessagePersistenceService messagePersistenceService;
+  @Autowired private ChatStreamingProperties streamingProperties;
+  @Autowired private ModelScopeDirectService modelScopeDirectService;
+  @Autowired private SearchService searchService;
+  @Autowired private ConversationService conversationService;
+  @Autowired private MessageService messageService;
 
   @Override
   public Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, boolean searchEnabled, boolean deepThinking) {
@@ -45,18 +47,39 @@ public class AiChatServiceImpl implements AiChatService {
     )
     .onErrorResume(error -> {
       log.error("流式聊天过程中发生错误，会话ID: {}", conversationId, error);
-      return Flux.just(SseEventResponse.error("聊天服务暂时不可用，请稍后重试"));
+      return handleChatError(error);
     });
+  }
+
+  // ========================= 内部流式处理方法实现 =========================
+  
+  @Override
+  public Flux<SseEventResponse> executeStreamingChat(String prompt, Long conversationId, boolean deepThinking) {
+    log.debug("开始执行流式AI聊天，提示长度: {}, 会话ID: {}, 深度思考: {}", prompt.length(), conversationId, deepThinking);
+
+    // 统一使用ModelScope直接API调用，通过deepThinking参数控制是否启用推理
+    log.info("🚀 使用ModelScope直接API调用，深度思考: {}", deepThinking);
+    return modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking)
+        .timeout(streamingProperties.getResponseTimeout())
+        .onErrorResume(this::handleChatError);
+  }
+
+  @Override
+  public Flux<SseEventResponse> handleChatError(Throwable error) {
+    log.error("流式聊天发生错误", error);
+    
+    String errorMessage = getErrorMessage(error);
+    return Flux.just(SseEventResponse.error(errorMessage));
   }
 
   /**
    * 保存用户消息并生成标题
    */
   private Flux<SseEventResponse> saveUserMessageAndGenerateTitle(Long conversationId, String userMessage) {
-    return messagePersistenceService.saveUserMessage(conversationId, userMessage)
+    return messageService.saveUserMessageAsync(conversationId, userMessage)
         .doOnNext(message -> {
           // 异步生成标题，不阻塞主流程
-          conversationManagementService.generateTitleIfNeeded(conversationId, userMessage)
+          conversationService.generateTitleIfNeededAsync(conversationId, userMessage)
               .subscribe();
         })
         .then(Mono.<SseEventResponse>empty())
@@ -67,8 +90,8 @@ public class AiChatServiceImpl implements AiChatService {
    * 执行搜索步骤
    */
   private Flux<SseEventResponse> performSearchStep(String userMessage, boolean searchEnabled) {
-    return searchIntegrationService.performSearchIfEnabled(userMessage, searchEnabled)
-        .flatMapMany(SearchIntegrationService.SearchContextResult::getSearchEvents);
+    return searchService.performSearchWithEvents(userMessage, searchEnabled)
+        .flatMapMany(SearchService.SearchContextResult::getSearchEvents);
   }
 
   /**
@@ -77,15 +100,15 @@ public class AiChatServiceImpl implements AiChatService {
   private Flux<SseEventResponse> buildPromptAndStreamChat(Long conversationId, String userMessage, 
                                                         boolean searchEnabled, boolean deepThinking) {
     return Mono.zip(
-        messagePersistenceService.getConversationHistory(conversationId),
-        searchIntegrationService.performSearchIfEnabled(userMessage, searchEnabled)
+        messageService.getConversationHistoryAsync(conversationId),
+        searchService.performSearchWithEvents(userMessage, searchEnabled)
     )
     .flatMapMany(tuple -> {
       List<Message> history = tuple.getT1();
       String searchContext = tuple.getT2().getSearchContext();
       
       String fullPrompt = buildFullPrompt(userMessage, searchContext, history);
-      return chatStreamService.executeStreamingChat(fullPrompt, conversationId, deepThinking);
+      return executeStreamingChat(fullPrompt, conversationId, deepThinking);
     });
   }
 
@@ -118,5 +141,27 @@ public class AiChatServiceImpl implements AiChatService {
     prompt.append("用户: ").append(userMessage);
     
     return prompt.toString();
+  }
+
+  /**
+   * 获取用户友好的错误信息
+   */
+  private String getErrorMessage(Throwable error) {
+    String message = error.getMessage();
+    if (message == null) {
+      message = error.getClass().getSimpleName();
+    }
+    
+    if (message.contains("401")) {
+      return "API密钥无效，请检查配置";
+    } else if (message.contains("429")) {
+      return "API调用频率超限，请稍后重试";
+    } else if (message.contains("timeout")) {
+      return "请求超时，请检查网络连接";
+    } else if (message.contains("Connection")) {
+      return "网络连接失败，请检查网络";
+    }
+    
+    return "AI服务暂时不可用，请稍后重试";
   }
 }

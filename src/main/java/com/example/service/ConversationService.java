@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.example.entity.Conversation;
 import com.example.entity.Message;
+import reactor.core.publisher.Mono;
 import java.util.List;
 
 /**
@@ -76,4 +77,23 @@ public interface ConversationService {
    * @return 消息列表
    */
   List<Message> getRecentMessages(Long conversationId, int limit);
+
+  // ========================= 标题管理方法 =========================
+  
+  /**
+   * 异步生成对话标题（如果需要）
+   *
+   * @param conversationId 会话ID
+   * @param userMessage 用户消息
+   * @return 完成的响应式流
+   */
+  Mono<Void> generateTitleIfNeededAsync(Long conversationId, String userMessage);
+
+  /**
+   * 从用户消息生成简洁标题
+   *
+   * @param message 用户消息
+   * @return 生成的标题
+   */
+  String generateTitleFromMessage(String message);
 }

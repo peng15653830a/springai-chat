@@ -7,24 +7,31 @@ spring:
   application:
     name: ai-chat-test
     
-  # 测试数据源配置
+  # 测试数据源配置 - 强制覆盖主配置
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:mem:testdb-${random.uuid};MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
-    password: 
+    password:
+    # 明确指定测试专用配置
+    platform: h2
+    initialization-mode: embedded 
   
   # H2控制台配置
   h2:
     console:
       enabled: false
   
-  # JPA配置
+  # JPA配置 - 测试环境使用H2
   jpa:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
+    # 确保使用H2方言
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
     
   # SQL初始化配置
   sql:
@@ -45,14 +52,14 @@ spring:
           temperature: 0.7
           max-tokens: 1000
 
-# MyBatis配置
+# MyBatis配置 - 测试环境
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.example.entity
   configuration:
     map-underscore-to-camel-case: true
-    # 测试环境关闭SQL日志
-    log-impl: org.apache.ibatis.logging.noop.NoOpImpl
+    # 测试环境关闭SQL日志 - 修复类名引用错误
+    # log-impl: org.apache.ibatis.logging.noop.NoOpImpl  # 注释掉错误的配置
     cache-enabled: true
     lazy-loading-enabled: true
 

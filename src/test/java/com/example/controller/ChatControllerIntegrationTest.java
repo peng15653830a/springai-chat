@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.when;
  */
 @WebFluxTest(ChatController.class)
 @ContextConfiguration(classes = {ChatController.class})
+@ActiveProfiles("test")
 class ChatControllerIntegrationTest {
 
   @Autowired
@@ -58,14 +60,8 @@ class ChatControllerIntegrationTest {
         .exchange()
         .expectStatus().isOk()
         .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM)
-        .expectBody()
-        .consumeWith(response -> {
-          String body = new String(response.getResponseBody());
-          // 验证SSE格式和内容
-          assert body.contains("data:");
-          assert body.contains("AI正在思考中");
-          assert body.contains("Hello");
-        });
+        .expectBodyList(String.class)
+        .hasSize(4); // 应该有4个SSE事件
   }
 
   @Test

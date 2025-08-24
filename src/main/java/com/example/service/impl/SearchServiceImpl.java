@@ -4,6 +4,7 @@ import static com.example.service.constants.AiChatConstants.HTTP_STATUS_OK;
 
 import com.example.service.SearchService;
 import com.example.service.dto.SearchResult;
+import com.example.service.dto.SseEventResponse;
 import com.example.service.dto.TavilyRequest;
 import com.example.service.dto.TavilyResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,8 @@ import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * 搜索服务实现类
@@ -39,6 +42,11 @@ public class SearchServiceImpl implements SearchService {
   private boolean searchEnabled;
 
   @Autowired private ObjectMapper objectMapper;
+
+  /**
+   * 日志消息最大长度限制
+   */
+  private static final int MAX_LOG_MESSAGE_LENGTH = 50;
 
   /** 主搜索方法：使用Tavily搜索API */
   @Override
@@ -147,5 +155,61 @@ public class SearchServiceImpl implements SearchService {
   public boolean shouldSearch(String message) {
     // 只要消息不为null且不为空（去除空白字符后），就可以搜索
     return message != null && !message.trim().isEmpty();
+  }
+
+  /**
+   * 执行搜索并返回包含事件流的结果
+   *
+   * @param userMessage 用户消息，不能为null
+   * @param searchEnabled 是否启用搜索
+   * @return 包含搜索上下文和事件流的响应式结果，不会返回null
+   */
+  @Override
+  public Mono<SearchContextResult> performSearchWithEvents(String userMessage, boolean searchEnabled) {
+    // 【强制】参数校验
+    if (userMessage == null) {
+      throw new IllegalArgumentException("用户消息不能为null");
+    }
+    
+    if (!searchEnabled) {
+      return Mono.just(new SearchContextResult("", null, Flux.empty()));
+    }
+
+    // 【推荐】日志中避免字符串拼接，使用占位符
+    String logMessage = userMessage.length() > MAX_LOG_MESSAGE_LENGTH 
+        ? userMessage.substring(0, MAX_LOG_MESSAGE_LENGTH) 
+        : userMessage;
+    log.info("开始执行搜索，关键词: [{}]", logMessage);
+
+    return Mono.fromCallable(() -> {
+            List<SearchResult> searchResults = searchMetaso(userMessage);
+            String searchContext = formatSearchResults(searchResults);
+            Flux<SseEventResponse> searchEvents = createSearchEvents(searchResults);
+            return new SearchContextResult(searchContext, searchResults, searchEvents);
+        })
+        .doOnNext(result -> {
+            int resultCount = result.getSearchResults() != null ? result.getSearchResults().size() : 0;
+            int contextLength = result.getSearchContext().length();
+            log.debug("搜索完成，结果数量: [{}], 上下文长度: [{}]", resultCount, contextLength);
+        })
+        .onErrorReturn(new SearchContextResult("", null,
+            Flux.just(SseEventResponse.error("搜索服务暂时不可用"))));
+  }
+
+  /**
+   * 创建搜索相关的SSE事件流
+   *
+   * @param searchResults 搜索结果列表，可以为null或空
+   * @return SSE事件流，不会返回null
+   */
+  @Override
+  public Flux<SseEventResponse> createSearchEvents(List<SearchResult> searchResults) {
+    return Flux.concat(
+        Mono.just(SseEventResponse.search("start")),
+        Mono.justOrEmpty(searchResults)
+            .filter(results -> !results.isEmpty())
+            .map(SseEventResponse::searchResults),
+        Mono.just(SseEventResponse.search("complete"))
+    );
   }
 }

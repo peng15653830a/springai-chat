@@ -50,14 +50,14 @@ class ModelScopeDirectServiceTest {
   private ObjectMapper objectMapper;
 
   @Mock
-  private MessagePersistenceService messagePersistenceService;
+  private MessageService messageService;
 
   private ModelScopeDirectService modelScopeDirectService;
 
   @BeforeEach
   void setUp() {
     when(webClientBuilder.build()).thenReturn(webClient);
-    modelScopeDirectService = new ModelScopeDirectService(webClientBuilder, objectMapper, messagePersistenceService);
+    modelScopeDirectService = new ModelScopeDirectService(webClientBuilder, objectMapper, messageService);
     
     // 设置字段值
     ReflectionTestUtils.setField(modelScopeDirectService, "apiKey", "test-api-key");
@@ -94,8 +94,8 @@ class ModelScopeDirectServiceTest {
       // Handle checked exception
     }
     
-    // Mock MessagePersistenceService
-    when(messagePersistenceService.saveAiMessage(conversationId, "Hello! How can I help you?", null))
+    // Mock MessageService
+    when(messageService.saveAiMessageAsync(conversationId, "Hello! How can I help you?", null))
         .thenReturn(Mono.just(SseEventResponse.end(null)));
 
     // When & Then
@@ -135,8 +135,8 @@ class ModelScopeDirectServiceTest {
       // Handle checked exception
     }
     
-    // Mock MessagePersistenceService  
-    when(messagePersistenceService.saveAiMessage(conversationId, "Here's the solution.", "Let me think about this..."))
+    // Mock MessageService  
+    when(messageService.saveAiMessageAsync(conversationId, "Here's the solution.", "Let me think about this..."))
         .thenReturn(Mono.just(SseEventResponse.end(null)));
 
     // When & Then
@@ -267,7 +267,7 @@ class ModelScopeDirectServiceTest {
     }
     
     // Mock MessagePersistenceService
-    when(messagePersistenceService.saveAiMessage(conversationId, "Valid content", null))
+    when(messageService.saveAiMessageAsync(conversationId, "Valid content", null))
         .thenReturn(Mono.just(SseEventResponse.end(null)));
 
     // When & Then
@@ -313,7 +313,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
   @Test
@@ -339,7 +339,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
   @Test
@@ -371,7 +371,7 @@ class ModelScopeDirectServiceTest {
     }
     
     // Mock MessagePersistenceService
-    when(messagePersistenceService.saveAiMessage(conversationId, "Response without thinking", null))
+    when(messageService.saveAiMessageAsync(conversationId, "Response without thinking", null))
         .thenReturn(Mono.just(SseEventResponse.end(null)));
 
     // When & Then
@@ -418,7 +418,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法（因为trim后为空）
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
   @Test
@@ -455,7 +455,7 @@ class ModelScopeDirectServiceTest {
     }
     
     // Mock MessagePersistenceService
-    when(messagePersistenceService.saveAiMessage(conversationId, "Valid response", null))
+    when(messageService.saveAiMessageAsync(conversationId, "Valid response", null))
         .thenReturn(Mono.just(SseEventResponse.end(null)));
 
     // When & Then - 只有有效JSON应该被处理
@@ -499,7 +499,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
   @Test
@@ -536,7 +536,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
   @Test
@@ -573,7 +573,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
 
@@ -610,7 +610,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法（因为最终content为空）
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
   @Test
@@ -646,7 +646,7 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 验证没有调用保存方法（因为内容为空）
-    verify(messagePersistenceService, never()).saveAiMessage(any(), any(), any());
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
 

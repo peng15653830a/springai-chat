@@ -21,4 +21,24 @@ public interface AiChatService {
    */
   Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, boolean searchEnabled, boolean deepThinking);
 
+  // ========================= 内部流式处理方法 =========================
+  
+  /**
+   * 执行流式AI聊天
+   *
+   * @param prompt 完整的聊天提示
+   * @param conversationId 会话ID（用于保存AI响应）
+   * @param deepThinking 是否启用深度思考模式
+   * @return 响应式SSE事件流
+   */
+  Flux<SseEventResponse> executeStreamingChat(String prompt, Long conversationId, boolean deepThinking);
+
+  /**
+   * 处理聊天错误
+   *
+   * @param error 错误对象
+   * @return 错误SSE事件流
+   */
+  Flux<SseEventResponse> handleChatError(Throwable error);
+
 }
