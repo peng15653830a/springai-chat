@@ -135,6 +135,26 @@
           <!-- 功能按钮栏 - 借鉴腾讯元宝设计 -->
           <div class="function-toolbar">
             <div class="toolbar-left">
+              <!-- 模型选择下拉框 -->
+              <el-select
+                v-model="selectedModel"
+                placeholder="选择模型"
+                size="small"
+                class="model-selector"
+                @change="onModelChange"
+              >
+                <el-option
+                  v-for="model in availableModels"
+                  :key="model.name"
+                  :label="model.displayName"
+                  :value="model.name"
+                  :disabled="!model.available"
+                >
+                  <span style="float: left">{{ model.displayName }}</span>
+                  <span style="float: right; color: #8492a6; font-size: 13px" v-if="!model.available">不可用</span>
+                </el-option>
+              </el-select>
+              
               <el-button
                 :type="deepThinking ? 'primary' : ''"
                 :plain="!deepThinking"
@@ -216,7 +236,8 @@ import { ref, onMounted, onBeforeUnmount, nextTick, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
-import { conversationApi, chatApi } from '../api'
+import { useModelStore } from '../stores/model'
+import { conversationApi, chatApi, modelApi } from '../api'
 import { useEventSource } from '@vueuse/core'
 import hljs from 'highlight.js'
 import { debounce } from 'lodash-es'
@@ -234,12 +255,18 @@ export default {
   setup(props, { emit }) {
     const userStore = useUserStore()
     const chatStore = useChatStore()
+    const modelStore = useModelStore()
     const inputMessage = ref('')
     const messageList = ref()
     const rightPanel = ref() // 右侧面板引用
     const searchEnabled = ref(true) // 默认开启搜索
     const deepThinking = ref(false) // 默认关闭深度思考
     const expandedThinking = ref(new Set()) // 展开的推理过程ID集合
+    
+    // 模型选择相关状态
+    const selectedModel = ref('') // 当前选择的模型
+    const availableModels = ref([]) // 可用模型列表
+    const selectedProvider = ref('') // 当前选择的提供者
     
     // 待发送的消息（用于触发SSE连接）
     const pendingMessage = ref('')
@@ -257,6 +284,15 @@ export default {
         searchEnabled: pendingSearchEnabled.value.toString(),
         deepThinking: pendingDeepThinking.value.toString()
       })
+      
+      // 添加模型信息到参数中
+      if (selectedModel.value) {
+        params.append('model', selectedModel.value)
+      }
+      if (selectedProvider.value) {
+        params.append('provider', selectedProvider.value)
+      }
+      
       return `/api/chat/stream/${chatStore.currentConversation.id}?${params}`
     })
     
@@ -519,6 +555,19 @@ export default {
       console.log('🚀 触发SSE连接发送消息:', message)
     }
     
+    // 从本地存储加载设置
+    const loadSettings = () => {
+      const savedSearch = localStorage.getItem('searchEnabled')
+      if (savedSearch !== null) {
+        searchEnabled.value = savedSearch === 'true'
+      }
+      
+      const savedDeepThinking = localStorage.getItem('deepThinking')
+      if (savedDeepThinking !== null) {
+        deepThinking.value = savedDeepThinking === 'true'
+      }
+    }
+    
     // SSE事件处理函数
     const handleStartEvent = (data) => {
       console.log('🎯 SSE start event received:', data)
@@ -771,16 +820,67 @@ export default {
       }
     }
     
-    // 从本地存储加载设置
-    const loadSettings = () => {
-      const savedSearch = localStorage.getItem('searchEnabled')
-      if (savedSearch !== null) {
-        searchEnabled.value = savedSearch === 'true'
+    // 加载可用模型
+    const loadAvailableModels = async () => {
+      try {
+        const response = await modelApi.getAllAvailableModels()
+        if (response.success) {
+          // 展平所有提供者的模型列表
+          const allModels = []
+          response.data.forEach(provider => {
+            if (provider.models && provider.models.length > 0) {
+              provider.models.forEach(model => {
+                // 添加提供者前缀到模型名称
+                model.fullModelId = `${provider.id}-${model.name}`
+                model.providerName = provider.name
+                model.providerDisplayName = provider.displayName
+                allModels.push(model)
+              })
+            }
+          })
+          availableModels.value = allModels
+          
+          // 如果有模型，选择第一个可用的作为默认模型
+          if (allModels.length > 0) {
+            const firstAvailable = allModels.find(model => model.available)
+            if (firstAvailable) {
+              selectedModel.value = firstAvailable.name
+              selectedProvider.value = firstAvailable.providerName
+              console.log('🎯 设置默认模型:', firstAvailable.displayName)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载模型列表失败:', error)
+        ElMessage.error('加载模型列表失败')
       }
+    }
+    
+    // 模型选择变更处理
+    const onModelChange = (modelName) => {
+      const selected = availableModels.value.find(model => model.name === modelName)
+      if (selected) {
+        selectedProvider.value = selected.providerName
+        ElMessage.success(`已选择模型: ${selected.displayName}`)
+        // 保存到本地存储
+        localStorage.setItem('selectedModel', modelName)
+        localStorage.setItem('selectedProvider', selected.providerName)
+      }
+    }
+    
+    // 从本地存储加载模型选择
+    const loadModelSelection = () => {
+      const savedModel = localStorage.getItem('selectedModel')
+      const savedProvider = localStorage.getItem('selectedProvider')
       
-      const savedDeepThinking = localStorage.getItem('deepThinking')
-      if (savedDeepThinking !== null) {
-        deepThinking.value = savedDeepThinking === 'true'
+      if (savedModel && savedProvider) {
+        // 验证模型是否仍然可用
+        const model = availableModels.value.find(m => m.name === savedModel && m.providerName === savedProvider)
+        if (model && model.available) {
+          selectedModel.value = savedModel
+          selectedProvider.value = savedProvider
+          console.log('📥 从本地存储加载模型选择:', model.displayName)
+        }
       }
     }
     
@@ -847,6 +947,9 @@ export default {
       }
       loadConversations()
       loadSettings()
+      loadAvailableModels().then(() => {
+        loadModelSelection()
+      })
       
       // EventSource无需全局配置
     })
@@ -922,7 +1025,13 @@ export default {
       leftSidebarCollapsed,
       rightSidebarCollapsed,
       toggleLeftSidebar,
-      toggleRightSidebar
+      toggleRightSidebar,
+      // 模型相关
+      selectedModel,
+      availableModels,
+      selectedProvider,
+      loadAvailableModels,
+      onModelChange
     }
   }
 }
@@ -1246,6 +1355,10 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.model-selector {
+  width: 180px;
 }
 
 .function-btn {

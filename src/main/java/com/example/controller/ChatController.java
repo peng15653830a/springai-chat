@@ -27,12 +27,15 @@ public class ChatController {
   @Autowired private AiChatService aiChatService;
 
   /**
-   * SSE聊天端点 - 按需建立连接处理消息
+   * SSE聊天端点 - 按需建立连接处理消息（支持模型选择）
    *
    * @param conversationId 会话ID
    * @param message 用户消息（可选）
    * @param searchEnabled 是否启用搜索
    * @param deepThinking 是否启用深度思考模式
+   * @param userId 用户ID（用于获取用户模型偏好）
+   * @param provider 指定的模型提供者（可选，如qwen、openai等）
+   * @param model 指定的模型名称（可选）
    * @return 响应式SSE事件流
    */
   @GetMapping(value = "/stream/{conversationId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -40,9 +43,13 @@ public class ChatController {
       @PathVariable Long conversationId,
       @RequestParam(required = false) String message,
       @RequestParam(defaultValue = "false") boolean searchEnabled,
-      @RequestParam(defaultValue = "false") boolean deepThinking) {
+      @RequestParam(defaultValue = "false") boolean deepThinking,
+      @RequestParam(required = false) Long userId,
+      @RequestParam(required = false) String provider,
+      @RequestParam(required = false) String model) {
     
-    log.info("SSE连接请求，会话ID: {}, 是否有消息: {}", conversationId, message != null);
+    log.info("SSE连接请求，会话ID: {}, 是否有消息: {}, 用户ID: {}, 指定模型: {}-{}", 
+        conversationId, message != null, userId, provider, model);
     
     if (message == null || message.trim().isEmpty()) {
       // 无消息时返回空流，连接会自然结束
@@ -51,10 +58,10 @@ public class ChatController {
     }
     
     // 有消息时，执行完整的AI聊天流
-    log.info("开始处理聊天消息，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}", 
-        conversationId, message.length(), searchEnabled, deepThinking);
+    log.info("开始处理聊天消息，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}", 
+        conversationId, message.length(), searchEnabled, deepThinking, userId, provider, model);
     
-    return aiChatService.streamChat(conversationId, message, searchEnabled, deepThinking)
+    return aiChatService.streamChatWithModel(conversationId, message, searchEnabled, deepThinking, userId, provider, model)
         .doOnNext(event -> log.debug("发送SSE事件: {} - {}", event.getType(), 
             event.getData() instanceof SseEventResponse.ChunkData ? "chunk" : event.getData()))
         .doOnError(error -> log.error("流式聊天发生错误，会话ID: {}", conversationId, error))

@@ -1,9 +1,15 @@
 package com.example.service.impl;
 
 import com.example.config.ChatStreamingProperties;
+import com.example.config.MultiModelProperties;
+import com.example.dto.ModelInfo;
+import com.example.dto.UserModelPreferenceDto;
 import com.example.entity.Message;
 import com.example.service.*;
+import com.example.service.dto.ChatRequest;
 import com.example.service.dto.SseEventResponse;
+import com.example.service.factory.ModelProviderFactory;
+import com.example.service.provider.ModelProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,15 +31,25 @@ import static com.example.service.constants.AiChatConstants.ROLE_USER;
 public class AiChatServiceImpl implements AiChatService {
 
   @Autowired private ChatStreamingProperties streamingProperties;
-  @Autowired private ModelScopeDirectService modelScopeDirectService;
   @Autowired private SearchService searchService;
   @Autowired private ConversationService conversationService;
   @Autowired private MessageService messageService;
+  @Autowired private ModelProviderFactory modelProviderFactory;
+  @Autowired private ModelManagementService modelManagementService;
+  @Autowired private MultiModelProperties multiModelProperties;
 
   @Override
   public Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, boolean searchEnabled, boolean deepThinking) {
-    log.info("开始响应式流式聊天，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}", 
-        conversationId, userMessage.length(), searchEnabled, deepThinking);
+    // 使用默认模型进行聊天
+    return streamChatWithModel(conversationId, userMessage, searchEnabled, deepThinking, null, null, null);
+  }
+
+  @Override
+  public Flux<SseEventResponse> streamChatWithModel(Long conversationId, String userMessage, 
+                                                   boolean searchEnabled, boolean deepThinking,
+                                                   Long userId, String providerName, String modelName) {
+    log.info("开始响应式流式聊天，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}", 
+        conversationId, userMessage.length(), searchEnabled, deepThinking, userId, providerName, modelName);
 
     return Flux.concat(
         // 1. 保存用户消息并生成标题
@@ -43,7 +59,8 @@ public class AiChatServiceImpl implements AiChatService {
         performSearchStep(userMessage, searchEnabled),
         
         // 3. 构建提示并执行流式聊天
-        buildPromptAndStreamChat(conversationId, userMessage, searchEnabled, deepThinking)
+        buildPromptAndStreamChatWithModel(conversationId, userMessage, searchEnabled, deepThinking, 
+                                        userId, providerName, modelName)
     )
     .onErrorResume(error -> {
       log.error("流式聊天过程中发生错误，会话ID: {}", conversationId, error);
@@ -55,13 +72,42 @@ public class AiChatServiceImpl implements AiChatService {
   
   @Override
   public Flux<SseEventResponse> executeStreamingChat(String prompt, Long conversationId, boolean deepThinking) {
-    log.debug("开始执行流式AI聊天，提示长度: {}, 会话ID: {}, 深度思考: {}", prompt.length(), conversationId, deepThinking);
+    // 使用默认模型执行聊天
+    return executeStreamingChatWithModel(prompt, conversationId, deepThinking, null, null);
+  }
 
-    // 统一使用ModelScope直接API调用，通过deepThinking参数控制是否启用推理
-    log.info("🚀 使用ModelScope直接API调用，深度思考: {}", deepThinking);
-    return modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking)
-        .timeout(streamingProperties.getResponseTimeout())
-        .onErrorResume(this::handleChatError);
+  /**
+   * 使用指定模型执行流式聊天
+   */
+  public Flux<SseEventResponse> executeStreamingChatWithModel(String prompt, Long conversationId, 
+                                                             boolean deepThinking, 
+                                                             String providerName, String modelName) {
+    log.debug("开始执行流式AI聊天，提示长度: {}, 会话ID: {}, 深度思考: {}, 模型: {}-{}", 
+             prompt.length(), conversationId, deepThinking, providerName, modelName);
+
+    try {
+      // 获取模型提供者
+      ModelProvider provider = getModelProvider(providerName);
+      String actualModelName = getActualModelName(provider, modelName);
+      
+      // 构建聊天请求
+      ChatRequest request = ChatRequest.builder()
+          .conversationId(conversationId)
+          .modelName(actualModelName)
+          .fullPrompt(prompt)
+          .deepThinking(deepThinking)
+          .build();
+
+      log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", provider.getDisplayName(), actualModelName, deepThinking);
+      
+      return provider.streamChat(request)
+          .timeout(streamingProperties.getResponseTimeout())
+          .onErrorResume(this::handleChatError);
+          
+    } catch (Exception e) {
+      log.error("获取模型提供者失败", e);
+      return handleChatError(e);
+    }
   }
 
   @Override
@@ -99,6 +145,15 @@ public class AiChatServiceImpl implements AiChatService {
    */
   private Flux<SseEventResponse> buildPromptAndStreamChat(Long conversationId, String userMessage, 
                                                         boolean searchEnabled, boolean deepThinking) {
+    return buildPromptAndStreamChatWithModel(conversationId, userMessage, searchEnabled, deepThinking, null, null, null);
+  }
+
+  /**
+   * 构建提示并执行流式聊天（支持模型选择）
+   */
+  private Flux<SseEventResponse> buildPromptAndStreamChatWithModel(Long conversationId, String userMessage, 
+                                                                 boolean searchEnabled, boolean deepThinking,
+                                                                 Long userId, String providerName, String modelName) {
     return Mono.zip(
         messageService.getConversationHistoryAsync(conversationId),
         searchService.performSearchWithEvents(userMessage, searchEnabled)
@@ -108,7 +163,13 @@ public class AiChatServiceImpl implements AiChatService {
       String searchContext = tuple.getT2().getSearchContext();
       
       String fullPrompt = buildFullPrompt(userMessage, searchContext, history);
-      return executeStreamingChat(fullPrompt, conversationId, deepThinking);
+      
+      // 解析用户模型选择
+      String[] resolvedModel = resolveUserModel(userId, providerName, modelName);
+      String finalProviderName = resolvedModel[0];
+      String finalModelName = resolvedModel[1];
+      
+      return executeStreamingChatWithModel(fullPrompt, conversationId, deepThinking, finalProviderName, finalModelName);
     });
   }
 
@@ -163,5 +224,75 @@ public class AiChatServiceImpl implements AiChatService {
     }
     
     return "AI服务暂时不可用，请稍后重试";
+  }
+
+  /**
+   * 解析用户模型选择
+   * 优先级：指定的模型 > 用户偏好 > 系统默认
+   * 
+   * @param userId 用户ID
+   * @param providerName 指定的提供者名称
+   * @param modelName 指定的模型名称
+   * @return [提供者名称, 模型名称]
+   */
+  private String[] resolveUserModel(Long userId, String providerName, String modelName) {
+    // 如果指定了完整的模型信息，直接使用
+    if (providerName != null && modelName != null) {
+      log.debug("使用指定模型: {}-{}", providerName, modelName);
+      return new String[]{providerName, modelName};
+    }
+    
+    // 尝试获取用户默认模型偏好
+    if (userId != null) {
+      try {
+        UserModelPreferenceDto userPreference = modelManagementService.getUserDefaultModel(userId);
+        if (userPreference != null) {
+          log.debug("使用用户默认模型: {}-{}", userPreference.getProviderName(), userPreference.getModelName());
+          return new String[]{userPreference.getProviderName(), userPreference.getModelName()};
+        }
+      } catch (Exception e) {
+        log.warn("获取用户模型偏好失败，使用系统默认: {}", e.getMessage());
+      }
+    }
+    
+    // 使用系统默认模型
+    String defaultProvider = multiModelProperties.getDefaultProvider();
+    String defaultModel = multiModelProperties.getDefaultModel();
+    log.debug("使用系统默认模型: {}-{}", defaultProvider, defaultModel);
+    return new String[]{defaultProvider, defaultModel};
+  }
+
+  /**
+   * 获取模型提供者
+   * 
+   * @param providerName 提供者名称，如果为null则使用默认提供者
+   * @return 模型提供者实例
+   */
+  private ModelProvider getModelProvider(String providerName) {
+    if (providerName == null) {
+      return modelProviderFactory.getDefaultProvider();
+    }
+    return modelProviderFactory.getProvider(providerName);
+  }
+
+  /**
+   * 获取实际的模型名称
+   * 
+   * @param provider 模型提供者
+   * @param modelName 指定的模型名称，如果为null则使用该提供者的第一个可用模型
+   * @return 实际的模型名称
+   */
+  private String getActualModelName(ModelProvider provider, String modelName) {
+    if (modelName != null) {
+      return modelName;
+    }
+    
+    // 获取该提供者的第一个可用模型
+    List<ModelInfo> availableModels = provider.getAvailableModels();
+    if (availableModels.isEmpty()) {
+      throw new IllegalStateException("提供者 " + provider.getProviderName() + " 没有可用的模型");
+    }
+    
+    return availableModels.get(0).getName();
   }
 }

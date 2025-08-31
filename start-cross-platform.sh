@@ -74,6 +74,8 @@ fi
 
 # 在后台启动Spring Boot
 echo "启动Spring Boot应用..."
+# 确保环境变量被加载
+source ~/.bashrc 2>/dev/null || true
 mvn spring-boot:run > backend.log 2>&1 &
 BACKEND_PID=$!
 echo "后端服务PID: $BACKEND_PID"
