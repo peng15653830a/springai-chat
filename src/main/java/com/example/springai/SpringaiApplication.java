@@ -18,6 +18,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 public class SpringaiApplication {
 
   public static void main(String[] args) {
+    // 使用Spring Boot原生环境变量支持，不再需要dotenv
     SpringApplication.run(SpringaiApplication.class, args);
   }
 }

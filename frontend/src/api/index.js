@@ -49,4 +49,15 @@ export const chatApi = {
   // 这里不需要API方法了，直接使用useEventSource管理SSE连接
 }
 
+// 模型API
+export const modelApi = {
+  getAvailableProviders: () => api.get('/models/providers'),
+  getProviderModels: (providerName) => api.get(`/models/providers/${providerName}/models`),
+  getAllAvailableModels: () => api.get('/models/available'),
+  getModelInfo: (providerName, modelName) => api.get(`/models/providers/${providerName}/models/${modelName}`),
+  checkModelAvailability: (providerName, modelName) => api.get(`/models/providers/${providerName}/models/${modelName}/available`),
+  getUserDefaultModel: (userId) => api.get(`/models/users/${userId}/default`),
+  getUserModelPreferences: (userId) => api.get(`/models/users/${userId}/preferences`)
+}
+
 export default api
