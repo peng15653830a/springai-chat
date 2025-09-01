@@ -52,6 +52,12 @@ class AiChatServiceImplTest {
   
   @Mock(lenient = true)
   private com.example.service.chat.ChatErrorHandler errorHandler;
+  
+  @Mock(lenient = true)
+  private com.example.service.chat.ModelSelector modelSelector;
+  
+  @Mock(lenient = true)
+  private com.example.service.provider.ModelProvider mockModelProvider;
 
   @InjectMocks
   private AiChatServiceImpl aiChatService;
@@ -69,7 +75,7 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.empty());
     
     SearchService.SearchContextResult searchResult = 
-        new SearchService.SearchContextResult("", null, Flux.empty());
+        new SearchService.SearchContextResult("", null, Flux.just(SseEventResponse.end(1L)));
     when(searchService.performSearchWithEvents(anyString(), anyBoolean()))
         .thenReturn(Mono.just(searchResult));
     
@@ -85,18 +91,35 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just("Test prompt"));
         
     when(errorHandler.handleChatError(any(Throwable.class)))
-        .thenReturn(Flux.just(SseEventResponse.error("Test error")));
+        .thenReturn(Flux.just(SseEventResponse.error("AI服务暂时不可用，请稍后重试")));
+        
+    // Setup model selector and provider mocks
+    when(modelSelector.getModelProvider(null)).thenReturn(mockModelProvider);
+    when(modelSelector.getActualModelName(mockModelProvider, null)).thenReturn("test-model");
+    
+    when(mockModelProvider.getProviderName()).thenReturn("test-provider");
+    when(mockModelProvider.getDisplayName()).thenReturn("Test Provider");
+    when(mockModelProvider.isAvailable()).thenReturn(true);
+    
+    com.example.dto.common.ModelInfo modelInfo = new com.example.dto.common.ModelInfo();
+    modelInfo.setName("test-model");
+    modelInfo.setDisplayName("Test Model");
+    when(mockModelProvider.getAvailableModels()).thenReturn(Arrays.asList(modelInfo));
+    
+    when(mockModelProvider.streamChat(any(com.example.dto.request.ChatRequest.class)))
+        .thenReturn(Flux.just(SseEventResponse.chunk("Test response")));
   }
 
   @Test
   void shouldStreamChatSuccessfully() {
     // When & Then
     StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+        .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
     verify(messageService).saveUserMessageAsync(conversationId, userMessage);
-    verify(searchService, times(2)).performSearchWithEvents(userMessage, false);
+    verify(searchService, times(1)).performSearchWithEvents(userMessage, false);
     verify(messageService).getConversationHistoryAsync(conversationId);
     verify(modelScopeDirectService).executeDirectStreaming(anyString(), eq(conversationId), eq(false));
   }
@@ -119,7 +142,7 @@ class AiChatServiceImplTest {
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
     
-    verify(searchService, times(2)).performSearchWithEvents(userMessage, true);
+    verify(searchService, times(1)).performSearchWithEvents(userMessage, true);
     verify(modelScopeDirectService).executeDirectStreaming(contains("Search results: AI information"), eq(conversationId), eq(false));
   }
 
