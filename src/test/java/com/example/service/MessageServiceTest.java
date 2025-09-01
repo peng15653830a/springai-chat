@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
-import com.example.service.dto.SseEventResponse;
+import com.example.dto.response.SseEventResponse;
 import com.example.service.impl.MessageServiceImpl;
 import reactor.test.StepVerifier;
 import java.time.LocalDateTime;

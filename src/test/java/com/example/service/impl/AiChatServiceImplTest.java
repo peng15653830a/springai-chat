@@ -3,7 +3,7 @@ package com.example.service.impl;
 import com.example.config.ChatStreamingProperties;
 import com.example.entity.Message;
 import com.example.service.*;
-import com.example.service.dto.SseEventResponse;
+import com.example.dto.response.SseEventResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +46,12 @@ class AiChatServiceImplTest {
 
   @Mock(lenient = true)
   private MessageService messageService;
+  
+  @Mock(lenient = true)
+  private com.example.service.chat.PromptBuilder promptBuilder;
+  
+  @Mock(lenient = true)
+  private com.example.service.chat.ChatErrorHandler errorHandler;
 
   @InjectMocks
   private AiChatServiceImpl aiChatService;
@@ -74,6 +80,12 @@ class AiChatServiceImplTest {
     
     when(modelScopeDirectService.executeDirectStreaming(anyString(), anyLong(), anyBoolean()))
         .thenReturn(Flux.just(SseEventResponse.chunk("Test response")));
+        
+    when(promptBuilder.buildPrompt(anyLong(), anyString(), anyBoolean()))
+        .thenReturn(Mono.just("Test prompt"));
+        
+    when(errorHandler.handleChatError(any(Throwable.class)))
+        .thenReturn(Flux.just(SseEventResponse.error("Test error")));
   }
 
   @Test

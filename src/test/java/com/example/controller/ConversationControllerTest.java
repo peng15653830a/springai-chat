@@ -5,7 +5,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.example.dto.ConversationRequest;
+import com.example.dto.request.ConversationRequest;
 import com.example.entity.Conversation;
 import com.example.entity.Message;
 import com.example.service.ConversationService;
@@ -366,7 +366,7 @@ public class ConversationControllerTest {
   @Test
   void testSendMessage_Success() throws Exception {
     // Given
-    com.example.dto.MessageRequest messageRequest = new com.example.dto.MessageRequest();
+    com.example.dto.request.MessageRequest messageRequest = new com.example.dto.request.MessageRequest();
     messageRequest.setContent("Test message content");
 
     when(messageService.saveMessage(1L, "user", "Test message content")).thenReturn(testMessage);
@@ -389,7 +389,7 @@ public class ConversationControllerTest {
   @Test
   void testSendMessage_ServiceException() throws Exception {
     // Given
-    com.example.dto.MessageRequest messageRequest = new com.example.dto.MessageRequest();
+    com.example.dto.request.MessageRequest messageRequest = new com.example.dto.request.MessageRequest();
     messageRequest.setContent("Test message content");
 
     when(messageService.saveMessage(1L, "user", "Test message content"))

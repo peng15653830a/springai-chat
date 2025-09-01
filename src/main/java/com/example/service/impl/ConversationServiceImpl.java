@@ -6,9 +6,9 @@ import com.example.mapper.ConversationMapper;
 import com.example.mapper.MessageMapper;
 import com.example.service.ConversationService;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,11 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConversationServiceImpl implements ConversationService {
 
-  @Autowired private ConversationMapper conversationMapper;
-
-  @Autowired private MessageMapper messageMapper;
+  private final ConversationMapper conversationMapper;
+  private final MessageMapper messageMapper;
 
   @Override
   public Conversation createConversation(Long userId, String title) {

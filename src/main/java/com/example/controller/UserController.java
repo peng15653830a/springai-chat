@@ -1,7 +1,7 @@
 package com.example.controller;
 
-import com.example.dto.ApiResponse;
-import com.example.dto.LoginRequest;
+import com.example.dto.response.ApiResponse;
+import com.example.dto.request.LoginRequest;
 import com.example.entity.User;
 import com.example.service.UserService;
 import lombok.extern.slf4j.Slf4j;

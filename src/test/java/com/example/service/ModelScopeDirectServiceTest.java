@@ -1,6 +1,7 @@
 package com.example.service;
 
-import com.example.service.dto.SseEventResponse;
+import com.example.config.ModelScopeProperties;
+import com.example.dto.response.SseEventResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,7 +9,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -17,6 +17,7 @@ import reactor.test.StepVerifier;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import org.mockito.junit.jupiter.MockitoSettings;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.quality.Strictness;
 
 /**
@@ -52,21 +53,30 @@ class ModelScopeDirectServiceTest {
   @Mock
   private MessageService messageService;
 
+  @Mock
+  private ModelScopeProperties modelScopeProperties;
+
   private ModelScopeDirectService modelScopeDirectService;
 
   @BeforeEach
   void setUp() {
     when(webClientBuilder.build()).thenReturn(webClient);
-    modelScopeDirectService = new ModelScopeDirectService(webClientBuilder, objectMapper, messageService);
     
-    // 设置字段值
-    ReflectionTestUtils.setField(modelScopeDirectService, "apiKey", "test-api-key");
-    ReflectionTestUtils.setField(modelScopeDirectService, "baseUrl", "https://api-inference.modelscope.cn/v1");
-    ReflectionTestUtils.setField(modelScopeDirectService, "model", "Qwen/Qwen3-235B-A22B-Thinking-2507");
-    ReflectionTestUtils.setField(modelScopeDirectService, "temperature", 0.7);
-    ReflectionTestUtils.setField(modelScopeDirectService, "maxTokens", 2000);
-    ReflectionTestUtils.setField(modelScopeDirectService, "enableThinking", true);
-    ReflectionTestUtils.setField(modelScopeDirectService, "thinkingBudget", 50000);
+    // 配置ModelScopeProperties
+    ModelScopeProperties.Chat chat = new ModelScopeProperties.Chat();
+    ModelScopeProperties.Chat.Options options = new ModelScopeProperties.Chat.Options();
+    options.setModel("Qwen/Qwen3-235B-A22B-Thinking-2507");
+    options.setTemperature(0.7);
+    options.setMaxTokens(2000);
+    options.setEnableThinking(true);
+    options.setThinkingBudget(50000);
+    chat.setOptions(options);
+    
+    when(modelScopeProperties.getApiKey()).thenReturn("test-api-key");
+    when(modelScopeProperties.getBaseUrl()).thenReturn("https://api-inference.modelscope.cn/v1");
+    when(modelScopeProperties.getChat()).thenReturn(chat);
+    
+    modelScopeDirectService = new ModelScopeDirectService(webClientBuilder, objectMapper, messageService, modelScopeProperties);
   }
 
   @Test
@@ -350,7 +360,16 @@ class ModelScopeDirectServiceTest {
     boolean deepThinking = true;
     
     // 设置enableThinking为false来测试分支
-    ReflectionTestUtils.setField(modelScopeDirectService, "enableThinking", false);
+    ModelScopeProperties.Chat chat = new ModelScopeProperties.Chat();
+    ModelScopeProperties.Chat.Options options = new ModelScopeProperties.Chat.Options();
+    options.setModel("Qwen/Qwen3-235B-A22B-Thinking-2507");
+    options.setTemperature(0.7);
+    options.setMaxTokens(2000);
+    options.setEnableThinking(false);
+    options.setThinkingBudget(50000);
+    chat.setOptions(options);
+    
+    when(modelScopeProperties.getChat()).thenReturn(chat);
     
     String responseJson = "{\"choices\":[{\"delta\":{\"content\":\"Response without thinking\"}}]}";
     
@@ -382,7 +401,16 @@ class ModelScopeDirectServiceTest {
         .verifyComplete();
         
     // 恢复设置
-    ReflectionTestUtils.setField(modelScopeDirectService, "enableThinking", true);
+    ModelScopeProperties.Chat chat2 = new ModelScopeProperties.Chat();
+    ModelScopeProperties.Chat.Options options2 = new ModelScopeProperties.Chat.Options();
+    options2.setModel("Qwen/Qwen3-235B-A22B-Thinking-2507");
+    options2.setTemperature(0.7);
+    options2.setMaxTokens(2000);
+    options2.setEnableThinking(true);
+    options2.setThinkingBudget(50000);
+    chat2.setOptions(options2);
+    
+    when(modelScopeProperties.getChat()).thenReturn(chat2);
   }
 
   @Test

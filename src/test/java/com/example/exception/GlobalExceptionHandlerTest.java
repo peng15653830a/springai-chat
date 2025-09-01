@@ -3,7 +3,7 @@ package com.example.exception;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.dto.ApiResponse;
+import com.example.dto.response.ApiResponse;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;

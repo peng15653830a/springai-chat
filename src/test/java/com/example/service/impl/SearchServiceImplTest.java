@@ -1,8 +1,9 @@
 package com.example.service.impl;
 
-import com.example.service.dto.SearchResult;
-import com.example.service.dto.TavilyRequest;
-import com.example.service.dto.TavilyResponse;
+import com.example.config.SearchProperties;
+import com.example.dto.response.SearchResult;
+import com.example.dto.request.TavilyRequest;
+import com.example.dto.response.TavilyResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
@@ -56,15 +57,27 @@ class SearchServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    ReflectionTestUtils.setField(searchService, "tavilyApiKey", "test-api-key");
-    ReflectionTestUtils.setField(searchService, "tavilyBaseUrl", "https://api.tavily.com/search");
-    ReflectionTestUtils.setField(searchService, "searchEnabled", true);
+    SearchProperties searchProperties = new SearchProperties();
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("test-api-key");
+    tavily.setBaseUrl("https://api.tavily.com/search");
+    searchProperties.setTavily(tavily);
+    searchProperties.setEnabled(true);
+    
+    ReflectionTestUtils.setField(searchService, "searchProperties", searchProperties);
   }
 
   @Test
   void shouldReturnEmptyWhenSearchDisabled() {
     // Given
-    ReflectionTestUtils.setField(searchService, "searchEnabled", false);
+    SearchProperties searchProperties = new SearchProperties();
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("test-api-key");
+    tavily.setBaseUrl("https://api.tavily.com/search");
+    searchProperties.setTavily(tavily);
+    searchProperties.setEnabled(false);
+    
+    ReflectionTestUtils.setField(searchService, "searchProperties", searchProperties);
 
     // When
     List<SearchResult> results = searchService.searchMetaso("test query");
@@ -77,7 +90,14 @@ class SearchServiceImplTest {
   @Test
   void shouldReturnEmptyWhenApiKeyNotConfigured() {
     // Given
-    ReflectionTestUtils.setField(searchService, "tavilyApiKey", "");
+    SearchProperties searchProperties = new SearchProperties();
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("");
+    tavily.setBaseUrl("https://api.tavily.com/search");
+    searchProperties.setTavily(tavily);
+    searchProperties.setEnabled(true);
+    
+    ReflectionTestUtils.setField(searchService, "searchProperties", searchProperties);
 
     // When
     List<SearchResult> results = searchService.searchMetaso("test query");
@@ -90,7 +110,14 @@ class SearchServiceImplTest {
   @Test
   void shouldReturnEmptyWhenApiKeyIsNull() {
     // Given
-    ReflectionTestUtils.setField(searchService, "tavilyApiKey", null);
+    SearchProperties searchProperties = new SearchProperties();
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey(null);
+    tavily.setBaseUrl("https://api.tavily.com/search");
+    searchProperties.setTavily(tavily);
+    searchProperties.setEnabled(true);
+    
+    ReflectionTestUtils.setField(searchService, "searchProperties", searchProperties);
 
     // When
     List<SearchResult> results = searchService.searchMetaso("test query");
@@ -137,7 +164,7 @@ class SearchServiceImplTest {
         assertNotNull(results);
         assertEquals(2, results.size()); // AI摘要 + 搜索结果
         assertEquals("AI 摘要", results.get(0).getTitle());
-        assertEquals("AI摘要内容", results.get(0).getContent());
+        assertEquals("AI摘要内容", results.get(0).getSnippet());
         assertEquals("Test Title", results.get(1).getTitle());
         assertEquals("Test content", results.get(1).getContent());
       }
@@ -242,8 +269,8 @@ class SearchServiceImplTest {
   @Test
   void shouldFormatSearchResults() {
     // Given
-    SearchResult result1 = SearchResult.create("Title 1", "Content 1", "https://test1.com", 0.9);
-    SearchResult result2 = SearchResult.create("Title 2", "Content 2", "https://test2.com", 0.8);
+    SearchResult result1 = new SearchResult("Title 1", "Content 1", "https://test1.com", null, "Content 1");
+    SearchResult result2 = new SearchResult("Title 2", "Content 2", "https://test2.com", null, "Content 2");
     List<SearchResult> results = Arrays.asList(result1, result2);
 
     // When
@@ -361,7 +388,7 @@ class SearchServiceImplTest {
         assertNotNull(results);
         assertEquals(1, results.size()); // 只有AI摘要
         assertEquals("AI 摘要", results.get(0).getTitle());
-        assertEquals("AI摘要", results.get(0).getContent());
+        assertEquals("AI摘要", results.get(0).getSnippet());
       }
     }
   }

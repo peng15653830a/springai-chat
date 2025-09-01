@@ -5,7 +5,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.example.dto.LoginRequest;
+import com.example.dto.request.LoginRequest;
 import com.example.entity.User;
 import com.example.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;

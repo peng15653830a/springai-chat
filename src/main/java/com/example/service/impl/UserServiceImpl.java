@@ -3,7 +3,7 @@ package com.example.service.impl;
 import com.example.entity.User;
 import com.example.mapper.UserMapper;
 import com.example.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
@@ -12,9 +12,10 @@ import org.springframework.stereotype.Service;
  * @author xupeng
  */
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-  @Autowired private UserMapper userMapper;
+  private final UserMapper userMapper;
 
   @Override
   public User createUser(String username, String nickname) {

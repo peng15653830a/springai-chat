@@ -1,9 +1,9 @@
 package com.example.controller;
 
-import com.example.dto.ApiResponse;
-import com.example.dto.ModelInfo;
-import com.example.dto.ProviderInfo;
-import com.example.dto.UserModelPreferenceDto;
+import com.example.dto.response.ApiResponse;
+import com.example.dto.common.ModelInfo;
+import com.example.dto.common.ProviderInfo;
+import com.example.dto.common.UserModelPreferenceDto;
 import com.example.service.ModelManagementService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

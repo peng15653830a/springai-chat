@@ -1,10 +1,10 @@
 package com.example.service;
 
-import com.example.service.dto.SseEventResponse;
+import com.example.config.ModelScopeProperties;
+import com.example.dto.response.SseEventResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -28,33 +28,16 @@ public class ModelScopeDirectService {
     private final ObjectMapper objectMapper;
     private final MessageService messageService;
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api-inference.modelscope.cn/v1}")
-    private String baseUrl;
-
-    @Value("${spring.ai.openai.chat.options.model:Qwen/Qwen3-235B-A22B-Thinking-2507}")
-    private String model;
-
-    @Value("${spring.ai.openai.chat.options.temperature:0.7}")
-    private double temperature;
-
-    @Value("${spring.ai.openai.chat.options.max-tokens:2000}")
-    private int maxTokens;
-
-    @Value("${spring.ai.openai.chat.options.enable-thinking:true}")
-    private boolean enableThinking;
-
-    @Value("${spring.ai.openai.chat.options.thinking-budget:50000}")
-    private int thinkingBudget;
+    private final ModelScopeProperties modelScopeProperties;
 
     public ModelScopeDirectService(WebClient.Builder webClientBuilder, 
                                   ObjectMapper objectMapper,
-                                  MessageService messageService) {
+                                  MessageService messageService,
+                                  ModelScopeProperties modelScopeProperties) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
         this.messageService = messageService;
+        this.modelScopeProperties = modelScopeProperties;
     }
 
     /**
@@ -95,8 +78,8 @@ public class ModelScopeDirectService {
         Map<String, Object> requestBody = buildRequestBody(prompt, deepThinking);
         
         return webClient.post()
-                .uri(baseUrl + "/chat/completions")
-                .header("Authorization", "Bearer " + apiKey)
+                .uri(modelScopeProperties.getBaseUrl() + "/chat/completions")
+                .header("Authorization", "Bearer " + modelScopeProperties.getApiKey())
                 .header("Content-Type", "application/json")
                 .bodyValue(requestBody)
                 .accept(MediaType.TEXT_EVENT_STREAM)
@@ -191,16 +174,16 @@ public class ModelScopeDirectService {
      */
     private Map<String, Object> buildRequestBody(String prompt, boolean deepThinking) {
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", model);
-        requestBody.put("temperature", temperature);
-        requestBody.put("max_tokens", maxTokens);
+        requestBody.put("model", modelScopeProperties.getChat().getOptions().getModel());
+        requestBody.put("temperature", modelScopeProperties.getChat().getOptions().getTemperature());
+        requestBody.put("max_tokens", modelScopeProperties.getChat().getOptions().getMaxTokens());
         requestBody.put("stream", true);
         
         // 推理模式配置
-        if (deepThinking && enableThinking) {
+        if (deepThinking && modelScopeProperties.getChat().getOptions().isEnableThinking()) {
             requestBody.put("enable_thinking", true);
-            requestBody.put("thinking_budget", thinkingBudget);
-            log.info("🧠 启用推理模式，thinking_budget: {}", thinkingBudget);
+            requestBody.put("thinking_budget", modelScopeProperties.getChat().getOptions().getThinkingBudget());
+            log.info("🧠 启用推理模式，thinking_budget: {}", modelScopeProperties.getChat().getOptions().getThinkingBudget());
         } else {
             // 普通模式：不添加enable_thinking参数，让API使用默认行为
             log.info("💭 普通模式：不启用推理功能");

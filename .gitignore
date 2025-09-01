@@ -122,3 +122,4 @@ Thumbs.db
 *.swp
 *.tmp
 node_modules
+/.qoder/

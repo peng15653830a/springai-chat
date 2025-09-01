@@ -1,6 +1,6 @@
 package com.example.exception;
 
-import com.example.dto.ApiResponse;
+import com.example.dto.response.ApiResponse;
 import java.util.HashMap;
 import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;

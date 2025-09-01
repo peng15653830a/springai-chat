@@ -1,7 +1,7 @@
 package com.example.controller;
 
 import com.example.service.AiChatService;
-import com.example.service.dto.SseEventResponse;
+import com.example.dto.response.SseEventResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
@@ -49,7 +49,7 @@ class ChatControllerIntegrationTest {
         SseEventResponse.end(123L)
     );
     
-    when(aiChatService.streamChat(anyLong(), anyString(), anyBoolean(), anyBoolean()))
+    when(aiChatService.streamChatWithModel(anyLong(), anyString(), anyBoolean(), anyBoolean(), any(), any(), any()))
         .thenReturn(mockEvents);
 
     // When & Then
@@ -77,7 +77,7 @@ class ChatControllerIntegrationTest {
         SseEventResponse.end(1L)
     );
     
-    when(aiChatService.streamChat(anyLong(), anyString(), anyBoolean(), anyBoolean()))
+    when(aiChatService.streamChatWithModel(anyLong(), anyString(), anyBoolean(), anyBoolean(), any(), any(), any()))
         .thenReturn(normalEvents);
 
     // When & Then
@@ -100,7 +100,7 @@ class ChatControllerIntegrationTest {
         SseEventResponse.error("AI服务错误")
     );
     
-    when(aiChatService.streamChat(anyLong(), anyString(), anyBoolean(), anyBoolean()))
+    when(aiChatService.streamChatWithModel(anyLong(), anyString(), anyBoolean(), anyBoolean(), any(), any(), any()))
         .thenReturn(errorEvents);
 
     // When & Then

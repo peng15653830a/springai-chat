@@ -1,8 +1,8 @@
 package com.example.service.impl;
 
-import com.example.dto.ModelInfo;
-import com.example.dto.ProviderInfo;
-import com.example.dto.UserModelPreferenceDto;
+import com.example.dto.common.ModelInfo;
+import com.example.dto.common.ProviderInfo;
+import com.example.dto.common.UserModelPreferenceDto;
 import com.example.entity.AiModel;
 import com.example.entity.AiProvider;
 import com.example.entity.UserModelPreference;
@@ -12,7 +12,7 @@ import com.example.mapper.UserModelPreferenceMapper;
 import com.example.service.ModelManagementService;
 import com.example.service.factory.ModelProviderFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,19 +27,13 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ModelManagementServiceImpl implements ModelManagementService {
 
-    @Autowired
-    private AiProviderMapper aiProviderMapper;
-    
-    @Autowired
-    private AiModelMapper aiModelMapper;
-    
-    @Autowired
-    private UserModelPreferenceMapper userModelPreferenceMapper;
-    
-    @Autowired
-    private ModelProviderFactory modelProviderFactory;
+    private final AiProviderMapper aiProviderMapper;
+    private final AiModelMapper aiModelMapper;
+    private final UserModelPreferenceMapper userModelPreferenceMapper;
+    private final ModelProviderFactory modelProviderFactory;
 
     @Override
     public List<ProviderInfo> getAvailableProviders() {

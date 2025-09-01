@@ -1,8 +1,8 @@
 package com.example.service;
 
-import com.example.dto.ModelInfo;
-import com.example.dto.ProviderInfo;
-import com.example.dto.UserModelPreferenceDto;
+import com.example.dto.common.ModelInfo;
+import com.example.dto.common.ProviderInfo;
+import com.example.dto.common.UserModelPreferenceDto;
 
 import java.util.List;
 

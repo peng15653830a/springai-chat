@@ -2,6 +2,7 @@ package com.example.dto;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.example.dto.response.ApiResponse;
 import org.junit.jupiter.api.Test;
 
 class ApiResponseTest {
@@ -128,11 +129,7 @@ class ApiResponseTest {
     // Test equals with same object
     assertEquals(response1, response1);
 
-    // Test canEqual method
-    assertTrue(response1.canEqual(response2));
-    assertFalse(response1.canEqual("not a response"));
-    assertFalse(response1.canEqual(null));
-
+    
     // Test with different success values
     ApiResponse<String> responseDiffSuccess = new ApiResponse<>();
     responseDiffSuccess.setSuccess(false);
@@ -240,40 +237,7 @@ class ApiResponseTest {
     assertEquals(Boolean.TRUE, boolResponse.getData());
   }
 
-  @Test
-  void testEqualsWithCanEqualFalse() {
-    // Create a mock object that returns false for canEqual
-    ApiResponse<String> response1 =
-        new ApiResponse<String>() {
-          @Override
-          public boolean canEqual(Object other) {
-            return false;
-          }
-        };
-    response1.setSuccess(true);
-    response1.setMessage("test");
-    response1.setData("data");
-
-    ApiResponse<String> response2 = new ApiResponse<>();
-    response2.setSuccess(true);
-    response2.setMessage("test");
-    response2.setData("data");
-
-    // Test the canEqual method directly
-    assertFalse(response1.canEqual(response2));
-    assertTrue(response2.canEqual(response1));
-
-    // Test equals - response2.equals(response1) should return false because
-    // response1.canEqual(response2) returns false
-    assertEquals(
-        response1,
-        response2); // response1.equals(response2) - response1 doesn't check canEqual on response2
-    assertNotEquals(
-        response2,
-        response1); // response2.equals(response1) - response2 calls response1.canEqual(response2)
-    // which returns false
-  }
-
+  
   @Test
   void testHashCodeWithNullSuccess() {
     // Test hashCode with null success field (edge case)

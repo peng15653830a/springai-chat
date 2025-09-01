@@ -1,8 +1,8 @@
 package com.example.controller;
 
-import com.example.dto.ApiResponse;
-import com.example.dto.ConversationRequest;
-import com.example.dto.MessageRequest;
+import com.example.dto.response.ApiResponse;
+import com.example.dto.request.ConversationRequest;
+import com.example.dto.request.MessageRequest;
 import com.example.entity.Conversation;
 import com.example.entity.Message;
 import com.example.service.ConversationService;

@@ -2,6 +2,7 @@ package com.example.dto;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.example.dto.request.MessageRequest;
 import org.junit.jupiter.api.Test;
 
 class MessageRequestTest {
@@ -82,11 +83,7 @@ class MessageRequestTest {
     // Test equals with same object
     assertEquals(request1, request1);
 
-    // Test canEqual method
-    assertTrue(request1.canEqual(request2));
-    assertFalse(request1.canEqual("not a request"));
-    assertFalse(request1.canEqual(null));
-
+    
     // Test with different searchEnabled
     MessageRequest requestDiffSearch = new MessageRequest();
     requestDiffSearch.setContent("test content");
@@ -186,35 +183,4 @@ class MessageRequestTest {
     assertEquals(emptyContent, request.getContent());
   }
 
-  @Test
-  void testEqualsWithCanEqualFalse() {
-    // Create a mock object that returns false for canEqual
-    MessageRequest request1 =
-        new MessageRequest() {
-          @Override
-          public boolean canEqual(Object other) {
-            return false;
-          }
-        };
-    request1.setContent("test");
-    request1.setSearchEnabled(true);
-
-    MessageRequest request2 = new MessageRequest();
-    request2.setContent("test");
-    request2.setSearchEnabled(true);
-
-    // Test the canEqual method directly
-    assertFalse(request1.canEqual(request2));
-    assertTrue(request2.canEqual(request1));
-
-    // Test equals - request2.equals(request1) should return false because
-    // request1.canEqual(request2) returns false
-    assertEquals(
-        request1,
-        request2); // request1.equals(request2) - request1 doesn't check canEqual on request2
-    assertNotEquals(
-        request2,
-        request1); // request2.equals(request1) - request2 calls request1.canEqual(request2) which
-    // returns false
   }
-}

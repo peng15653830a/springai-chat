@@ -1,7 +1,7 @@
 package com.example.mapper;
 
 import com.example.entity.UserModelPreference;
-import com.example.dto.UserModelPreferenceDto;
+import com.example.dto.common.UserModelPreferenceDto;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

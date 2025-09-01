@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(do sed -i '' 's|import com\\.example\\.service\\.dto\\.SseEventResponse;|import com.example.dto.response.SseEventResponse;|g' \"$file\")"
     ],
     "deny": [],
     "ask": [],

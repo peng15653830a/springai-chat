@@ -1,7 +1,7 @@
 package com.example.service;
 
-import com.example.service.dto.SearchResult;
-import com.example.service.dto.SseEventResponse;
+import com.example.dto.response.SearchResult;
+import com.example.dto.response.SseEventResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

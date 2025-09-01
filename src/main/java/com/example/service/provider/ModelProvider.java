@@ -1,8 +1,8 @@
 package com.example.service.provider;
 
-import com.example.dto.ModelInfo;
-import com.example.service.dto.ChatRequest;
-import com.example.service.dto.SseEventResponse;
+import com.example.dto.common.ModelInfo;
+import com.example.dto.request.ChatRequest;
+import com.example.dto.response.SseEventResponse;
 import reactor.core.publisher.Flux;
 
 import java.util.List;

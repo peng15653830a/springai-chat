@@ -3,11 +3,11 @@ package com.example.service.impl;
 import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
 import com.example.service.MessageService;
-import com.example.service.dto.SseEventResponse;
+import com.example.dto.response.SseEventResponse;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import static com.example.service.constants.AiChatConstants.ROLE_ASSISTANT;
@@ -20,9 +20,10 @@ import static com.example.service.constants.AiChatConstants.ROLE_USER;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class MessageServiceImpl implements MessageService {
 
-  @Autowired private MessageMapper messageMapper;
+  private final MessageMapper messageMapper;
 
   @Override
   public Message saveMessage(Long conversationId, String role, String content) {

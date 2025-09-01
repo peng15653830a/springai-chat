@@ -2,23 +2,23 @@ package com.example.service.impl;
 
 import static com.example.service.constants.AiChatConstants.HTTP_STATUS_OK;
 
+import com.example.config.SearchProperties;
 import com.example.service.SearchService;
-import com.example.service.dto.SearchResult;
-import com.example.service.dto.SseEventResponse;
-import com.example.service.dto.TavilyRequest;
-import com.example.service.dto.TavilyResponse;
+import com.example.dto.response.SearchResult;
+import com.example.dto.response.SseEventResponse;
+import com.example.dto.request.TavilyRequest;
+import com.example.dto.response.TavilyResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,18 +30,11 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
 
-  @Value("${search.tavily.api-key:}")
-  private String tavilyApiKey;
-
-  @Value("${search.tavily.base-url:https://api.tavily.com/search}")
-  private String tavilyBaseUrl;
-
-  @Value("${search.enabled:true}")
-  private boolean searchEnabled;
-
-  @Autowired private ObjectMapper objectMapper;
+  private final SearchProperties searchProperties;
+  private final ObjectMapper objectMapper;
 
   /**
    * 日志消息最大长度限制
@@ -51,9 +44,9 @@ public class SearchServiceImpl implements SearchService {
   /** 主搜索方法：使用Tavily搜索API */
   @Override
   public List<SearchResult> searchMetaso(String query) {
-    log.info("开始搜索，查询词: {}, 搜索启用: {}", query, searchEnabled);
+    log.info("开始搜索，查询词: {}, 搜索启用: {}", query, searchProperties.isEnabled());
 
-    if (!searchEnabled) {
+    if (!searchProperties.isEnabled()) {
       log.info("搜索功能已禁用，返回空结果");
       return new ArrayList<>();
     }
@@ -67,19 +60,19 @@ public class SearchServiceImpl implements SearchService {
 
   /** 调用Tavily搜索API Tavily提供每月1000次免费调用 */
   private List<SearchResult> callTavilyApi(String query) {
-    if (tavilyApiKey == null || tavilyApiKey.isEmpty()) {
+    if (searchProperties.getTavily().getApiKey() == null || searchProperties.getTavily().getApiKey().isEmpty()) {
       log.warn("Tavily API密钥未配置");
       return new ArrayList<>();
     }
 
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-      HttpPost httpPost = new HttpPost(tavilyBaseUrl);
+      HttpPost httpPost = new HttpPost(searchProperties.getTavily().getBaseUrl());
 
       // 设置请求头
       httpPost.setHeader("Content-Type", "application/json");
 
       // 构建请求体
-      TavilyRequest request = TavilyRequest.createBasic(tavilyApiKey, query);
+      TavilyRequest request = TavilyRequest.createBasic(searchProperties.getTavily().getApiKey(), query);
 
       String jsonRequest = objectMapper.writeValueAsString(request);
       httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
@@ -111,7 +104,7 @@ public class SearchServiceImpl implements SearchService {
       // 首先添加AI生成的答案（如果有）
       if (tavilyResponse.getAnswer() != null && !tavilyResponse.getAnswer().isEmpty()) {
         SearchResult answerResult =
-            SearchResult.create("AI 摘要", tavilyResponse.getAnswer(), "AI Generated Summary", null);
+            SearchResult.create("AI 摘要", "AI Generated Summary", tavilyResponse.getAnswer(), null);
         results.add(answerResult);
       }
 
@@ -171,7 +164,7 @@ public class SearchServiceImpl implements SearchService {
       throw new IllegalArgumentException("用户消息不能为null");
     }
     
-    if (!searchEnabled) {
+    if (!searchProperties.isEnabled()) {
       return Mono.just(new SearchContextResult("", null, Flux.empty()));
     }
 

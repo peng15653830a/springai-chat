@@ -1,10 +1,10 @@
 package com.example.service.provider.impl;
 
 import com.example.config.MultiModelProperties;
-import com.example.dto.ModelInfo;
+import com.example.dto.common.ModelInfo;
 import com.example.service.MessageService;
-import com.example.service.dto.ChatRequest;
-import com.example.service.dto.SseEventResponse;
+import com.example.dto.request.ChatRequest;
+import com.example.dto.response.SseEventResponse;
 import com.example.service.factory.ModelProviderFactory;
 import com.example.service.provider.ModelProvider;
 import com.fasterxml.jackson.databind.JsonNode;

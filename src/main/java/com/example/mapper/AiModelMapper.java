@@ -1,7 +1,7 @@
 package com.example.mapper;
 
 import com.example.entity.AiModel;
-import com.example.dto.ModelInfo;
+import com.example.dto.common.ModelInfo;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
