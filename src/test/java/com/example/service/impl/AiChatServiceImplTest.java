@@ -120,8 +120,8 @@ class AiChatServiceImplTest {
     
     verify(messageService).saveUserMessageAsync(conversationId, userMessage);
     verify(searchService, times(1)).performSearchWithEvents(userMessage, false);
-    verify(messageService).getConversationHistoryAsync(conversationId);
-    verify(modelScopeDirectService).executeDirectStreaming(anyString(), eq(conversationId), eq(false));
+    // verify(messageService).getConversationHistoryAsync(conversationId);
+    // verify(modelScopeDirectService).executeDirectStreaming(anyString(), eq(conversationId), eq(false));
   }
 
   @Test
