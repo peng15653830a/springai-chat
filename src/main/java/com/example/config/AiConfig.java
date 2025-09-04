@@ -1,84 +1,137 @@
 package com.example.config;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
- * AI相关配置类 统一管理所有AI模型相关的配置参数
+ * AI相关配置类 - 重构为支持多模型ChatClient配置
  *
  * @author xupeng
  */
+@Slf4j
 @Data
 @Component
 @Configuration
-@ConfigurationProperties(prefix = "spring.ai.openai")
 public class AiConfig {
 
-  /** API密钥 */
-  private String apiKey;
+    private final MultiModelProperties multiModelProperties;
 
-  /** API基础URL */
-  private String baseUrl;
+    public AiConfig(MultiModelProperties multiModelProperties) {
+        this.multiModelProperties = multiModelProperties;
+    }
 
-  /** 模型名称 */
-  private String model;
+    /**
+     * 创建ChatClient工厂Bean
+     * 负责为不同的模型提供者创建ChatClient实例
+     */
+    @Bean
+    public ChatClientFactory chatClientFactory() {
+        return new ChatClientFactory(multiModelProperties);
+    }
 
-  /** 温度参数，控制回复的随机性 取值范围：0-2，默认0.7 */
-  private double temperature = 0.7;
+    /**
+     * ChatClient工厂类 - 管理多个模型的ChatClient实例
+     */
+    public static class ChatClientFactory {
+        
+        private final MultiModelProperties multiModelProperties;
+        private final Map<String, ChatClient> chatClientCache = new HashMap<>();
 
-  /** 最大token数 */
-  private int maxTokens = 1000;
+        public ChatClientFactory(MultiModelProperties multiModelProperties) {
+            this.multiModelProperties = multiModelProperties;
+        }
 
-  /** 请求超时时间（毫秒） */
-  private int timeoutMs = 30000;
+        /**
+         * 获取指定提供者和模型的ChatClient
+         */
+        public ChatClient getChatClient(String providerName, String modelName) {
+            String key = providerName + ":" + modelName;
+            return chatClientCache.computeIfAbsent(key, k -> createChatClient(providerName, modelName));
+        }
 
-  /** 重试次数 */
-  private int maxRetries = 3;
+        /**
+         * 创建ChatClient实例
+         */
+        private ChatClient createChatClient(String providerName, String modelName) {
+            log.info("🏗️ 创建ChatClient实例: {} - {}", providerName, modelName);
+            
+            MultiModelProperties.ProviderConfig providerConfig = 
+                multiModelProperties.getProviders().get(providerName);
+            
+            if (providerConfig == null || !providerConfig.isEnabled()) {
+                throw new IllegalArgumentException("Provider not available: " + providerName);
+            }
 
-  /** 是否启用流式输出 */
-  private boolean streamEnabled = false;
+            String apiKey = multiModelProperties.getApiKey(providerName);
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                throw new IllegalArgumentException("API key not found for provider: " + providerName);
+            }
 
-  /** HTTP请求头配置 */
-  private HttpConfig http = new HttpConfig();
+            // 获取模型配置
+            MultiModelProperties.ModelConfig modelConfig = getModelConfig(providerName, modelName);
+            
+            try {
+                // 创建OpenAI兼容的API客户端（大部分模型都兼容OpenAI格式）
+                OpenAiApi openAiApi = new OpenAiApi(providerConfig.getBaseUrl(), apiKey);
 
-  /** HTTP相关配置 */
-  @Data
-  public static class HttpConfig {
+                // 创建ChatModel
+                OpenAiChatModel chatModel = new OpenAiChatModel(openAiApi, 
+                    OpenAiChatOptions.builder()
+                        .model(modelName)
+                        .temperature(getTemperature(modelConfig))
+                        .maxTokens(getMaxTokens(modelConfig))
+                        .build());
 
-    /** 连接超时时间（毫秒） */
-    private int connectTimeoutMs = 10000;
+                // 创建ChatClient
+                return ChatClient.builder(chatModel)
+                    .defaultSystem("你是一个有用的AI助手。")
+                    .build();
+                    
+            } catch (Exception e) {
+                log.error("创建ChatClient失败: {}", e.getMessage());
+                throw new RuntimeException("Failed to create ChatClient for " + providerName + ":" + modelName, e);
+            }
+        }
 
-    /** 读取超时时间（毫秒） */
-    private int readTimeoutMs = 30000;
+        /**
+         * 获取模型配置
+         */
+        private MultiModelProperties.ModelConfig getModelConfig(String providerName, String modelName) {
+            return multiModelProperties.getProviders().get(providerName)
+                .getModels().stream()
+                .filter(model -> model.getName().equals(modelName))
+                .findFirst()
+                .orElse(null);
+        }
 
-    /** 用户代理 */
-    private String userAgent = "SpringAI-ChatBot/1.0";
-  }
+        /**
+         * 获取温度参数
+         */
+        private Double getTemperature(MultiModelProperties.ModelConfig modelConfig) {
+            if (modelConfig != null && modelConfig.getTemperature() != null) {
+                return modelConfig.getTemperature().doubleValue();
+            }
+            return multiModelProperties.getDefaults().getTemperature().doubleValue();
+        }
 
-  /** 验证配置是否有效 */
-  public boolean isValid() {
-    return apiKey != null
-        && !apiKey.trim().isEmpty()
-        && baseUrl != null
-        && !baseUrl.trim().isEmpty()
-        && model != null
-        && !model.trim().isEmpty();
-  }
-
-  /** 获取完整的聊天API URL */
-  public String getChatApiUrl() {
-    return baseUrl.endsWith("/") ? baseUrl + "chat/completions" : baseUrl + "/chat/completions";
-  }
-
-  @Bean
-  public ChatClient chatClient(ChatModel chatModel) {
-    return ChatClient.builder(chatModel)
-        .defaultSystem("你是一个有用的AI助手。")
-        .build();
-  }
+        /**
+         * 获取最大token数
+         */
+        private Integer getMaxTokens(MultiModelProperties.ModelConfig modelConfig) {
+            if (modelConfig != null && modelConfig.getMaxTokens() != null) {
+                return modelConfig.getMaxTokens();
+            }
+            return multiModelProperties.getDefaults().getMaxTokens();
+        }
+    }
 }

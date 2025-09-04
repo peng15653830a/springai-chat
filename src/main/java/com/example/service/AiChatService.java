@@ -1,5 +1,6 @@
 package com.example.service;
 
+import com.example.dto.request.StreamChatRequest;
 import com.example.dto.response.SseEventResponse;
 import reactor.core.publisher.Flux;
 
@@ -20,6 +21,14 @@ public interface AiChatService {
    * @return 响应式SSE事件流
    */
   Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, boolean searchEnabled, boolean deepThinking);
+
+  /**
+   * 响应式流式聊天（使用封装的请求对象）
+   *
+   * @param request 流式聊天请求对象，包含所有参数
+   * @return 响应式SSE事件流
+   */
+  Flux<SseEventResponse> streamChat(StreamChatRequest request);
 
   /**
    * 响应式流式聊天（支持模型选择）

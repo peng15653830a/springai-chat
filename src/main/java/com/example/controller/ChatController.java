@@ -52,14 +52,7 @@ public class ChatController {
         request.getConversationId(), request.getMessage().length(), request.isSearchEnabled(), 
         request.isDeepThinking(), request.getUserId(), request.getProvider(), request.getModel());
     
-    return aiChatService.streamChatWithModel(
-            request.getConversationId(), 
-            request.getMessage(), 
-            request.isSearchEnabled(), 
-            request.isDeepThinking(), 
-            request.getUserId(), 
-            request.getProvider(), 
-            request.getModel())
+    return aiChatService.streamChat(request)
         .doOnNext(event -> log.debug("发送SSE事件: {} - {}", event.getType(), 
             event.getData() instanceof SseEventResponse.ChunkData ? "chunk" : event.getData()))
         .doOnError(error -> log.error("流式聊天发生错误，会话ID: {}", request.getConversationId(), error))

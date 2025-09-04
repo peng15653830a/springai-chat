@@ -2,6 +2,7 @@ package com.example.service.impl;
 
 import com.example.config.ChatStreamingProperties;
 import com.example.dto.request.ChatRequest;
+import com.example.dto.request.StreamChatRequest;
 import com.example.dto.response.SseEventResponse;
 import com.example.entity.Message;
 import com.example.service.AiChatService;
@@ -36,6 +37,32 @@ public class AiChatServiceImpl implements AiChatService {
     private final ModelSelector modelSelector;
     private final PromptBuilder promptBuilder;
     private final ChatErrorHandler errorHandler;
+
+    @Override
+    public Flux<SseEventResponse> streamChat(StreamChatRequest request) {
+        log.info("开始响应式流式聊天（使用封装请求对象），会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}", 
+                request.getConversationId(), 
+                request.getMessage() != null ? request.getMessage().length() : 0, 
+                request.isSearchEnabled(), 
+                request.isDeepThinking(), 
+                request.getUserId(), 
+                request.getProvider(), 
+                request.getModel());
+
+        return Flux.concat(
+            // 1. 保存用户消息并生成标题
+            saveUserMessageAndGenerateTitle(request.getConversationId(), request.getMessage()),
+            
+            // 2. 执行搜索（如果启用）
+            performSearchStep(request.getMessage(), request.isSearchEnabled()),
+            
+            // 3. 构建提示并执行流式聊天
+            buildPromptAndStreamChatWithModel(request.getConversationId(), request.getMessage(), 
+                                            request.isSearchEnabled(), request.isDeepThinking(), 
+                                            request.getUserId(), request.getProvider(), request.getModel())
+        )
+        .onErrorResume(errorHandler::handleChatError);
+    }
 
     @Override
     public Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, 
