@@ -3,6 +3,7 @@ package com.example.service.provider.impl;
 import com.example.config.AiConfig;
 import com.example.config.MultiModelProperties;
 import com.example.service.MessageService;
+import com.example.service.provider.AbstractChatModelProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
