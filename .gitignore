@@ -123,3 +123,4 @@ Thumbs.db
 *.tmp
 node_modules
 /.qoder/
+/.claude/
