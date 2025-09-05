@@ -196,12 +196,13 @@ CREATE TRIGGER update_user_model_preferences_updated_at
 -- DELETE FROM ai_models;
 -- DELETE FROM ai_providers;
 
--- 插入AI提供者
+-- 插入AI提供者，与application.yml配置保持一致
 INSERT INTO ai_providers (name, display_name, base_url, api_key_env, enabled, config_json) VALUES
-('qwen', '通义千问', 'https://dashscope.aliyuncs.com/api/v1', 'QWEN_API_KEY', true, '{"maxRetries": 3, "timeout": 30000}'),
-('openai', 'OpenAI', 'https://api.openai.com/v1', 'OPENAI_API_KEY', true, '{"maxRetries": 3, "timeout": 30000}'),
-('deepseek', 'DeepSeek', 'https://api.deepseek.com', 'DEEPSEEK_API_KEY', true, '{"maxRetries": 3, "timeout": 30000}'),
-('kimi2', 'Kimi2', 'https://api.moonshot.cn/v1', 'KIMI2_API_KEY', true, '{"maxRetries": 3, "timeout": 30000}')
+('qwen', '通义千问', 'https://api-inference.modelscope.cn/v1', 'QWEN_API_KEY', true, '{"timeout": 30000, "connectTimeout": 10000}'),
+('openai', 'OpenAI', 'https://api-inference.modelscope.cn/v1', 'OPENAI_API_KEY', true, '{"timeout": 30000, "connectTimeout": 10000}'),
+('kimi2', 'Kimi2', 'https://api-inference.modelscope.cn/v1', 'KIMI2_API_KEY', true, '{"timeout": 30000, "connectTimeout": 10000}'),
+('DeepSeek', 'DeepSeek', 'https://api-inference.modelscope.cn/v1', 'DEEPSEEK_API_KEY', true, '{"timeout": 30000, "connectTimeout": 10000}'),
+('greatwall', '长城大模型', 'https://agent.ai.sinopec.com', 'GREATWALL_API_KEY', true, '{"timeout": 60000, "connectTimeout": 15000, "nonStandardApi": true}')
 ON CONFLICT (name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     base_url = EXCLUDED.base_url,
@@ -216,9 +217,7 @@ ON CONFLICT (name) DO UPDATE SET
 
 -- 通义千问模型
 INSERT INTO ai_models (provider_id, name, display_name, max_tokens, temperature, supports_thinking, supports_streaming, enabled, sort_order) VALUES
-((SELECT id FROM ai_providers WHERE name = 'qwen'), 'qwen-plus', '通义千问Plus', 8192, 0.7, false, true, true, 1),
-((SELECT id FROM ai_providers WHERE name = 'qwen'), 'qwen-max', '通义千问Max', 8192, 0.7, false, true, true, 2),
-((SELECT id FROM ai_providers WHERE name = 'qwen'), 'qwen-turbo', '通义千问Turbo', 8192, 0.7, false, true, true, 3)
+((SELECT id FROM ai_providers WHERE name = 'qwen'), 'Qwen/Qwen3-235B-A22B-Thinking-2507', '通义千问-推理版', 4192, 0.7, true, true, true, 1)
 ON CONFLICT (provider_id, name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     max_tokens = EXCLUDED.max_tokens,
@@ -231,23 +230,7 @@ ON CONFLICT (provider_id, name) DO UPDATE SET
 
 -- OpenAI模型
 INSERT INTO ai_models (provider_id, name, display_name, max_tokens, temperature, supports_thinking, supports_streaming, enabled, sort_order) VALUES
-((SELECT id FROM ai_providers WHERE name = 'openai'), 'gpt-4', 'GPT-4', 8192, 0.7, false, true, true, 11),
-((SELECT id FROM ai_providers WHERE name = 'openai'), 'gpt-4-turbo', 'GPT-4 Turbo', 128000, 0.7, false, true, true, 12),
-((SELECT id FROM ai_providers WHERE name = 'openai'), 'gpt-3.5-turbo', 'GPT-3.5 Turbo', 16385, 0.7, false, true, true, 13)
-ON CONFLICT (provider_id, name) DO UPDATE SET
-    display_name = EXCLUDED.display_name,
-    max_tokens = EXCLUDED.max_tokens,
-    temperature = EXCLUDED.temperature,
-    supports_thinking = EXCLUDED.supports_thinking,
-    supports_streaming = EXCLUDED.supports_streaming,
-    enabled = EXCLUDED.enabled,
-    sort_order = EXCLUDED.sort_order,
-    updated_at = CURRENT_TIMESTAMP;
-
--- DeepSeek模型
-INSERT INTO ai_models (provider_id, name, display_name, max_tokens, temperature, supports_thinking, supports_streaming, enabled, sort_order) VALUES
-((SELECT id FROM ai_providers WHERE name = 'deepseek'), 'deepseek-chat', 'DeepSeek Chat', 32768, 0.7, false, true, true, 21),
-((SELECT id FROM ai_providers WHERE name = 'deepseek'), 'deepseek-reasoner', 'DeepSeek Reasoner', 64000, 0.7, true, true, true, 22)
+((SELECT id FROM ai_providers WHERE name = 'openai'), 'openai-mirror/gpt-oss-120b', 'gpt-oss-120b', 4192, 0.7, false, true, true, 1)
 ON CONFLICT (provider_id, name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     max_tokens = EXCLUDED.max_tokens,
@@ -260,9 +243,7 @@ ON CONFLICT (provider_id, name) DO UPDATE SET
 
 -- Kimi2模型
 INSERT INTO ai_models (provider_id, name, display_name, max_tokens, temperature, supports_thinking, supports_streaming, enabled, sort_order) VALUES
-((SELECT id FROM ai_providers WHERE name = 'kimi2'), 'moonshot-v1-8k', 'Kimi2 8K', 8192, 0.7, false, true, true, 31),
-((SELECT id FROM ai_providers WHERE name = 'kimi2'), 'moonshot-v1-32k', 'Kimi2 32K', 32768, 0.7, false, true, true, 32),
-((SELECT id FROM ai_providers WHERE name = 'kimi2'), 'moonshot-v1-128k', 'Kimi2 128K', 131072, 0.7, false, true, true, 33)
+((SELECT id FROM ai_providers WHERE name = 'kimi2'), 'moonshotai/Kimi-K2-Instruct', 'kimi2', 4192, 0.7, false, true, true, 1)
 ON CONFLICT (provider_id, name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     max_tokens = EXCLUDED.max_tokens,
@@ -271,6 +252,34 @@ ON CONFLICT (provider_id, name) DO UPDATE SET
     supports_streaming = EXCLUDED.supports_streaming,
     enabled = EXCLUDED.enabled,
     sort_order = EXCLUDED.sort_order,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- DeepSeek模型
+INSERT INTO ai_models (provider_id, name, display_name, max_tokens, temperature, supports_thinking, supports_streaming, enabled, sort_order) VALUES
+((SELECT id FROM ai_providers WHERE name = 'DeepSeek'), 'deepseek-ai/DeepSeek-V3.1', 'DeepSeek-V3.1', 4192, 0.7, false, true, true, 1)
+ON CONFLICT (provider_id, name) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    max_tokens = EXCLUDED.max_tokens,
+    temperature = EXCLUDED.temperature,
+    supports_thinking = EXCLUDED.supports_thinking,
+    supports_streaming = EXCLUDED.supports_streaming,
+    enabled = EXCLUDED.enabled,
+    sort_order = EXCLUDED.sort_order,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 长城大模型
+INSERT INTO ai_models (provider_id, name, display_name, max_tokens, temperature, supports_thinking, supports_streaming, enabled, sort_order, config_json) VALUES
+((SELECT id FROM ai_providers WHERE name = 'greatwall'), 'greatwall-deepseek-v3', '长城大模型-DeepSeek-V3', 4096, 0.7, false, true, true, 1, 
+ '{"nonStandardApi": true, "apiRunId": "1745897196_38b0ccad-62d4-49d2-a44a-8da43d8ab344", "tpuidPrefix": "guest"}')
+ON CONFLICT (provider_id, name) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    max_tokens = EXCLUDED.max_tokens,
+    temperature = EXCLUDED.temperature,
+    supports_thinking = EXCLUDED.supports_thinking,
+    supports_streaming = EXCLUDED.supports_streaming,
+    enabled = EXCLUDED.enabled,
+    sort_order = EXCLUDED.sort_order,
+    config_json = EXCLUDED.config_json,
     updated_at = CURRENT_TIMESTAMP;
 
 -- =================================================================

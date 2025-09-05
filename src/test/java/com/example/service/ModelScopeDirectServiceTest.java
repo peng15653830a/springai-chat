@@ -1,6 +1,6 @@
 package com.example.service;
 
-import com.example.config.ModelScopeProperties;
+import com.example.config.MultiModelProperties;
 import com.example.dto.response.SseEventResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +54,7 @@ class ModelScopeDirectServiceTest {
   private MessageService messageService;
 
   @Mock
-  private ModelScopeProperties modelScopeProperties;
+  private MultiModelProperties multiModelProperties;
 
   private ModelScopeDirectService modelScopeDirectService;
 
@@ -62,21 +62,25 @@ class ModelScopeDirectServiceTest {
   void setUp() {
     when(webClientBuilder.build()).thenReturn(webClient);
     
-    // 配置ModelScopeProperties
-    ModelScopeProperties.Chat chat = new ModelScopeProperties.Chat();
-    ModelScopeProperties.Chat.Options options = new ModelScopeProperties.Chat.Options();
-    options.setModel("Qwen/Qwen3-235B-A22B-Thinking-2507");
-    options.setTemperature(0.7);
-    options.setMaxTokens(2000);
-    options.setEnableThinking(true);
-    options.setThinkingBudget(50000);
-    chat.setOptions(options);
+    // 配置MultiModelProperties
+    MultiModelProperties.ProviderConfig qwenProvider = new MultiModelProperties.ProviderConfig();
+    qwenProvider.setBaseUrl("https://api-inference.modelscope.cn");
     
-    when(modelScopeProperties.getApiKey()).thenReturn("test-api-key");
-    when(modelScopeProperties.getBaseUrl()).thenReturn("https://api-inference.modelscope.cn/v1");
-    when(modelScopeProperties.getChat()).thenReturn(chat);
+    MultiModelProperties.ModelConfig modelConfig = new MultiModelProperties.ModelConfig();
+    modelConfig.setName("Qwen/Qwen3-235B-A22B-Thinking-2507");
+    modelConfig.setTemperature(java.math.BigDecimal.valueOf(0.7));
+    modelConfig.setMaxTokens(2000);
+    modelConfig.setSupportsThinking(true);
+    modelConfig.setThinkingBudget(50000);
+    qwenProvider.setModels(java.util.List.of(modelConfig));
     
-    modelScopeDirectService = new ModelScopeDirectService(webClientBuilder, objectMapper, messageService, modelScopeProperties);
+    java.util.Map<String, MultiModelProperties.ProviderConfig> providers = new java.util.HashMap<>();
+    providers.put("qwen", qwenProvider);
+    
+    when(multiModelProperties.getProviders()).thenReturn(providers);
+    when(multiModelProperties.getApiKey("qwen")).thenReturn("test-api-key");
+    
+    modelScopeDirectService = new ModelScopeDirectService(webClientBuilder, objectMapper, messageService, multiModelProperties);
   }
 
   @Test
@@ -354,22 +358,27 @@ class ModelScopeDirectServiceTest {
 
   @Test
   void shouldHandleDeepThinkingDisabledBranch() {
-    // Given - 测试deepThinking=true但enableThinking=false的分支
+    // Given - 测试deepThinking=true但supportsThinking=false的分支
     String prompt = "Deep thinking disabled test";
     Long conversationId = 1L;
     boolean deepThinking = true;
     
-    // 设置enableThinking为false来测试分支
-    ModelScopeProperties.Chat chat = new ModelScopeProperties.Chat();
-    ModelScopeProperties.Chat.Options options = new ModelScopeProperties.Chat.Options();
-    options.setModel("Qwen/Qwen3-235B-A22B-Thinking-2507");
-    options.setTemperature(0.7);
-    options.setMaxTokens(2000);
-    options.setEnableThinking(false);
-    options.setThinkingBudget(50000);
-    chat.setOptions(options);
+    // 设置supportsThinking为false来测试分支
+    MultiModelProperties.ModelConfig disabledThinkingModel = new MultiModelProperties.ModelConfig();
+    disabledThinkingModel.setName("Qwen/Qwen3-235B-A22B-Thinking-2507");
+    disabledThinkingModel.setTemperature(java.math.BigDecimal.valueOf(0.7));
+    disabledThinkingModel.setMaxTokens(2000);
+    disabledThinkingModel.setSupportsThinking(false);
+    disabledThinkingModel.setThinkingBudget(50000);
     
-    when(modelScopeProperties.getChat()).thenReturn(chat);
+    MultiModelProperties.ProviderConfig qwenProvider = new MultiModelProperties.ProviderConfig();
+    qwenProvider.setBaseUrl("https://api-inference.modelscope.cn");
+    qwenProvider.setModels(java.util.List.of(disabledThinkingModel));
+    
+    java.util.Map<String, MultiModelProperties.ProviderConfig> providers = new java.util.HashMap<>();
+    providers.put("qwen", qwenProvider);
+    
+    when(multiModelProperties.getProviders()).thenReturn(providers);
     
     String responseJson = "{\"choices\":[{\"delta\":{\"content\":\"Response without thinking\"}}]}";
     
@@ -399,18 +408,6 @@ class ModelScopeDirectServiceTest {
         .expectNextMatches(event -> "chunk".equals(event.getType()))
         .expectNextMatches(event -> "end".equals(event.getType()))
         .verifyComplete();
-        
-    // 恢复设置
-    ModelScopeProperties.Chat chat2 = new ModelScopeProperties.Chat();
-    ModelScopeProperties.Chat.Options options2 = new ModelScopeProperties.Chat.Options();
-    options2.setModel("Qwen/Qwen3-235B-A22B-Thinking-2507");
-    options2.setTemperature(0.7);
-    options2.setMaxTokens(2000);
-    options2.setEnableThinking(true);
-    options2.setThinkingBudget(50000);
-    chat2.setOptions(options2);
-    
-    when(modelScopeProperties.getChat()).thenReturn(chat2);
   }
 
   @Test

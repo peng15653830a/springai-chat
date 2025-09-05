@@ -81,16 +81,21 @@ public class AiConfig {
             MultiModelProperties.ModelConfig modelConfig = getModelConfig(providerName, modelName);
             
             try {
-                // 创建OpenAI兼容的API客户端（大部分模型都兼容OpenAI格式）
-                OpenAiApi openAiApi = new OpenAiApi(providerConfig.getBaseUrl(), apiKey);
+                // 使用Builder模式创建OpenAI API客户端（Spring AI 1.0.0标准做法）
+                OpenAiApi openAiApi = OpenAiApi.builder()
+                    .baseUrl(providerConfig.getBaseUrl())
+                    .apiKey(apiKey)
+                    .build();
 
-                // 创建ChatModel
-                OpenAiChatModel chatModel = new OpenAiChatModel(openAiApi, 
-                    OpenAiChatOptions.builder()
+                // 使用Builder模式创建ChatModel（Spring AI 1.0.0标准做法）
+                OpenAiChatModel chatModel = OpenAiChatModel.builder()
+                    .openAiApi(openAiApi)
+                    .defaultOptions(OpenAiChatOptions.builder()
                         .model(modelName)
                         .temperature(getTemperature(modelConfig))
                         .maxTokens(getMaxTokens(modelConfig))
-                        .build());
+                        .build())
+                    .build();
 
                 // 创建ChatClient
                 return ChatClient.builder(chatModel)

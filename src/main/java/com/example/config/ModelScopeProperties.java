@@ -22,7 +22,7 @@ public class ModelScopeProperties {
     /**
      * API基础URL
      */
-    private String baseUrl = "https://api-inference.modelscope.cn/v1";
+    private String baseUrl = "https://api-inference.modelscope.cn";
 
     /**
      * 聊天配置

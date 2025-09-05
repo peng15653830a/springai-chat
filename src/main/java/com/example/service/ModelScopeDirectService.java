@@ -1,6 +1,6 @@
 package com.example.service;
 
-import com.example.config.ModelScopeProperties;
+import com.example.config.MultiModelProperties;
 import com.example.dto.response.SseEventResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,16 +28,16 @@ public class ModelScopeDirectService {
     private final ObjectMapper objectMapper;
     private final MessageService messageService;
 
-    private final ModelScopeProperties modelScopeProperties;
+    private final MultiModelProperties multiModelProperties;
 
     public ModelScopeDirectService(WebClient.Builder webClientBuilder, 
                                   ObjectMapper objectMapper,
                                   MessageService messageService,
-                                  ModelScopeProperties modelScopeProperties) {
+                                  MultiModelProperties multiModelProperties) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
         this.messageService = messageService;
-        this.modelScopeProperties = modelScopeProperties;
+        this.multiModelProperties = multiModelProperties;
     }
 
     /**
@@ -77,9 +77,12 @@ public class ModelScopeDirectService {
     private Flux<SseEventResponse> callModelScopeApi(String prompt, boolean deepThinking) {
         Map<String, Object> requestBody = buildRequestBody(prompt, deepThinking);
         
+        MultiModelProperties.ProviderConfig qwenConfig = multiModelProperties.getProviders().get("qwen");
+        String apiKey = multiModelProperties.getApiKey("qwen");
+        
         return webClient.post()
-                .uri(modelScopeProperties.getBaseUrl() + "/chat/completions")
-                .header("Authorization", "Bearer " + modelScopeProperties.getApiKey())
+                .uri(qwenConfig.getBaseUrl() + "/v1/chat/completions")
+                .header("Authorization", "Bearer " + apiKey)
                 .header("Content-Type", "application/json")
                 .bodyValue(requestBody)
                 .accept(MediaType.TEXT_EVENT_STREAM)
@@ -173,17 +176,20 @@ public class ModelScopeDirectService {
      * 构建请求体
      */
     private Map<String, Object> buildRequestBody(String prompt, boolean deepThinking) {
+        MultiModelProperties.ProviderConfig qwenConfig = multiModelProperties.getProviders().get("qwen");
+        MultiModelProperties.ModelConfig defaultModel = qwenConfig.getModels().get(0); // 使用第一个模型作为默认
+        
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", modelScopeProperties.getChat().getOptions().getModel());
-        requestBody.put("temperature", modelScopeProperties.getChat().getOptions().getTemperature());
-        requestBody.put("max_tokens", modelScopeProperties.getChat().getOptions().getMaxTokens());
+        requestBody.put("model", defaultModel.getName());
+        requestBody.put("temperature", defaultModel.getTemperature());
+        requestBody.put("max_tokens", defaultModel.getMaxTokens());
         requestBody.put("stream", true);
         
         // 推理模式配置
-        if (deepThinking && modelScopeProperties.getChat().getOptions().isEnableThinking()) {
+        if (deepThinking && defaultModel.isSupportsThinking()) {
             requestBody.put("enable_thinking", true);
-            requestBody.put("thinking_budget", modelScopeProperties.getChat().getOptions().getThinkingBudget());
-            log.info("🧠 启用推理模式，thinking_budget: {}", modelScopeProperties.getChat().getOptions().getThinkingBudget());
+            requestBody.put("thinking_budget", defaultModel.getThinkingBudget());
+            log.info("🧠 启用推理模式，thinking_budget: {}", defaultModel.getThinkingBudget());
         } else {
             // 普通模式：不添加enable_thinking参数，让API使用默认行为
             log.info("💭 普通模式：不启用推理功能");
