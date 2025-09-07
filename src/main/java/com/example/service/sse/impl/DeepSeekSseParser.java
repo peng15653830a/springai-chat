@@ -34,9 +34,14 @@ public class DeepSeekSseParser implements SseResponseParser {
     public Flux<ChatResponse> parseStream(Flux<String> sseLines) {
         return sseLines
                 .filter(this::isValidSseLine)
+                .filter(line -> {  // 添加过滤器来处理[DONE]标记
+                    String trimmed = line.trim();
+                    return !trimmed.equals("[DONE]");  // 过滤掉[DONE]标记
+                })
                 .map(this::extractJsonData)
-                .filter(json -> json != null && !json.trim().isEmpty() && !json.equals("[DONE]"))
-                .flatMap(this::parseJsonChunk)
+                .filter(json -> json != null && !json.trim().isEmpty())
+                .concatMap(this::parseJsonChunk)
+                .filter(response -> response != null && response.getResult() != null)
                 .doOnNext(response -> {
                     String content = response.getResult().getOutput().getText();
                     log.debug("🔄 解析DeepSeek响应: {}", content.length() > 50 ? content.substring(0, 50) + "..." : content);
@@ -85,7 +90,7 @@ public class DeepSeekSseParser implements SseResponseParser {
             return trimmed;
         }
         
-        // 结束标记
+        // 结束标记 - 这个情况应该在上面的filter中已经被处理了
         if (trimmed.equals("[DONE]")) {
             log.debug("🏁 收到DeepSeek结束标记");
             return null;
@@ -143,7 +148,8 @@ public class DeepSeekSseParser implements SseResponseParser {
                 responses = responses.concatWith(Flux.just(contentResponse));
             }
             
-            return responses;
+            // 确保不会返回null元素
+            return responses.filter(response -> response != null);
             
         } catch (Exception e) {
             log.error("❌ 解析DeepSeek JSON chunk失败: {}", json, e);

@@ -158,14 +158,14 @@ public class EnhancedAiConfig {
          * 创建DeepSeek推理模型ChatModel
          */
         private ChatModel createDeepSeekChatModel(String modelName) {
-            MultiModelProperties.ModelConfig modelConfig = getModelConfig("DeepSeek", modelName);
+            MultiModelProperties.ModelConfig modelConfig = getModelConfig("deepseek", modelName);
             
             DeepSeekChatOptions defaultOptions = DeepSeekChatOptions.builder()
                 .model(modelName)
                 .temperature(getTemperature(modelConfig))
                 .maxTokens(getMaxTokens(modelConfig))
                 .enableThinking(false) // 默认不启用推理，由调用方决定
-                .thinkingBudget(modelConfig.getThinkingBudget())
+                .thinkingBudget(modelConfig != null ? modelConfig.getThinkingBudget() : null)
                 .build();
 
             return new DeepSeekChatModel(deepSeekApiClient, defaultOptions);
@@ -179,6 +179,11 @@ public class EnhancedAiConfig {
                 multiModelProperties.getProviders().get(providerName);
             String apiKey = multiModelProperties.getApiKey(providerName);
             MultiModelProperties.ModelConfig modelConfig = getModelConfig(providerName, modelName);
+            
+            // 如果模型未找到，返回null而不是抛出异常
+            if (modelConfig == null) {
+                return null;
+            }
             
             try {
                 // 使用Builder模式创建OpenAI API客户端
@@ -207,8 +212,12 @@ public class EnhancedAiConfig {
          * 获取模型配置
          */
         private MultiModelProperties.ModelConfig getModelConfig(String providerName, String modelName) {
-            return multiModelProperties.getProviders().get(providerName)
-                .getModels().stream()
+            MultiModelProperties.ProviderConfig providerConfig = multiModelProperties.getProviders().get(providerName);
+            if (providerConfig == null || providerConfig.getModels() == null) {
+                return null;
+            }
+            
+            return providerConfig.getModels().stream()
                 .filter(model -> model.getName().equals(modelName))
                 .findFirst()
                 .orElse(null);

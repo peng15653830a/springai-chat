@@ -78,6 +78,84 @@ class ConversationServiceTest {
   }
 
   @Test
+  void testCreateConversation_WithNullTitle() {
+    // Given
+    Long userId = 1L;
+    String title = null;
+
+    doAnswer(
+            invocation -> {
+              Conversation conversation = invocation.getArgument(0);
+              conversation.setId(1L);
+              return null;
+            })
+        .when(conversationMapper)
+        .insert(any(Conversation.class));
+
+    // When
+    Conversation result = conversationService.createConversation(userId, title);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(userId, result.getUserId());
+    assertEquals("新对话", result.getTitle()); // 应该使用默认标题
+    assertEquals(1L, result.getId());
+    verify(conversationMapper).insert(any(Conversation.class));
+  }
+
+  @Test
+  void testCreateConversation_WithEmptyTitle() {
+    // Given
+    Long userId = 1L;
+    String title = "";
+
+    doAnswer(
+            invocation -> {
+              Conversation conversation = invocation.getArgument(0);
+              conversation.setId(1L);
+              return null;
+            })
+        .when(conversationMapper)
+        .insert(any(Conversation.class));
+
+    // When
+    Conversation result = conversationService.createConversation(userId, title);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(userId, result.getUserId());
+    assertEquals("新对话", result.getTitle()); // 应该使用默认标题
+    assertEquals(1L, result.getId());
+    verify(conversationMapper).insert(any(Conversation.class));
+  }
+
+  @Test
+  void testCreateConversation_WithWhitespaceTitle() {
+    // Given
+    Long userId = 1L;
+    String title = "   ";
+
+    doAnswer(
+            invocation -> {
+              Conversation conversation = invocation.getArgument(0);
+              conversation.setId(1L);
+              return null;
+            })
+        .when(conversationMapper)
+        .insert(any(Conversation.class));
+
+    // When
+    Conversation result = conversationService.createConversation(userId, title);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(userId, result.getUserId());
+    assertEquals("新对话", result.getTitle()); // 应该使用默认标题
+    assertEquals(1L, result.getId());
+    verify(conversationMapper).insert(any(Conversation.class));
+  }
+
+  @Test
   void testCreateConversation_InvalidUserId() {
     // When & Then
     assertThrows(
@@ -198,6 +276,19 @@ class ConversationServiceTest {
     verify(conversationMapper).selectRecentByUserId(userId, limit);
   }
 
+  @Test
+  void testGetRecentConversations_WithInvalidUserId() {
+    // When & Then
+    assertThrows(
+        IllegalArgumentException.class, () -> conversationService.getRecentConversations(null, 10));
+    assertThrows(
+        IllegalArgumentException.class, () -> conversationService.getRecentConversations(0L, 10));
+    assertThrows(
+        IllegalArgumentException.class, () -> conversationService.getRecentConversations(-1L, 10));
+
+    verify(conversationMapper, never()).selectRecentByUserId(any(), anyInt());
+  }
+
   // ========== updateConversationTitle 测试 ==========
 
   @Test
@@ -294,6 +385,19 @@ class ConversationServiceTest {
     assertNotNull(result);
     assertEquals(1, result.size());
     verify(messageMapper).selectRecentMessages(conversationId, limit);
+  }
+
+  @Test
+  void testGetRecentMessages_WithInvalidConversationId() {
+    // When & Then
+    assertThrows(
+        IllegalArgumentException.class, () -> conversationService.getRecentMessages(null, 10));
+    assertThrows(
+        IllegalArgumentException.class, () -> conversationService.getRecentMessages(0L, 10));
+    assertThrows(
+        IllegalArgumentException.class, () -> conversationService.getRecentMessages(-1L, 10));
+
+    verify(messageMapper, never()).selectRecentMessages(any(), anyInt());
   }
 
   // ========== 额外的分支测试 ==========
@@ -645,6 +749,58 @@ class ConversationServiceTest {
     // When
     String result = conversationService.generateTitleFromMessage(message);
     
+    // Then
+    assertNotNull(result);
+    assertTrue(result.length() > 0);
+  }
+
+  @Test
+  void testGenerateTitleFromMessage_WithSpecialCharacters() {
+    // Given
+    String message = "测试特殊字符：！@#￥%……&*（）——+{}|：“？》《";
+
+    // When
+    String result = conversationService.generateTitleFromMessage(message);
+
+    // Then
+    assertNotNull(result);
+    assertTrue(result.length() > 0);
+  }
+
+  @Test
+  void testGenerateTitleFromMessage_WithUnicodeCharacters() {
+    // Given
+    String message = "测试Unicode字符：🌟🔍🚀";
+
+    // When
+    String result = conversationService.generateTitleFromMessage(message);
+
+    // Then
+    assertNotNull(result);
+    assertTrue(result.length() > 0);
+  }
+
+  @Test
+  void testGenerateTitleFromMessage_WithLongFirstSentence() {
+    // Given
+    String message = "这是一个非常长的第一句话，用来测试长句子的截断功能，应该被正确地截断并添加省略号。这是第二句话";
+
+    // When
+    String result = conversationService.generateTitleFromMessage(message);
+
+    // Then
+    assertNotNull(result);
+    assertTrue(result.length() <= 25);
+  }
+
+  @Test
+  void testGenerateTitleFromMessage_WithCommaAtEnd() {
+    // Given
+    String message = "这是一个以逗号结尾的句子，";
+
+    // When
+    String result = conversationService.generateTitleFromMessage(message);
+
     // Then
     assertNotNull(result);
     assertTrue(result.length() > 0);

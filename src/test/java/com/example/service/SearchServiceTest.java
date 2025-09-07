@@ -426,4 +426,78 @@ public class SearchServiceTest {
         new SearchService.SearchContextResult("test", null, null);
     }, "搜索事件流为null时应抛出NullPointerException");
   }
+
+  @Test
+  void testPerformSearchWithEvents_EmptyUserMessage() {
+    // Given
+    String emptyMessage = "";
+
+    // When & Then
+    StepVerifier.create(searchService.performSearchWithEvents(emptyMessage, true))
+        .expectNextMatches(result -> 
+            result.getSearchContext() != null && 
+            result.getSearchEvents() != null)
+        .verifyComplete();
+  }
+
+  @Test
+  void testPerformSearchWithEvents_WhitespaceUserMessage() {
+    // Given
+    String whitespaceMessage = "   ";
+
+    // When & Then
+    StepVerifier.create(searchService.performSearchWithEvents(whitespaceMessage, true))
+        .expectNextMatches(result -> 
+            result.getSearchContext() != null && 
+            result.getSearchEvents() != null)
+        .verifyComplete();
+  }
+
+  @Test
+  void testCreateSearchEvents_WithError() {
+    // Given
+    List<SearchResult> results = Arrays.asList(
+        SearchResult.create("测试标题", "https://test.com", "测试内容", null)
+    );
+    
+    // When & Then
+    StepVerifier.create(searchService.createSearchEvents(results))
+        .expectNextMatches(event -> "search".equals(event.getType()))
+        .expectNextMatches(event -> "search_results".equals(event.getType()))
+        .expectNextMatches(event -> "search".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void testSearchMetaso_ExceptionHandling() {
+    // Given - 测试异常处理
+    String query = "测试异常处理";
+
+    // When
+    List<SearchResult> results = searchService.searchMetaso(query);
+
+    // Then
+    assertNotNull(results);
+    // 不应该抛出异常
+  }
+
+  @Test
+  void testFormatSearchResults_WithAIAnswer() {
+    // Given
+    List<SearchResult> results = new ArrayList<>();
+    results.add(SearchResult.create("AI 摘要", "AI Generated Summary", "这是AI生成的摘要", null));
+    results.add(SearchResult.create("测试标题", "http://test.com", "测试内容", null));
+
+    // When
+    String formatted = searchService.formatSearchResults(results);
+
+    // Then
+    assertNotNull(formatted);
+    assertFalse(formatted.isEmpty());
+    assertTrue(formatted.contains("搜索结果"));
+    assertTrue(formatted.contains("AI 摘要"));
+    assertTrue(formatted.contains("这是AI生成的摘要"));
+    assertTrue(formatted.contains("测试标题"));
+    assertTrue(formatted.contains("测试内容"));
+  }
 }

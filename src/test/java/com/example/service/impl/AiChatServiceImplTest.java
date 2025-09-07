@@ -1,6 +1,7 @@
 package com.example.service.impl;
 
 import com.example.config.ChatStreamingProperties;
+import com.example.dto.request.StreamChatRequest;
 import com.example.entity.Message;
 import com.example.service.*;
 import com.example.dto.response.SseEventResponse;
@@ -487,6 +488,114 @@ class AiChatServiceImplTest {
 
     // When & Then
     StepVerifier.create(aiChatService.executeStreamingChat(prompt, conversationId, false))
+        .expectNextMatches(event -> 
+            "error".equals(event.getType()) && 
+            event.getData().toString().contains("AI服务暂时不可用"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldStreamChatWithStreamChatRequest() {
+    // Given
+    StreamChatRequest request = new StreamChatRequest();
+    request.setConversationId(conversationId);
+    request.setMessage(userMessage);
+    request.setSearchEnabled(false);
+    request.setDeepThinking(false);
+    request.setUserId(null);
+    request.setProvider(null);
+    request.setModel(null);
+    
+    // When & Then
+    StepVerifier.create(aiChatService.streamChat(request))
+        .expectNext(SseEventResponse.end(1L))
+        .expectNext(SseEventResponse.chunk("Test response"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldStreamChatWithStreamChatRequestAndAllParameters() {
+    // Given
+    StreamChatRequest request = new StreamChatRequest();
+    request.setConversationId(conversationId);
+    request.setMessage(userMessage);
+    request.setSearchEnabled(true);
+    request.setDeepThinking(true);
+    request.setUserId(123L);
+    request.setProvider("test-provider");
+    request.setModel("test-model");
+    
+    SearchService.SearchContextResult searchResult = 
+        new SearchService.SearchContextResult(
+            "Search results: AI information", 
+            null,
+            Flux.just(SseEventResponse.search("Searching for AI..."))
+        );
+    when(searchService.performSearchWithEvents(userMessage, true))
+        .thenReturn(Mono.just(searchResult));
+    
+    com.example.service.chat.ModelSelector.ModelSelection modelSelection = 
+        new com.example.service.chat.ModelSelector.ModelSelection(mockModelProvider, "test-model");
+    when(modelSelector.selectModelForUser(123L, "test-provider", "test-model"))
+        .thenReturn(modelSelection);
+
+    // When & Then
+    StepVerifier.create(aiChatService.streamChat(request))
+        .expectNext(SseEventResponse.search("Searching for AI..."))
+        .expectNext(SseEventResponse.chunk("Test response"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldStreamChatWithModel() {
+    // Given
+    String providerName = "test-provider";
+    String modelName = "test-model";
+    
+    // When & Then
+    StepVerifier.create(aiChatService.streamChatWithModel(conversationId, userMessage, false, false, null, providerName, modelName))
+        .expectNext(SseEventResponse.end(1L))
+        .expectNext(SseEventResponse.chunk("Test response"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldExecuteStreamingChatWithModel() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    boolean deepThinking = true;
+    String providerName = "test-provider";
+    String modelName = "test-model";
+    
+    Flux<SseEventResponse> mockResponse = Flux.just(
+        SseEventResponse.start("AI正在深度思考...")
+    );
+    when(mockModelProvider.streamChat(any(com.example.dto.request.ChatRequest.class)))
+        .thenReturn(mockResponse);
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChatWithModel(prompt, conversationId, deepThinking, providerName, modelName))
+        .expectNextMatches(event -> 
+            "start".equals(event.getType()) && 
+            "AI正在深度思考...".equals(event.getData()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleErrorInExecuteStreamingChatWithModel() {
+    // Given
+    String prompt = "测试提示";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    String providerName = "test-provider";
+    String modelName = "test-model";
+    
+    when(mockModelProvider.streamChat(any(com.example.dto.request.ChatRequest.class)))
+        .thenReturn(Flux.error(new RuntimeException("AI服务不可用")));
+
+    // When & Then
+    StepVerifier.create(aiChatService.executeStreamingChatWithModel(prompt, conversationId, deepThinking, providerName, modelName))
         .expectNextMatches(event -> 
             "error".equals(event.getType()) && 
             event.getData().toString().contains("AI服务暂时不可用"))

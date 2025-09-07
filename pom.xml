@@ -199,6 +199,7 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
+                    <!-- 恢复check执行以启用覆盖率检查 -->
                     <execution>
                         <id>check</id>
                         <phase>test</phase>

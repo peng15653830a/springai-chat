@@ -196,6 +196,10 @@ public class DeepSeekApiClient implements ModelApiClient {
         MultiModelProperties.ProviderConfig providerConfig = 
             multiModelProperties.getProviders().get(getProviderName());
         
+        if (providerConfig == null) {
+            throw new IllegalArgumentException("未找到DeepSeek提供者配置: " + getProviderName());
+        }
+        
         return providerConfig.getModels().stream()
                 .filter(model -> modelName.equals(model.getName()))
                 .findFirst()

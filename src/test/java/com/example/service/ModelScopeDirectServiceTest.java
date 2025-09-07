@@ -554,7 +554,7 @@ class ModelScopeDirectServiceTest {
       // Handle checked exception
     }
 
-    // When & Then - 空choices数组不应该产生任何内容事件
+    // When & Then
     StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
         .expectNextMatches(event -> "start".equals(event.getType()))
         .expectNextMatches(event -> "end".equals(event.getType()))
@@ -567,7 +567,7 @@ class ModelScopeDirectServiceTest {
   @Test
   void shouldHandleMissingChoicesField() {
     // Given - 测试缺少choices字段的JSON
-    String prompt = "Missing choices field test";
+    String prompt = "Missing choices test";
     Long conversationId = 1L;
     boolean deepThinking = false;
     
@@ -591,7 +591,7 @@ class ModelScopeDirectServiceTest {
       // Handle checked exception
     }
 
-    // When & Then - 缺少choices字段不应该产生任何内容事件
+    // When & Then
     StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
         .expectNextMatches(event -> "start".equals(event.getType()))
         .expectNextMatches(event -> "end".equals(event.getType()))
@@ -600,7 +600,6 @@ class ModelScopeDirectServiceTest {
     // 验证没有调用保存方法
     verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
-
 
   @Test
   void shouldHandleOnlyReasoningContentWithoutNormalContent() {
@@ -674,9 +673,492 @@ class ModelScopeDirectServiceTest {
     verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
   }
 
+  @Test
+  void shouldHandleEmptyReasoningContent() {
+    // Given - 测试只有content没有reasoning_content的情况
+    String prompt = "Test prompt";
+    Long conversationId = 1L;
+    boolean deepThinking = true;
+    
+    String contentJson = "{\"choices\":[{\"delta\":{\"content\":\"Only content\"}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(contentJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      when(objectMapper.readTree(contentJson)).thenReturn(createMockJsonNode("Only content", ""));
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+    
+    // Mock MessageService
+    when(messageService.saveAiMessageAsync(conversationId, "Only content", null))
+        .thenReturn(Mono.just(SseEventResponse.end(null)));
 
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "chunk".equals(event.getType()) && 
+                          "Only content".equals(((SseEventResponse.ChunkData) event.getData()).getContent()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+  }
 
+  @Test
+  void shouldHandleBothContentAndReasoning() {
+    // Given - 测试同时有content和reasoning_content的情况
+    String prompt = "Complex test";
+    Long conversationId = 1L;
+    boolean deepThinking = true;
+    
+    String reasoningJson = "{\"choices\":[{\"delta\":{\"reasoning_content\":\"Thinking process\"}}]}";
+    String contentJson = "{\"choices\":[{\"delta\":{\"content\":\"Final response\"}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(reasoningJson, contentJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      when(objectMapper.readTree(reasoningJson)).thenReturn(createMockJsonNode("", "Thinking process"));
+      when(objectMapper.readTree(contentJson)).thenReturn(createMockJsonNode("Final response", ""));
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+    
+    // Mock MessageService
+    when(messageService.saveAiMessageAsync(conversationId, "Final response", "Thinking process"))
+        .thenReturn(Mono.just(SseEventResponse.end(null)));
 
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "thinking".equals(event.getType()) && 
+                          "Thinking process".equals(((SseEventResponse.ChunkData) event.getData()).getContent()))
+        .expectNextMatches(event -> "chunk".equals(event.getType()) && 
+                          "Final response".equals(((SseEventResponse.ChunkData) event.getData()).getContent()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleEmptyChoicesArray() {
+    // Given - 测试choices数组为空的情况
+    String prompt = "Empty choices test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String emptyChoicesJson = "{\"choices\":[]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(emptyChoicesJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      com.fasterxml.jackson.databind.node.ObjectNode emptyNode = new ObjectMapper().createObjectNode();
+      emptyNode.putArray("choices"); // 空数组
+      when(objectMapper.readTree(emptyChoicesJson)).thenReturn(emptyNode);
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+        
+    // 验证没有调用保存方法
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
+  }
+
+  @Test
+  void shouldHandleMissingChoicesField() {
+    // Given - 测试缺少choices字段的JSON
+    String prompt = "Missing choices test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String noChoicesJson = "{\"some_other_field\":\"value\"}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(noChoicesJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      com.fasterxml.jackson.databind.node.ObjectNode noChoicesNode = new ObjectMapper().createObjectNode();
+      noChoicesNode.put("some_other_field", "value");
+      when(objectMapper.readTree(noChoicesJson)).thenReturn(noChoicesNode);
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+        
+    // 验证没有调用保存方法
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
+  }
+
+  @Test
+  void shouldHandleInvalidJsonInParseChunk() {
+    // Given - 测试parseJsonChunk中的无效JSON处理
+    String prompt = "Invalid JSON test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String invalidJson = "{\"invalid\": json}"; // 无效JSON
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(invalidJson, "[DONE]"));
+    
+    // Mock ObjectMapper to throw exception
+    try {
+      when(objectMapper.readTree(invalidJson)).thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("Invalid JSON") {});
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+        
+    // 验证没有调用保存方法
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
+  }
+
+  @Test
+  void shouldHandleSaveMessageError() {
+    // Given - 测试保存消息时的错误处理
+    String prompt = "Save error test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String responseJson = "{\"choices\":[{\"delta\":{\"content\":\"Test response\"}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(responseJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      when(objectMapper.readTree(responseJson)).thenReturn(createMockJsonNode("Test response", ""));
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+    
+    // Mock MessageService to throw error
+    when(messageService.saveAiMessageAsync(conversationId, "Test response", null))
+        .thenReturn(Mono.error(new RuntimeException("Save failed")));
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "chunk".equals(event.getType()))
+        .expectNextMatches(event -> "error".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleEmptyResponse() {
+    // Given - 测试空响应的情况
+    String prompt = "Empty response test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    // Mock WebClient chain with empty response
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just("[DONE]")); // 只有结束标记
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+        
+    // 验证没有调用保存方法
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
+  }
+
+  @Test
+  void shouldHandleWhitespaceOnlyResponse() {
+    // Given - 测试只有空白字符的响应
+    String prompt = "Whitespace only test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String whitespaceJson = "{\"choices\":[{\"delta\":{\"content\":\"   \\t\\n   \"}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(whitespaceJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      when(objectMapper.readTree(whitespaceJson)).thenReturn(createMockJsonNode("   \t\n   ", ""));
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "chunk".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleSpecialCharactersInResponse() {
+    // Given - 测试响应中的特殊字符
+    String prompt = "Special characters test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String specialJson = "{\"choices\":[{\"delta\":{\"content\":\"特殊字符🌟🔍🚀\"}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(specialJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      when(objectMapper.readTree(specialJson)).thenReturn(createMockJsonNode("特殊字符🌟🔍🚀", ""));
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+    
+    // Mock MessageService
+    when(messageService.saveAiMessageAsync(conversationId, "特殊字符🌟🔍🚀", null))
+        .thenReturn(Mono.just(SseEventResponse.end(null)));
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "chunk".equals(event.getType()) && 
+                          "特殊字符🌟🔍🚀".equals(((SseEventResponse.ChunkData) event.getData()).getContent()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleVeryLongResponse() {
+    // Given - 测试非常长的响应
+    String prompt = "Long response test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    StringBuilder longContent = new StringBuilder();
+    for (int i = 0; i < 1000; i++) {
+      longContent.append("这是一个很长的响应内容，用来测试处理长文本的能力。");
+    }
+    String longResponse = longContent.toString();
+    
+    String longJson = "{\"choices\":[{\"delta\":{\"content\":\"" + longResponse + "\"}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(longJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      when(objectMapper.readTree(longJson)).thenReturn(createMockJsonNode(longResponse, ""));
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+    
+    // Mock MessageService
+    when(messageService.saveAiMessageAsync(conversationId, longResponse, null))
+        .thenReturn(Mono.just(SseEventResponse.end(null)));
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "chunk".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleNullContentInSaveMessage() {
+    // Given - 测试保存消息时content为null的情况
+    String prompt = "Null content test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String responseJson = "{\"choices\":[{\"delta\":{\"content\":null}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(responseJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      com.fasterxml.jackson.databind.node.ObjectNode rootNode = new ObjectMapper().createObjectNode();
+      com.fasterxml.jackson.databind.node.ArrayNode choices = rootNode.putArray("choices");
+      com.fasterxml.jackson.databind.node.ObjectNode choice = choices.addObject();
+      com.fasterxml.jackson.databind.node.ObjectNode delta = choice.putObject("delta");
+      delta.putNull("content"); // null content
+      when(objectMapper.readTree(responseJson)).thenReturn(rootNode);
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+        
+    // 验证没有调用保存方法
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
+  }
+
+  @Test
+  void shouldHandleThinkingWithSpecialCharacters() {
+    // Given - 测试推理内容中的特殊字符
+    String prompt = "Thinking special chars test";
+    Long conversationId = 1L;
+    boolean deepThinking = true;
+    
+    String thinkingJson = "{\"choices\":[{\"delta\":{\"reasoning_content\":\"推理过程🌟🔍🚀\"}}]}";
+    String contentJson = "{\"choices\":[{\"delta\":{\"content\":\"响应内容\"}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(thinkingJson, contentJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      when(objectMapper.readTree(thinkingJson)).thenReturn(createMockJsonNode("", "推理过程🌟🔍🚀"));
+      when(objectMapper.readTree(contentJson)).thenReturn(createMockJsonNode("响应内容", ""));
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+    
+    // Mock MessageService
+    when(messageService.saveAiMessageAsync(conversationId, "响应内容", "推理过程🌟🔍🚀"))
+        .thenReturn(Mono.just(SseEventResponse.end(null)));
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "thinking".equals(event.getType()) && 
+                          "推理过程🌟🔍🚀".equals(((SseEventResponse.ChunkData) event.getData()).getContent()))
+        .expectNextMatches(event -> "chunk".equals(event.getType()) && 
+                          "响应内容".equals(((SseEventResponse.ChunkData) event.getData()).getContent()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldHandleEmptyDeltaNode() {
+    // Given - 测试空的delta节点
+    String prompt = "Empty delta test";
+    Long conversationId = 1L;
+    boolean deepThinking = false;
+    
+    String emptyDeltaJson = "{\"choices\":[{\"delta\":{}}]}";
+    
+    // Mock WebClient chain
+    when(webClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+    when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any(MediaType.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(emptyDeltaJson, "[DONE]"));
+    
+    // Mock ObjectMapper
+    try {
+      com.fasterxml.jackson.databind.node.ObjectNode rootNode = new ObjectMapper().createObjectNode();
+      com.fasterxml.jackson.databind.node.ArrayNode choices = rootNode.putArray("choices");
+      com.fasterxml.jackson.databind.node.ObjectNode choice = choices.addObject();
+      choice.putObject("delta"); // 空的delta对象
+      when(objectMapper.readTree(emptyDeltaJson)).thenReturn(rootNode);
+    } catch (Exception e) {
+      // Handle checked exception
+    }
+
+    // When & Then
+    StepVerifier.create(modelScopeDirectService.executeDirectStreaming(prompt, conversationId, deepThinking))
+        .expectNextMatches(event -> "start".equals(event.getType()))
+        .expectNextMatches(event -> "end".equals(event.getType()))
+        .verifyComplete();
+        
+    // 验证没有调用保存方法
+    verify(messageService, never()).saveAiMessageAsync(any(), any(), any());
+  }
 
   /**
    * 创建模拟的JsonNode
