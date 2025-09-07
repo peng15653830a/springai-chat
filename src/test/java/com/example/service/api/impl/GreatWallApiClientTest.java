@@ -634,10 +634,11 @@ class GreatWallApiClientTest {
         modelConfig.setTpuidPrefix("test-user");
         providerConfig.setModels(List.of(modelConfig));
         
-        providers.put("长城大模型测试", providerConfig);
+        // 使用正确的提供者名称"greatwall"
+        providers.put("greatwall", providerConfig);
         
         when(multiModelProperties.getProviders()).thenReturn(providers);
-        when(multiModelProperties.getApiKey("长城大模型测试")).thenReturn("test-api-key");
+        when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
         // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
@@ -661,7 +662,7 @@ class GreatWallApiClientTest {
 
         // 验证结果
         assertThat(available).isTrue();
-        assertThat(unicodeApiClient.getProviderName()).isEqualTo("长城大模型测试");
+        assertThat(unicodeApiClient.getProviderName()).isEqualTo("greatwall");
     }
 
     @Test
@@ -933,10 +934,10 @@ class GreatWallApiClientTest {
         ssl.setSkipVerification(true);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
         
-        // 模拟WebClient.Builder
+        // 模拟WebClient.Builder，使用lenient stubbing避免不必要的stubbing错误
         WebClient mockWebClient = mock(WebClient.class);
-        when(webClientBuilder.codecs(any())).thenReturn(webClientBuilder);
-        when(webClientBuilder.build()).thenReturn(mockWebClient);
+        lenient().when(webClientBuilder.codecs(any())).thenReturn(webClientBuilder);
+        lenient().when(webClientBuilder.build()).thenReturn(mockWebClient);
 
         // 执行测试
         apiClient = new GreatWallApiClient(

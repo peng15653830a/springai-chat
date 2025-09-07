@@ -69,6 +69,11 @@ public class DefaultChatErrorHandler implements ChatErrorHandler {
 
         String errorMessage = error.getMessage();
         String errorClass = error.getClass().getSimpleName();
+        
+        // 处理errorMessage为null的情况
+        if (errorMessage == null) {
+            errorMessage = "";
+        }
 
         // 网络相关错误
         if (error instanceof ConnectException || 

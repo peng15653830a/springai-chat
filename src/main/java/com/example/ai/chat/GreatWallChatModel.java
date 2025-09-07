@@ -41,6 +41,13 @@ public class GreatWallChatModel implements ChatModel {
         try {
             // 提取消息和选项
             List<Message> messages = prompt.getInstructions();
+            
+            // 处理null消息的情况
+            if (messages == null) {
+                log.warn("长城大模型收到null消息列表，返回空流");
+                return Flux.empty();
+            }
+            
             ChatOptions promptOptions = prompt.getOptions();
             
             // 合并选项

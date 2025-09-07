@@ -135,9 +135,24 @@ public class SearchServiceImpl implements SearchService {
 
     for (int i = 0; i < searchResults.size(); i++) {
       SearchResult result = searchResults.get(i);
-      formatted.append(String.format("%d. %s\n", i + 1, result.getTitle()));
-      formatted.append(String.format("   %s\n", result.getContent()));
-      formatted.append(String.format("   链接: %s\n\n", result.getUrl()));
+      // 处理null值情况
+      String title = result.getTitle() != null ? result.getTitle() : "";
+      String content = result.getContent() != null ? result.getContent() : "";
+      String url = result.getUrl() != null ? result.getUrl() : "";
+      
+      formatted.append(String.format("%d. %s\n", i + 1, title));
+      
+      // 如果是AI摘要，只显示内容，不显示链接
+      if ("AI 摘要".equals(title)) {
+        formatted.append(String.format("   %s\n\n", content));
+      } else {
+        formatted.append(String.format("   %s\n", content));
+        if (!url.isEmpty()) {
+          formatted.append(String.format("   链接: %s\n\n", url));
+        } else {
+          formatted.append("\n");
+        }
+      }
     }
 
     return formatted.toString();

@@ -160,11 +160,13 @@ public class DeepSeekApiClient implements ModelApiClient {
         
         // 转换消息格式
         List<Map<String, String>> messageList = new ArrayList<>();
-        for (Message message : messages) {
-            Map<String, String> messageMap = new HashMap<>();
-            messageMap.put("role", mapMessageRole(message));
-            messageMap.put("content", message.getText());
-            messageList.add(messageMap);
+        if (messages != null) {  // 处理messages为null的情况
+            for (Message message : messages) {
+                Map<String, String> messageMap = new HashMap<>();
+                messageMap.put("role", mapMessageRole(message));
+                messageMap.put("content", message.getText());
+                messageList.add(messageMap);
+            }
         }
         requestBody.put("messages", messageList);
         
@@ -198,6 +200,15 @@ public class DeepSeekApiClient implements ModelApiClient {
         
         if (providerConfig == null) {
             throw new IllegalArgumentException("未找到DeepSeek提供者配置: " + getProviderName());
+        }
+        
+        // 处理modelName为null或空的情况
+        if (modelName == null || modelName.trim().isEmpty()) {
+            // 返回第一个可用的模型作为默认模型
+            return providerConfig.getModels().stream()
+                    .filter(model -> model.isEnabled())
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("未找到可用的DeepSeek模型"));
         }
         
         return providerConfig.getModels().stream()

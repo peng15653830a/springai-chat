@@ -571,7 +571,7 @@ class ModelSelectorTest {
       assertThat(selection.provider()).isSameAs(defaultProvider);
       assertThat(selection.modelName()).isEqualTo("valid-model");
       verify(providerManager).getDefaultProvider();
-      verify(defaultProvider, times(2)).getAvailableModels();
+      verify(defaultProvider).getAvailableModels(); // 由于模型存在，只调用一次
     }
 
     @Test
@@ -600,12 +600,11 @@ class ModelSelectorTest {
     void testSelectModelForUserWithExceptionInProviderManager() {
       // 准备测试数据
       when(providerManager.getProvider("exception-provider")).thenThrow(new RuntimeException("Provider manager error"));
-      when(providerManager.getDefaultProvider()).thenReturn(defaultProvider);
       
       ModelInfo modelInfo = new ModelInfo();
       modelInfo.setName("default-model");
       modelInfo.setAvailable(true);
-      when(defaultProvider.getAvailableModels()).thenReturn(List.of(modelInfo));
+      lenient().when(defaultProvider.getAvailableModels()).thenReturn(List.of(modelInfo));
 
       ModelSelector modelSelector = new DefaultModelSelector(providerManager, modelManagementService);
 

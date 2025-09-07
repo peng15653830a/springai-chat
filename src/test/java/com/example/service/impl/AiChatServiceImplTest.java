@@ -509,6 +509,23 @@ class AiChatServiceImplTest {
   }
 
   @Test
+  void shouldStreamChatWithModel() {
+    // Given
+    String providerName = "test-provider";
+    String modelName = "test-model";
+    
+    // Setup model selector mock for this specific test
+    when(modelSelector.getModelProvider(providerName)).thenReturn(mockModelProvider);
+    when(modelSelector.getActualModelName(mockModelProvider, modelName)).thenReturn("test-model");
+    
+    // When & Then
+    StepVerifier.create(aiChatService.streamChatWithModel(conversationId, userMessage, false, false, null, providerName, modelName))
+        .expectNext(SseEventResponse.end(1L))
+        .expectNext(SseEventResponse.chunk("Test response"))
+        .verifyComplete();
+  }
+  
+  @Test
   void shouldStreamChatWithStreamChatRequestAndAllParameters() {
     // Given
     StreamChatRequest request = new StreamChatRequest();
@@ -519,37 +536,24 @@ class AiChatServiceImplTest {
     request.setUserId(123L);
     request.setProvider("test-provider");
     request.setModel("test-model");
-    
+        
     SearchService.SearchContextResult searchResult = 
-        new SearchService.SearchContextResult(
-            "Search results: AI information", 
-            null,
-            Flux.just(SseEventResponse.search("Searching for AI..."))
-        );
+        new SearchService.SearchContextResult("", null, Flux.just(SseEventResponse.search("Searching for AI...")));
     when(searchService.performSearchWithEvents(userMessage, true))
         .thenReturn(Mono.just(searchResult));
-    
+        
+    // Setup model selector mocks
     com.example.service.chat.ModelSelector.ModelSelection modelSelection = 
         new com.example.service.chat.ModelSelector.ModelSelection(mockModelProvider, "test-model");
     when(modelSelector.selectModelForUser(123L, "test-provider", "test-model"))
         .thenReturn(modelSelection);
+        
+    when(modelSelector.getModelProvider("test-provider")).thenReturn(mockModelProvider);
+    when(modelSelector.getActualModelName(mockModelProvider, "test-model")).thenReturn("test-model");
 
     // When & Then
     StepVerifier.create(aiChatService.streamChat(request))
         .expectNext(SseEventResponse.search("Searching for AI..."))
-        .expectNext(SseEventResponse.chunk("Test response"))
-        .verifyComplete();
-  }
-
-  @Test
-  void shouldStreamChatWithModel() {
-    // Given
-    String providerName = "test-provider";
-    String modelName = "test-model";
-    
-    // When & Then
-    StepVerifier.create(aiChatService.streamChatWithModel(conversationId, userMessage, false, false, null, providerName, modelName))
-        .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
   }

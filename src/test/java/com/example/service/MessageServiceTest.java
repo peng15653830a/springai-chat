@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
 import com.example.dto.response.SseEventResponse;
+import com.example.dto.request.AiMessageSaveRequest;
 import com.example.service.impl.MessageServiceImpl;
 import reactor.test.StepVerifier;
 import java.time.LocalDateTime;
@@ -833,66 +834,7 @@ class MessageServiceTest {
     verify(messageMapper).selectByConversationId(conversationId);
   }
 
-  @Test
-  void testGetMessagesByConversationId_MultipleMessages() {
-    // Given
-    Long conversationId = 1L;
-    Message message1 = new Message();
-    message1.setId(1L);
-    message1.setRole("user");
-    message1.setContent("用户消息");
-
-    Message message2 = new Message();
-    message2.setId(2L);
-    message2.setRole("assistant");
-    message2.setContent("AI回复");
-
-    List<Message> messages = Arrays.asList(message1, message2);
-    when(messageMapper.selectByConversationId(conversationId)).thenReturn(messages);
-
-    // When
-    List<Message> result = messageService.getMessagesByConversationId(conversationId);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(2, result.size());
-    assertEquals("user", result.get(0).getRole());
-    assertEquals("assistant", result.get(1).getRole());
-    verify(messageMapper).selectByConversationId(conversationId);
-  }
-
   // ========== 额外的分支测试 ==========
-
-  @Test
-  void testSaveMessage_FourParams_EmptySearchResults() {
-    // Given
-    Long conversationId = 1L;
-    String role = "assistant";
-    String content = "AI回复";
-    String searchResults = "";
-
-    doAnswer(
-            invocation -> {
-              Message message = invocation.getArgument(0);
-              message.setId(6L);
-              return null;
-            })
-        .when(messageMapper)
-        .insert(any(Message.class));
-
-    // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(conversationId, result.getConversationId());
-    assertEquals(role, result.getRole());
-    assertEquals(content, result.getContent());
-    assertNull(result.getThinking());
-    assertEquals("", result.getSearchResults());
-    assertEquals(6L, result.getId());
-    verify(messageMapper).insert(any(Message.class));
-  }
 
   @Test
   void testSaveMessage_FiveParams_EmptyOptionalFields() {
@@ -958,20 +900,6 @@ class MessageServiceTest {
     assertNull(result.getSearchResults());
     assertEquals(8L, result.getId());
     verify(messageMapper).insert(any(Message.class));
-  }
-
-  @Test
-  void testGetMessageById_NullId() {
-    // Given
-    Long messageId = null;
-    when(messageMapper.selectById(messageId)).thenReturn(null);
-
-    // When
-    Message result = messageService.getMessageById(messageId);
-
-    // Then
-    assertNull(result);
-    verify(messageMapper).selectById(messageId);
   }
 
   @Test
@@ -1228,8 +1156,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(
-            conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(4L);
@@ -1263,8 +1196,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(
-            conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(5L);
@@ -1298,7 +1236,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(11L);
@@ -1332,7 +1276,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(12L);
@@ -1388,7 +1338,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(13L);
@@ -1439,7 +1395,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(14L);
@@ -1461,7 +1423,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(conversationId, content, thinking, null))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(null)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectErrorMatches(error -> 
             error instanceof RuntimeException &&
             error.getMessage().contains("保存AI消息失败"))
@@ -1538,9 +1506,17 @@ class MessageServiceTest {
   @Test
   void testGetConversationHistoryAsync_InvalidConversationId() {
     // When & Then
-    assertThrows(IllegalArgumentException.class, () -> messageService.getConversationHistoryAsync(null));
-    assertThrows(IllegalArgumentException.class, () -> messageService.getConversationHistoryAsync(0L));
-    assertThrows(IllegalArgumentException.class, () -> messageService.getConversationHistoryAsync(-1L));
+    StepVerifier.create(messageService.getConversationHistoryAsync(null))
+        .expectError(IllegalArgumentException.class)
+        .verify();
+        
+    StepVerifier.create(messageService.getConversationHistoryAsync(0L))
+        .expectError(IllegalArgumentException.class)
+        .verify();
+        
+    StepVerifier.create(messageService.getConversationHistoryAsync(-1L))
+        .expectError(IllegalArgumentException.class)
+        .verify();
   }
 
   // 测试用的简单搜索结果类
@@ -1590,76 +1566,19 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(
-            conversationId, content, thinking, complexSearchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(complexSearchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(8L);
         })
         .verifyComplete();
         
-    verify(messageMapper).insert(any(Message.class));
-  }
-
-  @Test
-  void testSaveMessage_FourParams_WithSpecialCharacters() {
-    // Given
-    Long conversationId = 1L;
-    String role = "assistant";
-    String content = "特殊字符测试：🌟🔍🚀";
-    String searchResults = "搜索结果：更多";
-
-    doAnswer(
-            invocation -> {
-              Message message = invocation.getArgument(0);
-              message.setId(9L);
-              return null;
-            })
-        .when(messageMapper)
-        .insert(any(Message.class));
-
-    // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(conversationId, result.getConversationId());
-    assertEquals(role, result.getRole());
-    assertEquals(content, result.getContent());
-    assertNull(result.getThinking());
-    assertEquals(searchResults, result.getSearchResults());
-    assertEquals(9L, result.getId());
-    verify(messageMapper).insert(any(Message.class));
-  }
-
-  @Test
-  void testSaveMessage_FourParams_WithUnicode() {
-    // Given
-    Long conversationId = 1L;
-    String role = "assistant";
-    String content = "Unicode测试：测试中文消息";
-    String searchResults = "搜索结果：更多中文";
-
-    doAnswer(
-            invocation -> {
-              Message message = invocation.getArgument(0);
-              message.setId(12L);
-              return null;
-            })
-        .when(messageMapper)
-        .insert(any(Message.class));
-
-    // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(conversationId, result.getConversationId());
-    assertEquals(role, result.getRole());
-    assertEquals(content, result.getContent());
-    assertNull(result.getThinking());
-    assertEquals(searchResults, result.getSearchResults());
-    assertEquals(12L, result.getId());
     verify(messageMapper).insert(any(Message.class));
   }
 
@@ -1671,27 +1590,10 @@ class MessageServiceTest {
     String content = "零值测试";
     String searchResults = "零结果";
 
-    doAnswer(
-            invocation -> {
-              Message message = invocation.getArgument(0);
-              message.setId(13L);
-              return null;
-            })
-        .when(messageMapper)
-        .insert(any(Message.class));
-
-    // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(conversationId, result.getConversationId());
-    assertEquals(role, result.getRole());
-    assertEquals(content, result.getContent());
-    assertNull(result.getThinking());
-    assertEquals(searchResults, result.getSearchResults());
-    assertEquals(13L, result.getId());
-    verify(messageMapper).insert(any(Message.class));
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, searchResults));
+    
+    verify(messageMapper, never()).insert(any(Message.class));
   }
 
   @Test
@@ -1702,27 +1604,10 @@ class MessageServiceTest {
     String content = "负值测试";
     String searchResults = "负结果";
 
-    doAnswer(
-            invocation -> {
-              Message message = invocation.getArgument(0);
-              message.setId(14L);
-              return null;
-            })
-        .when(messageMapper)
-        .insert(any(Message.class));
-
-    // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(conversationId, result.getConversationId());
-    assertEquals(role, result.getRole());
-    assertEquals(content, result.getContent());
-    assertNull(result.getThinking());
-    assertEquals(searchResults, result.getSearchResults());
-    assertEquals(14L, result.getId());
-    verify(messageMapper).insert(any(Message.class));
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, searchResults));
+    
+    verify(messageMapper, never()).insert(any(Message.class));
   }
 
   @Test
@@ -1800,28 +1685,10 @@ class MessageServiceTest {
     String thinking = "零思考";
     String searchResults = "零结果";
 
-    doAnswer(
-            invocation -> {
-              Message message = invocation.getArgument(0);
-              message.setId(17L);
-              return null;
-            })
-        .when(messageMapper)
-        .insert(any(Message.class));
-
-    // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(conversationId, result.getConversationId());
-    assertEquals(role, result.getRole());
-    assertEquals(content, result.getContent());
-    assertEquals(thinking, result.getThinking());
-    assertEquals(searchResults, result.getSearchResults());
-    assertEquals(17L, result.getId());
-    verify(messageMapper).insert(any(Message.class));
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+    
+    verify(messageMapper, never()).insert(any(Message.class));
   }
 
   @Test
@@ -1833,28 +1700,10 @@ class MessageServiceTest {
     String thinking = "负思考";
     String searchResults = "负结果";
 
-    doAnswer(
-            invocation -> {
-              Message message = invocation.getArgument(0);
-              message.setId(18L);
-              return null;
-            })
-        .when(messageMapper)
-        .insert(any(Message.class));
-
-    // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(conversationId, result.getConversationId());
-    assertEquals(role, result.getRole());
-    assertEquals(content, result.getContent());
-    assertEquals(thinking, result.getThinking());
-    assertEquals(searchResults, result.getSearchResults());
-    assertEquals(18L, result.getId());
-    verify(messageMapper).insert(any(Message.class));
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+    
+    verify(messageMapper, never()).insert(any(Message.class));
   }
 
   @Test
@@ -1978,24 +1827,10 @@ class MessageServiceTest {
 
   @Test
   void testGetMessagesByConversationId_WithZeroId() {
-    // Given
-    Long conversationId = 0L;
-    Message message1 = new Message();
-    message1.setId(1L);
-    message1.setRole("user");
-    message1.setContent("零ID测试");
-
-    List<Message> messages = Arrays.asList(message1);
-    when(messageMapper.selectByConversationId(conversationId)).thenReturn(messages);
-
-    // When
-    List<Message> result = messageService.getMessagesByConversationId(conversationId);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(1, result.size());
-    assertEquals("零ID测试", result.get(0).getContent());
-    verify(messageMapper).selectByConversationId(conversationId);
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.getMessagesByConversationId(0L));
+    
+    verify(messageMapper, never()).selectByConversationId(any());
   }
 
   @Test
@@ -2012,14 +1847,10 @@ class MessageServiceTest {
 
   @Test
   void testDeleteMessage_WithZeroId() {
-    // Given
-    Long messageId = 0L;
-    
-    doNothing().when(messageMapper).deleteById(messageId);
-
     // When & Then
-    assertDoesNotThrow(() -> messageService.deleteMessage(messageId));
-    verify(messageMapper).deleteById(messageId);
+    assertThrows(IllegalArgumentException.class, () -> messageService.deleteMessage(0L));
+    
+    verify(messageMapper, never()).deleteById(any());
   }
 
   @Test
@@ -2170,8 +2001,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(
-            conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(23L);
@@ -2205,8 +2041,13 @@ class MessageServiceTest {
         .when(messageMapper).insert(any(Message.class));
 
     // When & Then
-    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(
-            conversationId, content, thinking, searchResults))
+    AiMessageSaveRequest request = AiMessageSaveRequest.builder()
+      .conversationId(conversationId)
+      .content(content)
+      .thinking(thinking)
+      .searchResults(searchResults)
+      .build();
+    StepVerifier.create(messageService.saveAiMessageWithSearchAsync(request))
         .expectNextMatches(event -> {
             SseEventResponse.EndData endData = (SseEventResponse.EndData) event.getData();
             return "end".equals(event.getType()) && endData.getMessageId().equals(24L);

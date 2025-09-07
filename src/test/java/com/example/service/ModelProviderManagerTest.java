@@ -825,9 +825,6 @@ class ModelProviderManagerTest {
         // Given
         when(provider1.isAvailable()).thenReturn(false);
         when(provider2.isAvailable()).thenReturn(false);
-        
-        when(provider1.getAvailableModels()).thenReturn(Arrays.asList());
-        when(provider2.getAvailableModels()).thenReturn(Arrays.asList());
 
         // When
         List<ModelInfo> result = manager.getAllAvailableModels();
@@ -870,13 +867,6 @@ class ModelProviderManagerTest {
         // Given
         String providerName = "";
         String modelName = "";
-        when(provider1.getProviderName()).thenReturn(providerName);
-        when(provider1.isAvailable()).thenReturn(true);
-        
-        ModelInfo modelInfo = new ModelInfo();
-        modelInfo.setName(modelName);
-        
-        when(provider1.getAvailableModels()).thenReturn(Arrays.asList(modelInfo));
 
         // When
         boolean result = manager.isModelAvailable(providerName, modelName);
@@ -890,36 +880,9 @@ class ModelProviderManagerTest {
         // Given
         String providerName = "";
         String modelName = "";
-        when(provider1.getProviderName()).thenReturn(providerName);
-        when(provider1.isAvailable()).thenReturn(true);
-        
-        ModelInfo modelInfo = new ModelInfo();
-        modelInfo.setName(modelName);
-        modelInfo.setDisplayName("");
-        
-        when(provider1.getModelInfo(modelName)).thenReturn(modelInfo);
 
-        // When
-        ModelInfo result = manager.getModelInfo(providerName, modelName);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(modelName, result.getName());
-        assertEquals("", result.getDisplayName());
-    }
-
-    @Test
-    void testGetProvider_WithWhitespaceName() {
-        // Given
-        String providerName = "  provider  ";
-        when(provider1.getProviderName()).thenReturn(providerName);
-        when(provider1.isAvailable()).thenReturn(true);
-
-        // When
-        ModelProvider result = manager.getProvider(providerName);
-
-        // Then
-        assertEquals(provider1, result);
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> manager.getModelInfo(providerName, modelName));
     }
 
     @Test

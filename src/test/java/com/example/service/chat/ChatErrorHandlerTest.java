@@ -458,6 +458,8 @@ class ChatErrorHandlerTest {
         String message = errorHandler.getErrorMessage(error);
 
         // 验证结果
+        // 由于RuntimeException会被识别为INTERNAL_ERROR类型
+        // 所以最终结果应该是"系统内部错误，请稍后重试"
         assertThat(message).isEqualTo("系统内部错误，请稍后重试");
     }
 

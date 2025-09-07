@@ -65,6 +65,9 @@ public class ConversationServiceImpl implements ConversationService {
 
   @Override
   public List<Conversation> getRecentConversations(Long userId, int limit) {
+    if (userId == null || userId <= 0) {
+      throw new IllegalArgumentException("用户ID无效");
+    }
     return conversationMapper.selectRecentByUserId(userId, limit);
   }
 
@@ -96,6 +99,9 @@ public class ConversationServiceImpl implements ConversationService {
 
   @Override
   public List<Message> getRecentMessages(Long conversationId, int limit) {
+    if (conversationId == null || conversationId <= 0) {
+      throw new IllegalArgumentException("对话ID无效");
+    }
     return messageMapper.selectRecentMessages(conversationId, limit);
   }
 

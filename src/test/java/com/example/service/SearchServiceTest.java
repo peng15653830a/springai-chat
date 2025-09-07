@@ -260,11 +260,11 @@ public class SearchServiceTest {
     List<SearchResult> results = new ArrayList<>();
 
     // AI摘要结果
-    results.add(SearchResult.create("AI 摘要", "这是一个AI生成的摘要内容", "AI Generated Summary", null));
+    results.add(SearchResult.create("AI 摘要", "AI Generated Summary", null, "这是一个AI生成的摘要内容"));
 
     // 普通搜索结果
-    results.add(SearchResult.create("测试标题1", "http://test1.com", "测试内容1", null));
-    results.add(SearchResult.create("测试标题2", "http://test2.com", "测试内容2", null));
+    results.add(SearchResult.create("测试标题1", "http://test1.com", null, "测试内容1"));
+    results.add(SearchResult.create("测试标题2", "http://test2.com", null, "测试内容2"));
 
     return results;
   }
@@ -485,19 +485,24 @@ public class SearchServiceTest {
   void testFormatSearchResults_WithAIAnswer() {
     // Given
     List<SearchResult> results = new ArrayList<>();
-    results.add(SearchResult.create("AI 摘要", "AI Generated Summary", "这是AI生成的摘要", null));
-    results.add(SearchResult.create("测试标题", "http://test.com", "测试内容", null));
+    results.add(SearchResult.create("AI 摘要", "http://test.com", null, "这是AI生成的摘要"));
+    results.add(SearchResult.create("测试标题", "http://test.com", null, "测试内容"));
 
     // When
     String formatted = searchService.formatSearchResults(results);
 
+    // Debug output
+    System.out.println("Formatted result:");
+    System.out.println(formatted);
+    System.out.println("End of formatted result");
+
     // Then
     assertNotNull(formatted);
     assertFalse(formatted.isEmpty());
-    assertTrue(formatted.contains("搜索结果"));
-    assertTrue(formatted.contains("AI 摘要"));
-    assertTrue(formatted.contains("这是AI生成的摘要"));
-    assertTrue(formatted.contains("测试标题"));
-    assertTrue(formatted.contains("测试内容"));
+    assertTrue(formatted.contains("搜索结果"), "Should contain '搜索结果'");
+    assertTrue(formatted.contains("AI 摘要"), "Should contain 'AI 摘要'");
+    assertTrue(formatted.contains("这是AI生成的摘要"), "Should contain '这是AI生成的摘要'");
+    assertTrue(formatted.contains("测试标题"), "Should contain '测试标题'");
+    assertTrue(formatted.contains("测试内容"), "Should contain '测试内容'");
   }
 }

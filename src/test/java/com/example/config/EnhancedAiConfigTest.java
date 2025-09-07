@@ -484,7 +484,6 @@ class EnhancedAiConfigTest {
         providers.put(providerName, providerConfig);
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey(providerName)).thenReturn("test-api-key");
-        when(multiModelProperties.getDefaults()).thenReturn(new MultiModelProperties.GlobalDefaults());
         
         // When & Then
         RuntimeException exception = assertThrows(RuntimeException.class, 
@@ -504,11 +503,11 @@ class EnhancedAiConfigTest {
         providers.put(providerName, null);
         when(multiModelProperties.getProviders()).thenReturn(providers);
         
-        // When
-        ChatModel model = factory.getChatModel(providerName, modelName);
-        
-        // Then
-        assertNull(model);
+        // When & Then
+        // 由于提供者配置为null，createChatModel方法会抛出IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            factory.getChatModel(providerName, modelName);
+        });
     }
 
     @Test

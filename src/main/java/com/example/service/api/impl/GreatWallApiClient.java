@@ -121,11 +121,24 @@ public class GreatWallApiClient implements ModelApiClient {
      * 创建API配置
      */
     private ApiConfiguration createApiConfiguration() {
+        Map<String, MultiModelProperties.ProviderConfig> providers = 
+            multiModelProperties.getProviders();
+        
+        if (providers == null) {
+            throw new IllegalStateException("长城大模型配置未找到");
+        }
+        
         MultiModelProperties.ProviderConfig providerConfig = 
-            multiModelProperties.getProviders().get(getProviderName());
+            providers.get(getProviderName());
         
         if (providerConfig == null) {
             throw new IllegalStateException("长城大模型配置未找到");
+        }
+        
+        // 处理SSL配置为null的情况
+        boolean skipSslVerification = false;
+        if (greatWallProperties.getSsl() != null) {
+            skipSslVerification = greatWallProperties.getSsl().isSkipVerification();
         }
 
         return ApiConfiguration.builder()
@@ -133,7 +146,7 @@ public class GreatWallApiClient implements ModelApiClient {
                 .apiKey(multiModelProperties.getApiKey(getProviderName()))
                 .connectTimeout(Duration.ofMillis(providerConfig.getConnectTimeoutMs()))
                 .readTimeout(Duration.ofMillis(providerConfig.getReadTimeoutMs()))
-                .skipSslVerification(greatWallProperties.getSsl().isSkipVerification())
+                .skipSslVerification(skipSslVerification)
                 .enableDebugLog(log.isDebugEnabled())
                 .retryAttempts(3) // 长城大模型重试次数
                 .build();
@@ -219,6 +232,19 @@ public class GreatWallApiClient implements ModelApiClient {
     private MultiModelProperties.ModelConfig getModelConfig(String modelName) {
         MultiModelProperties.ProviderConfig providerConfig = 
             multiModelProperties.getProviders().get(getProviderName());
+        
+        if (providerConfig == null) {
+            throw new IllegalArgumentException("未找到长城大模型提供者配置: " + getProviderName());
+        }
+        
+        // 处理modelName为null或空的情况
+        if (modelName == null || modelName.trim().isEmpty()) {
+            // 返回第一个可用的模型作为默认模型
+            return providerConfig.getModels().stream()
+                    .filter(model -> model.isEnabled())
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("未找到可用的长城大模型"));
+        }
         
         return providerConfig.getModels().stream()
                 .filter(model -> modelName.equals(model.getName()))
