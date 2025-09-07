@@ -36,8 +36,6 @@ class AiChatServiceImplTest {
   @Mock(lenient = true)
   private ChatStreamingProperties streamingProperties;
 
-  @Mock(lenient = true)
-  private ModelScopeDirectService modelScopeDirectService;
 
   @Mock(lenient = true)
   private SearchService searchService;
@@ -85,8 +83,6 @@ class AiChatServiceImplTest {
     
     when(streamingProperties.getResponseTimeout()).thenReturn(Duration.ofSeconds(30));
     
-    when(modelScopeDirectService.executeDirectStreaming(anyString(), anyLong(), anyBoolean()))
-        .thenReturn(Flux.just(SseEventResponse.chunk("Test response")));
         
     when(promptBuilder.buildPrompt(anyLong(), anyString(), anyBoolean()))
         .thenReturn(Mono.just("Test prompt"));
@@ -142,7 +138,6 @@ class AiChatServiceImplTest {
         .verifyComplete();
     
     verify(searchService, times(1)).performSearchWithEvents(userMessage, true);
-    // verify(modelScopeDirectService).executeDirectStreaming(contains("Search results: AI information"), eq(conversationId), eq(false));
   }
 
   @Test
@@ -559,46 +554,4 @@ class AiChatServiceImplTest {
         .verifyComplete();
   }
 
-  @Test
-  void shouldExecuteStreamingChatWithModel() {
-    // Given
-    String prompt = "测试提示";
-    Long conversationId = 1L;
-    boolean deepThinking = true;
-    String providerName = "test-provider";
-    String modelName = "test-model";
-    
-    Flux<SseEventResponse> mockResponse = Flux.just(
-        SseEventResponse.start("AI正在深度思考...")
-    );
-    when(mockModelProvider.streamChat(any(com.example.dto.request.ChatRequest.class)))
-        .thenReturn(mockResponse);
-
-    // When & Then
-    StepVerifier.create(aiChatService.executeStreamingChatWithModel(prompt, conversationId, deepThinking, providerName, modelName))
-        .expectNextMatches(event -> 
-            "start".equals(event.getType()) && 
-            "AI正在深度思考...".equals(event.getData()))
-        .verifyComplete();
-  }
-
-  @Test
-  void shouldHandleErrorInExecuteStreamingChatWithModel() {
-    // Given
-    String prompt = "测试提示";
-    Long conversationId = 1L;
-    boolean deepThinking = false;
-    String providerName = "test-provider";
-    String modelName = "test-model";
-    
-    when(mockModelProvider.streamChat(any(com.example.dto.request.ChatRequest.class)))
-        .thenReturn(Flux.error(new RuntimeException("AI服务不可用")));
-
-    // When & Then
-    StepVerifier.create(aiChatService.executeStreamingChatWithModel(prompt, conversationId, deepThinking, providerName, modelName))
-        .expectNextMatches(event -> 
-            "error".equals(event.getType()) && 
-            event.getData().toString().contains("AI服务暂时不可用"))
-        .verifyComplete();
-  }
 }

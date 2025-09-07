@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.example.entity.Message;
 import com.example.dto.response.SseEventResponse;
+import com.example.dto.request.AiMessageSaveRequest;
 import reactor.core.publisher.Mono;
 import java.util.List;
 
@@ -93,14 +94,10 @@ public interface MessageService {
   /**
    * 异步保存AI响应消息（带搜索结果）
    *
-   * @param conversationId 会话ID
-   * @param content AI响应内容
-   * @param thinking 推理过程内容（可选）
-   * @param searchResults 搜索结果（可选）
+   * @param request AI消息保存请求对象
    * @return 保存的AI消息和结束事件
    */
-  Mono<SseEventResponse> saveAiMessageWithSearchAsync(Long conversationId, String content, 
-                                                     String thinking, List<?> searchResults);
+  Mono<SseEventResponse> saveAiMessageWithSearchAsync(AiMessageSaveRequest request);
 
   /**
    * 异步获取会话历史消息

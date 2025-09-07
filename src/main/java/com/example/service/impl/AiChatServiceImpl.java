@@ -3,6 +3,8 @@ package com.example.service.impl;
 import com.example.config.ChatStreamingProperties;
 import com.example.dto.request.ChatRequest;
 import com.example.dto.request.StreamChatRequest;
+import com.example.dto.request.StreamingChatParams;
+import com.example.dto.request.BuildPromptAndStreamChatParams;
 import com.example.dto.response.SseEventResponse;
 import com.example.entity.Message;
 import com.example.service.AiChatService;
@@ -57,9 +59,15 @@ public class AiChatServiceImpl implements AiChatService {
             performSearchStep(request.getMessage(), request.isSearchEnabled()),
             
             // 3. 构建提示并执行流式聊天
-            buildPromptAndStreamChatWithModel(request.getConversationId(), request.getMessage(), 
-                                            request.isSearchEnabled(), request.isDeepThinking(), 
-                                            request.getUserId(), request.getProvider(), request.getModel())
+            buildPromptAndStreamChatWithModel(BuildPromptAndStreamChatParams.builder()
+                    .conversationId(request.getConversationId())
+                    .userMessage(request.getMessage())
+                    .searchEnabled(request.isSearchEnabled())
+                    .deepThinking(request.isDeepThinking())
+                    .userId(request.getUserId())
+                    .providerName(request.getProvider())
+                    .modelName(request.getModel())
+                    .build())
         )
         .onErrorResume(errorHandler::handleChatError);
     }
@@ -86,15 +94,28 @@ public class AiChatServiceImpl implements AiChatService {
             performSearchStep(userMessage, searchEnabled),
             
             // 3. 构建提示并执行流式聊天
-            buildPromptAndStreamChatWithModel(conversationId, userMessage, searchEnabled, 
-                                            deepThinking, userId, providerName, modelName)
+            buildPromptAndStreamChatWithModel(BuildPromptAndStreamChatParams.builder()
+                    .conversationId(conversationId)
+                    .userMessage(userMessage)
+                    .searchEnabled(searchEnabled)
+                    .deepThinking(deepThinking)
+                    .userId(userId)
+                    .providerName(providerName)
+                    .modelName(modelName)
+                    .build())
         )
         .onErrorResume(errorHandler::handleChatError);
     }
 
     @Override
     public Flux<SseEventResponse> executeStreamingChat(String prompt, Long conversationId, boolean deepThinking) {
-        return executeStreamingChatWithModel(prompt, conversationId, deepThinking, null, null);
+        return executeStreamingChatWithModel(StreamingChatParams.builder()
+                .prompt(prompt)
+                .conversationId(conversationId)
+                .deepThinking(deepThinking)
+                .providerName(null)
+                .modelName(null)
+                .build());
     }
 
     @Override
@@ -105,26 +126,25 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 使用指定模型执行流式聊天
      */
-    private Flux<SseEventResponse> executeStreamingChatWithModel(String prompt, Long conversationId, 
-                                                               boolean deepThinking, 
-                                                               String providerName, String modelName) {
+    private Flux<SseEventResponse> executeStreamingChatWithModel(StreamingChatParams params) {
         log.debug("开始执行流式AI聊天，提示长度: {}, 会话ID: {}, 深度思考: {}, 模型: {}-{}", 
-                 prompt.length(), conversationId, deepThinking, providerName, modelName);
+                 params.getPrompt().length(), params.getConversationId(), params.isDeepThinking(), 
+                 params.getProviderName(), params.getModelName());
 
         try {
             // 选择模型提供者
-            ModelProvider provider = modelSelector.getModelProvider(providerName);
-            String actualModelName = modelSelector.getActualModelName(provider, modelName);
+            ModelProvider provider = modelSelector.getModelProvider(params.getProviderName());
+            String actualModelName = modelSelector.getActualModelName(provider, params.getModelName());
             
             // 构建聊天请求
             ChatRequest request = ChatRequest.builder()
-                    .conversationId(conversationId)
+                    .conversationId(params.getConversationId())
                     .modelName(actualModelName)
-                    .fullPrompt(prompt)
-                    .deepThinking(deepThinking)
+                    .fullPrompt(params.getPrompt())
+                    .deepThinking(params.isDeepThinking())
                     .build();
 
-            log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", provider.getDisplayName(), actualModelName, deepThinking);
+            log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", provider.getDisplayName(), actualModelName, params.isDeepThinking());
             
             return provider.streamChat(request)
                     .timeout(streamingProperties.getResponseTimeout())
@@ -161,18 +181,28 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 构建提示并执行流式聊天
      */
-    private Flux<SseEventResponse> buildPromptAndStreamChatWithModel(Long conversationId, String userMessage, 
-                                                                   boolean searchEnabled, boolean deepThinking,
-                                                                   Long userId, String providerName, String modelName) {
-        return promptBuilder.buildPrompt(conversationId, userMessage, searchEnabled)
+    private Flux<SseEventResponse> buildPromptAndStreamChatWithModel(BuildPromptAndStreamChatParams params) {
+        return promptBuilder.buildPrompt(params.getConversationId(), params.getUserMessage(), params.isSearchEnabled())
                 .flatMapMany(prompt -> {
                     // 如果有用户ID，使用用户偏好选择模型
-                    if (userId != null) {
-                        ModelSelector.ModelSelection selection = modelSelector.selectModelForUser(userId, providerName, modelName);
-                        return executeStreamingChatWithModel(prompt, conversationId, deepThinking, 
-                                                           selection.provider().getProviderName(), selection.modelName());
+                    if (params.getUserId() != null) {
+                        ModelSelector.ModelSelection selection = modelSelector.selectModelForUser(
+                                params.getUserId(), params.getProviderName(), params.getModelName());
+                        return executeStreamingChatWithModel(StreamingChatParams.builder()
+                                .prompt(prompt)
+                                .conversationId(params.getConversationId())
+                                .deepThinking(params.isDeepThinking())
+                                .providerName(selection.provider().getProviderName())
+                                .modelName(selection.modelName())
+                                .build());
                     } else {
-                        return executeStreamingChatWithModel(prompt, conversationId, deepThinking, providerName, modelName);
+                        return executeStreamingChatWithModel(StreamingChatParams.builder()
+                                .prompt(prompt)
+                                .conversationId(params.getConversationId())
+                                .deepThinking(params.isDeepThinking())
+                                .providerName(params.getProviderName())
+                                .modelName(params.getModelName())
+                                .build());
                     }
                 });
     }

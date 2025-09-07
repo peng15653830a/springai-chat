@@ -3,6 +3,7 @@ package com.example.service;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.common.ProviderInfo;
 import com.example.dto.common.UserModelPreferenceDto;
+import com.example.dto.request.UserModelPreferenceRequest;
 
 import java.util.List;
 
@@ -46,13 +47,10 @@ public interface ModelManagementService {
     /**
      * 保存用户模型偏好
      * 
-     * @param userId 用户ID
-     * @param providerName 提供者名称
-     * @param modelName 模型名称
-     * @param isDefault 是否设为默认
+     * @param request 用户模型偏好请求对象
      * @return 是否保存成功
      */
-    boolean saveUserModelPreference(Long userId, String providerName, String modelName, boolean isDefault);
+    boolean saveUserModelPreference(UserModelPreferenceRequest request);
 
     /**
      * 获取用户的所有模型偏好

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import com.example.dto.request.AiMessageSaveRequest;
 
 import static com.example.service.constants.AiChatConstants.ROLE_ASSISTANT;
 import static com.example.service.constants.AiChatConstants.ROLE_USER;
@@ -112,29 +113,30 @@ public class MessageServiceImpl implements MessageService {
   }
 
   @Override
-  public Mono<SseEventResponse> saveAiMessageWithSearchAsync(Long conversationId, String content, 
-                                                            String thinking, List<?> searchResults) {
+  public Mono<SseEventResponse> saveAiMessageWithSearchAsync(AiMessageSaveRequest request) {
     return Mono.fromCallable(() -> {
           // 将搜索结果序列化为JSON（如果存在）
           String searchResultsJson = null;
-          if (searchResults != null && !searchResults.isEmpty()) {
+          if (request.getSearchResults() != null && !request.getSearchResults().isEmpty()) {
             try {
               searchResultsJson = new com.fasterxml.jackson.databind.ObjectMapper()
-                  .writeValueAsString(searchResults);
+                  .writeValueAsString(request.getSearchResults());
             } catch (Exception e) {
               log.warn("序列化搜索结果失败", e);
             }
           }
           
           // 保存AI消息，包含thinking和搜索结果
-          Message aiMessage = saveMessage(conversationId, ROLE_ASSISTANT, content, thinking, searchResultsJson);
+          Message aiMessage = saveMessage(request.getConversationId(), ROLE_ASSISTANT, 
+                  request.getContent(), request.getThinking(), searchResultsJson);
           
           log.info("AI消息保存成功，消息ID: {}, thinking: {}, 搜索结果: {}", 
-              aiMessage.getId(), thinking != null ? "有" : "无", searchResults != null ? "有" : "无");
+              aiMessage.getId(), request.getThinking() != null ? "有" : "无", 
+              request.getSearchResults() != null ? "有" : "无");
           return SseEventResponse.end(aiMessage.getId());
         })
         .onErrorMap(error -> {
-          log.error("保存AI消息失败，会话ID: {}", conversationId, error);
+          log.error("保存AI消息失败，会话ID: {}", request.getConversationId(), error);
           return new RuntimeException("保存AI消息失败: " + error.getMessage(), error);
         });
   }

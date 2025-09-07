@@ -194,8 +194,15 @@ public class ModelController {
                 userId, request.getProviderName(), request.getModelName(), request.getIsDefault());
         
         try {
-            boolean success = modelManagementService.saveUserModelPreference(
-                    userId, request.getProviderName(), request.getModelName(), request.getIsDefault());
+            // 创建服务层请求对象
+            com.example.dto.request.UserModelPreferenceRequest serviceRequest = 
+                    com.example.dto.request.UserModelPreferenceRequest.builder()
+                    .userId(userId)
+                    .providerName(request.getProviderName())
+                    .modelName(request.getModelName())
+                    .isDefault(request.getIsDefault())
+                    .build();
+            boolean success = modelManagementService.saveUserModelPreference(serviceRequest);
             
             if (success) {
                 log.info("用户模型偏好保存成功");

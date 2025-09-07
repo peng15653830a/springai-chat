@@ -8,6 +8,7 @@ import com.example.service.provider.ModelProviderManager;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.example.dto.request.UserModelPreferenceRequest;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,27 +88,29 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     }
 
     @Override
-    public boolean saveUserModelPreference(Long userId, String providerName, String modelName, boolean isDefault) {
+    public boolean saveUserModelPreference(UserModelPreferenceRequest request) {
         log.info("保存用户模型偏好，用户ID: {}, 模型: {}-{}, 是否默认: {}", 
-                userId, providerName, modelName, isDefault);
+                request.getUserId(), request.getProviderName(), request.getModelName(), request.isDefault());
         
-        if (userId == null || providerName == null || modelName == null) {
+        if (request.getUserId() == null || request.getProviderName() == null || request.getModelName() == null) {
             log.warn("参数不完整，无法保存用户模型偏好");
             return false;
         }
         
         try {
             // 验证提供者和模型是否存在
-            ModelInfo modelInfo = getModelInfo(providerName, modelName);
+            ModelInfo modelInfo = getModelInfo(request.getProviderName(), request.getModelName());
             if (modelInfo == null) {
-                log.warn("模型不存在: {}-{}", providerName, modelName);
+                log.warn("模型不存在: {}-{}", request.getProviderName(), request.getModelName());
                 return false;
             }
             
             // 如果设置为默认，保存到缓存
-            if (isDefault) {
-                userDefaultModelCache.put(String.valueOf(userId), providerName + ":" + modelName);
-                log.info("用户 {} 默认模型设置为: {}-{}", userId, providerName, modelName);
+            if (request.isDefault()) {
+                userDefaultModelCache.put(String.valueOf(request.getUserId()), 
+                        request.getProviderName() + ":" + request.getModelName());
+                log.info("用户 {} 默认模型设置为: {}-{}", request.getUserId(), 
+                        request.getProviderName(), request.getModelName());
             }
             
             return true;
