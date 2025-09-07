@@ -10,8 +10,11 @@ import lombok.Data;
 @Data
 public class UserModelPreferenceDto {
     private Long userId;
-    private Long providerId;
-    private Long modelId;
     private String providerName;
     private String modelName;
+    private String providerDisplayName;
+    private String modelDisplayName;
+    private Boolean isDefault;
+    private Boolean supportsThinking;
+    private Boolean supportsStreaming;
 }

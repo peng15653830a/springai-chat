@@ -35,7 +35,9 @@ public class ChatController {
    * @return 响应式SSE事件流
    */
   @GetMapping(value = "/stream/{conversationId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public Flux<SseEventResponse> streamChat(StreamChatRequest request) {
+  public Flux<SseEventResponse> streamChat(@PathVariable Long conversationId, StreamChatRequest request) {
+    // 设置路径参数到请求对象中
+    request.setConversationId(conversationId);
     
     log.info("SSE连接请求，会话ID: {}, 是否有消息: {}, 用户ID: {}, 指定模型: {}-{}", 
         request.getConversationId(), request.getMessage() != null, request.getUserId(), 

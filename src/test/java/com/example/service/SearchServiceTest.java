@@ -160,7 +160,7 @@ public class SearchServiceTest {
   void testFormatSearchResults_SingleResult() {
     // Given
     List<SearchResult> singleResult = new ArrayList<>();
-    singleResult.add(SearchResult.create("测试标题", "http://test.com", "测试内容", null));
+    singleResult.add(SearchResult.create("测试标题", "http://test.com", null, "测试内容"));
 
     // When
     String formatted = searchService.formatSearchResults(singleResult);
@@ -178,9 +178,9 @@ public class SearchServiceTest {
   void testFormatSearchResults_MultipleResults() {
     // Given
     List<SearchResult> results = new ArrayList<>();
-    results.add(SearchResult.create("标题1", "http://test1.com", "内容1", null));
-    results.add(SearchResult.create("标题2", "http://test2.com", "内容2", null));
-    results.add(SearchResult.create("标题3", "http://test3.com", "内容3", null));
+    results.add(SearchResult.create("标题1", "http://test1.com", null, "内容1"));
+    results.add(SearchResult.create("标题2", "http://test2.com", null, "内容2"));
+    results.add(SearchResult.create("标题3", "http://test3.com", null, "内容3"));
 
     // When
     String formatted = searchService.formatSearchResults(results);

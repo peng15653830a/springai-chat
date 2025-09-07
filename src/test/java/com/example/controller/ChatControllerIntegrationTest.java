@@ -4,11 +4,10 @@ import com.example.service.AiChatService;
 import com.example.dto.response.SseEventResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 
@@ -25,8 +24,7 @@ import static org.mockito.Mockito.when;
  *
  * @author xupeng
  */
-@WebFluxTest(ChatController.class)
-@ContextConfiguration(classes = {ChatController.class})
+@SpringBootTest(classes = com.example.springai.SpringaiApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 class ChatControllerIntegrationTest {
 
@@ -49,7 +47,7 @@ class ChatControllerIntegrationTest {
         SseEventResponse.end(123L)
     );
     
-    when(aiChatService.streamChatWithModel(anyLong(), anyString(), anyBoolean(), anyBoolean(), any(), any(), any()))
+    when(aiChatService.streamChat(any(com.example.dto.request.StreamChatRequest.class)))
         .thenReturn(mockEvents);
 
     // When & Then
@@ -77,7 +75,7 @@ class ChatControllerIntegrationTest {
         SseEventResponse.end(1L)
     );
     
-    when(aiChatService.streamChatWithModel(anyLong(), anyString(), anyBoolean(), anyBoolean(), any(), any(), any()))
+    when(aiChatService.streamChat(any(com.example.dto.request.StreamChatRequest.class)))
         .thenReturn(normalEvents);
 
     // When & Then
@@ -100,7 +98,7 @@ class ChatControllerIntegrationTest {
         SseEventResponse.error("AI服务错误")
     );
     
-    when(aiChatService.streamChatWithModel(anyLong(), anyString(), anyBoolean(), anyBoolean(), any(), any(), any()))
+    when(aiChatService.streamChat(any(com.example.dto.request.StreamChatRequest.class)))
         .thenReturn(errorEvents);
 
     // When & Then

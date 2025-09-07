@@ -1,17 +1,14 @@
 package com.example.service.provider;
 
-import com.example.config.AiConfig;
+import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.request.ChatRequest;
 import com.example.dto.response.SseEventResponse;
 import com.example.service.MessageService;
-import com.example.service.factory.ModelProviderFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -32,12 +29,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public abstract class AbstractChatModelProvider implements ModelProvider {
 
-    protected final AiConfig.ChatClientFactory chatClientFactory;
+    protected final EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory;
     protected final ObjectMapper objectMapper;
     protected final MessageService messageService;
     protected final MultiModelProperties multiModelProperties;
 
-    public AbstractChatModelProvider(AiConfig.ChatClientFactory chatClientFactory,
+    public AbstractChatModelProvider(EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory,
                                     ObjectMapper objectMapper,
                                     MessageService messageService,
                                     MultiModelProperties multiModelProperties) {
@@ -122,13 +119,9 @@ public abstract class AbstractChatModelProvider implements ModelProvider {
             // 获取对应的ChatClient
             ChatClient chatClient = chatClientFactory.getChatClient(getProviderName(), request.getModelName());
             
-            // 创建会话记忆（如果需要）
-            InMemoryChatMemory chatMemory = new InMemoryChatMemory();
-            
             // 构建聊天请求并流式执行
             return chatClient.prompt()
                 .user(request.getFullPrompt())
-                .advisors(new MessageChatMemoryAdvisor(chatMemory))
                 .stream()
                 .content()
                 .map(content -> {

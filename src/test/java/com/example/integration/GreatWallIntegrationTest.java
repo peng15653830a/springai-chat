@@ -1,8 +1,8 @@
 package com.example.integration;
 
 import com.example.config.MultiModelProperties;
-import com.example.service.GreatWallDirectService;
 import com.example.service.provider.impl.GreatWallModelProvider;
+import com.example.service.api.impl.GreatWallApiClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * @author xupeng
  */
-@SpringBootTest
+@SpringBootTest(classes = com.example.springai.SpringaiApplication.class)
 @ActiveProfiles("test")
 public class GreatWallIntegrationTest {
 
@@ -24,10 +24,10 @@ public class GreatWallIntegrationTest {
     private MultiModelProperties multiModelProperties;
     
     @Autowired(required = false)
-    private GreatWallDirectService greatWallDirectService;
+    private GreatWallModelProvider greatWallModelProvider;
     
     @Autowired(required = false)
-    private GreatWallModelProvider greatWallModelProvider;
+    private GreatWallApiClient greatWallApiClient;
 
     @Test
     void shouldLoadMultiModelProperties() {
@@ -44,8 +44,8 @@ public class GreatWallIntegrationTest {
 
     @Test  
     void shouldLoadGreatWallServices() {
-        assertNotNull(greatWallDirectService, "GreatWallDirectService应该被正确加载");
         assertNotNull(greatWallModelProvider, "GreatWallModelProvider应该被正确加载");
+        assertNotNull(greatWallApiClient, "GreatWallApiClient应该被正确加载");
         
         assertEquals("greatwall", greatWallModelProvider.getProviderName(), 
                     "提供者名称应为'greatwall'");

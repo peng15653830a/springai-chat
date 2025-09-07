@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(timeout 10 mvn spring-boot:run:*)"
+      "Bash(mvn test:*)"
     ],
     "deny": [],
     "ask": [],

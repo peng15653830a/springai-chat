@@ -3,8 +3,8 @@ package com.example.service.chat;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.common.UserModelPreferenceDto;
 import com.example.service.ModelManagementService;
-import com.example.service.factory.ModelProviderFactory;
 import com.example.service.provider.ModelProvider;
+import com.example.service.provider.ModelProviderManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,17 +21,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DefaultModelSelector implements ModelSelector {
 
-    private final ModelProviderFactory modelProviderFactory;
+    private final ModelProviderManager providerManager;
     private final ModelManagementService modelManagementService;
 
     @Override
     public ModelProvider getModelProvider(String providerName) {
         if (providerName != null && !providerName.trim().isEmpty()) {
             // 使用指定的提供者
-            return modelProviderFactory.getProvider(providerName);
+            return providerManager.getProvider(providerName);
         } else {
             // 使用默认提供者
-            return modelProviderFactory.getDefaultProvider();
+            return providerManager.getDefaultProvider();
         }
     }
 

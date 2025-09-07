@@ -1,6 +1,6 @@
 package com.example.service.provider.impl;
 
-import com.example.config.AiConfig;
+import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
 import com.example.service.MessageService;
 import com.example.service.provider.AbstractChatModelProvider;
@@ -21,7 +21,7 @@ public class DeepSeekModelProvider extends AbstractChatModelProvider {
     private static final String PROVIDER_NAME = "DeepSeek";
     private static final String DISPLAY_NAME = "DeepSeek";
 
-    public DeepSeekModelProvider(AiConfig.ChatClientFactory chatClientFactory,
+    public DeepSeekModelProvider(EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory,
                                 ObjectMapper objectMapper,
                                 MessageService messageService,
                                 MultiModelProperties multiModelProperties) {

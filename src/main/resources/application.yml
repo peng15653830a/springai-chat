@@ -25,10 +25,10 @@ spring:
     show-sql: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
-  # SQL初始化配置
+  # SQL初始化配置 (暂时禁用，手动初始化)
   sql:
     init:
-      mode: always
+      mode: never
       encoding: UTF-8
   
   # AI配置 - 保持原有Spring AI配置兼容性
