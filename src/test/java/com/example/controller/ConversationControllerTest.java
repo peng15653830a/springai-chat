@@ -61,6 +61,7 @@ public class ConversationControllerTest {
     testMessage.setCreatedAt(LocalDateTime.now());
 
     conversationRequest = new ConversationRequest();
+    conversationRequest.setUserId(1L);
     conversationRequest.setTitle("New Conversation");
   }
 
@@ -115,7 +116,7 @@ public class ConversationControllerTest {
     // When & Then
     mockMvc
         .perform(
-            post("/api/conversations?userId=1")
+            post("/api/conversations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
         .andExpect(status().isOk())
@@ -136,7 +137,7 @@ public class ConversationControllerTest {
     // When & Then - 空标题应该成功创建，使用默认标题"新对话"
     mockMvc
         .perform(
-            post("/api/conversations?userId=1")
+            post("/api/conversations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
         .andExpect(status().isOk())
@@ -149,10 +150,13 @@ public class ConversationControllerTest {
 
   @Test
   void testCreateConversation_InvalidUserId() throws Exception {
+    // Given
+    conversationRequest.setUserId(0L);
+    
     // When & Then
     mockMvc
         .perform(
-            post("/api/conversations?userId=0")
+            post("/api/conversations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
         .andExpect(status().isBadRequest())
@@ -252,7 +256,7 @@ public class ConversationControllerTest {
     // When & Then - null标题应该成功创建，使用默认标题"新对话"
     mockMvc
         .perform(
-            post("/api/conversations?userId=1")
+            post("/api/conversations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
         .andExpect(status().isOk())
@@ -273,7 +277,7 @@ public class ConversationControllerTest {
     // When & Then - 空白标题应该成功创建，使用默认标题"新对话"
     mockMvc
         .perform(
-            post("/api/conversations?userId=1")
+            post("/api/conversations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
         .andExpect(status().isOk())
@@ -322,10 +326,13 @@ public class ConversationControllerTest {
 
   @Test
   void testCreateConversation_NegativeUserId() throws Exception {
+    // Given
+    conversationRequest.setUserId(-1L);
+    
     // When & Then
     mockMvc
         .perform(
-            post("/api/conversations?userId=-1")
+            post("/api/conversations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
         .andExpect(status().isBadRequest())
@@ -369,7 +376,7 @@ public class ConversationControllerTest {
     com.example.dto.request.MessageRequest messageRequest = new com.example.dto.request.MessageRequest();
     messageRequest.setContent("Test message content");
 
-    when(messageService.saveMessage(1L, "user", "Test message content")).thenReturn(testMessage);
+    when(messageService.saveMessage(any(com.example.dto.request.MessageSaveRequest.class))).thenReturn(testMessage);
 
     // When & Then
     mockMvc
@@ -383,7 +390,7 @@ public class ConversationControllerTest {
         .andExpect(jsonPath("$.data.id").value(1))
         .andExpect(jsonPath("$.data.content").value("Test message"));
 
-    verify(messageService).saveMessage(1L, "user", "Test message content");
+    verify(messageService).saveMessage(any(com.example.dto.request.MessageSaveRequest.class));
   }
 
   @Test
@@ -392,7 +399,7 @@ public class ConversationControllerTest {
     com.example.dto.request.MessageRequest messageRequest = new com.example.dto.request.MessageRequest();
     messageRequest.setContent("Test message content");
 
-    when(messageService.saveMessage(1L, "user", "Test message content"))
+    when(messageService.saveMessage(any(com.example.dto.request.MessageSaveRequest.class)))
         .thenThrow(new RuntimeException("Database error"));
 
     // When & Then
@@ -414,13 +421,18 @@ public class ConversationControllerTest {
 
   @Test
   void testCreateConversation_NullUserId() throws Exception {
-    // When & Then - 当userId参数缺失时，Spring会返回500错误
+    // Given
+    conversationRequest.setUserId(null);
+    
+    // When & Then - 当userId为null时，应该返回400错误
     mockMvc
         .perform(
             post("/api/conversations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(conversationRequest)))
-        .andExpect(status().isInternalServerError());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.message").value("用户ID无效"));
   }
 
   @Test
@@ -469,12 +481,15 @@ public class ConversationControllerTest {
     } catch (Exception e) {
       // 忽略反射异常
     }
+    
+    // 设置request的userId为null
+    conversationRequest.setUserId(null);
 
     // When & Then
     org.junit.jupiter.api.Assertions.assertThrows(
         IllegalArgumentException.class,
         () -> {
-          controller.createConversation(null, conversationRequest);
+          controller.createConversation(conversationRequest);
         });
   }
 

@@ -183,26 +183,16 @@ public class ModelController {
     /**
      * 保存用户模型偏好
      * 
-     * @param userId 用户ID
-     * @param request 模型偏好请求
+     * @param request 模型偏好请求，包含用户ID
      * @return 是否保存成功
      */
-    @PostMapping("/users/{userId}/preferences")
-    public ApiResponse<Boolean> saveUserModelPreference(@PathVariable Long userId, 
-                                                       @RequestBody UserModelPreferenceRequest request) {
+    @PostMapping("/users/preferences")
+    public ApiResponse<Boolean> saveUserModelPreference(@RequestBody com.example.dto.request.UserModelPreferenceRequest request) {
         log.info("保存用户模型偏好，用户ID: {}, 模型: {}-{}, 是否默认: {}", 
-                userId, request.getProviderName(), request.getModelName(), request.getIsDefault());
+                request.getUserId(), request.getProviderName(), request.getModelName(), request.isDefault());
         
         try {
-            // 创建服务层请求对象
-            com.example.dto.request.UserModelPreferenceRequest serviceRequest = 
-                    com.example.dto.request.UserModelPreferenceRequest.builder()
-                    .userId(userId)
-                    .providerName(request.getProviderName())
-                    .modelName(request.getModelName())
-                    .isDefault(request.getIsDefault())
-                    .build();
-            boolean success = modelManagementService.saveUserModelPreference(serviceRequest);
+            boolean success = modelManagementService.saveUserModelPreference(request);
             
             if (success) {
                 log.info("用户模型偏好保存成功");
@@ -220,19 +210,15 @@ public class ModelController {
     /**
      * 删除用户模型偏好
      * 
-     * @param userId 用户ID
-     * @param providerName 提供者名称
-     * @param modelName 模型名称
+     * @param request 删除请求，包含用户ID、提供者名称和模型名称
      * @return 是否删除成功
      */
-    @DeleteMapping("/users/{userId}/preferences/{providerName}/{modelName}")
-    public ApiResponse<Boolean> deleteUserModelPreference(@PathVariable Long userId, 
-                                                         @PathVariable String providerName,
-                                                         @PathVariable String modelName) {
-        log.info("删除用户模型偏好，用户ID: {}, 模型: {}-{}", userId, providerName, modelName);
+    @DeleteMapping("/users/preferences")
+    public ApiResponse<Boolean> deleteUserModelPreference(@RequestBody com.example.dto.request.DeleteUserModelPreferenceRequest request) {
+        log.info("删除用户模型偏好，用户ID: {}, 模型: {}-{}", request.getUserId(), request.getProviderName(), request.getModelName());
         
         try {
-            boolean success = modelManagementService.deleteUserModelPreference(userId, providerName, modelName);
+            boolean success = modelManagementService.deleteUserModelPreference(request);
             
             if (success) {
                 log.info("用户模型偏好删除成功");
@@ -247,37 +233,4 @@ public class ModelController {
         }
     }
 
-    /**
-     * 用户模型偏好请求DTO
-     */
-    public static class UserModelPreferenceRequest {
-        private String providerName;
-        private String modelName;
-        private Boolean isDefault;
-
-        // Getters and Setters
-        public String getProviderName() {
-            return providerName;
-        }
-
-        public void setProviderName(String providerName) {
-            this.providerName = providerName;
-        }
-
-        public String getModelName() {
-            return modelName;
-        }
-
-        public void setModelName(String modelName) {
-            this.modelName = modelName;
-        }
-
-        public Boolean getIsDefault() {
-            return isDefault;
-        }
-
-        public void setIsDefault(Boolean isDefault) {
-            this.isDefault = isDefault;
-        }
-    }
 }

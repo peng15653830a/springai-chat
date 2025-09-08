@@ -31,6 +31,7 @@ class GlobalExceptionHandlerTest {
 
   @BeforeEach
   void setUp() {
+    // 使用lenient()来避免UnnecessaryStubbingException
     lenient().when(request.getRequestURI()).thenReturn("/test/path");
     lenient().when(request.getMethod()).thenReturn("GET");
   }
@@ -466,6 +467,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void testAllExceptionHandlersLogCorrectly() {
+    // 确保在所有调用中都正确模拟request.getRequestURI()
+    when(request.getRequestURI()).thenReturn("/test/path");
+    
     // 测试所有异常处理器都正确记录了请求URI
 
     // Test IllegalArgumentException logging

@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "mcp__postgres__query",
       "Bash(mvn test:*)"
     ],
     "deny": [],

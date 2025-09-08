@@ -8,6 +8,7 @@ import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
 import com.example.dto.response.SseEventResponse;
 import com.example.dto.request.AiMessageSaveRequest;
+import com.example.dto.request.MessageSaveRequest;
 import com.example.service.impl.MessageServiceImpl;
 import reactor.test.StepVerifier;
 import java.time.LocalDateTime;
@@ -59,7 +60,11 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -76,11 +81,23 @@ class MessageServiceTest {
   void testSaveMessage_ThreeParams_InvalidConversationId() {
     // When & Then
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(null, "user", "内容"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(null)
+            .role("user")
+            .content("内容")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(0L, "user", "内容"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(0L)
+            .role("user")
+            .content("内容")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(-1L, "user", "内容"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(-1L)
+            .role("user")
+            .content("内容")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -88,9 +105,21 @@ class MessageServiceTest {
   @Test
   void testSaveMessage_ThreeParams_InvalidRole() {
     // When & Then
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(1L, null, "内容"));
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(1L, "", "内容"));
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(1L, "   ", "内容"));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role(null)
+        .content("内容")
+        .build()));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role("")
+        .content("内容")
+        .build()));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role("   ")
+        .content("内容")
+        .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -99,10 +128,22 @@ class MessageServiceTest {
   void testSaveMessage_ThreeParams_InvalidContent() {
     // When & Then
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "user", null));
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(1L, "user", ""));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content(null)
+            .build()));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role("user")
+        .content("")
+        .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "user", "   "));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content("   ")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -116,7 +157,11 @@ class MessageServiceTest {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, 
-        () -> messageService.saveMessage(conversationId, role, content));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(conversationId)
+            .role(role)
+            .content(content)
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -138,7 +183,11 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -172,7 +221,11 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -205,7 +258,12 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -236,7 +294,12 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -267,7 +330,12 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -298,7 +366,12 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -329,7 +402,12 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -346,11 +424,26 @@ class MessageServiceTest {
   void testSaveMessage_FourParams_InvalidConversationId() {
     // When & Then
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(null, "user", "内容", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(null)
+            .role("user")
+            .content("内容")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(0L, "user", "内容", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(0L)
+            .role("user")
+            .content("内容")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(-1L, "user", "内容", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(-1L)
+            .role("user")
+            .content("内容")
+            .searchResults("搜索")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -359,11 +452,26 @@ class MessageServiceTest {
   void testSaveMessage_FourParams_InvalidRole() {
     // When & Then
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, null, "内容", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role(null)
+            .content("内容")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "", "内容", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("")
+            .content("内容")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "   ", "内容", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("   ")
+            .content("内容")
+            .searchResults("搜索")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -372,11 +480,26 @@ class MessageServiceTest {
   void testSaveMessage_FourParams_InvalidContent() {
     // When & Then
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "user", null, "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content(null)
+            .searchResults("搜索")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "user", "", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content("")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "user", "   ", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content("   ")
+            .searchResults("搜索")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -391,7 +514,12 @@ class MessageServiceTest {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, 
-        () -> messageService.saveMessage(conversationId, role, content, searchResults));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(conversationId)
+            .role(role)
+            .content(content)
+            .searchResults(searchResults)
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -414,7 +542,12 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -449,7 +582,12 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result = messageService.saveMessage(conversationId, role, content, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -483,8 +621,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -516,8 +659,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -535,13 +683,31 @@ class MessageServiceTest {
     // When & Then
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(null, "user", "内容", "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(null)
+            .role("user")
+            .content("内容")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(0L, "user", "内容", "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(0L)
+            .role("user")
+            .content("内容")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(-1L, "user", "内容", "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(-1L)
+            .role("user")
+            .content("内容")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -551,12 +717,30 @@ class MessageServiceTest {
     // When & Then
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(1L, null, "内容", "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role(null)
+            .content("内容")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
-        IllegalArgumentException.class, () -> messageService.saveMessage(1L, "", "内容", "思考", "搜索"));
+        IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("")
+            .content("内容")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(1L, "   ", "内容", "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("   ")
+            .content("内容")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -566,13 +750,31 @@ class MessageServiceTest {
     // When & Then
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(1L, "user", null, "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content(null)
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(1L, "user", "", "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content("")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> messageService.saveMessage(1L, "user", "   ", "思考", "搜索"));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(1L)
+            .role("user")
+            .content("   ")
+            .thinking("思考")
+            .searchResults("搜索")
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -588,7 +790,13 @@ class MessageServiceTest {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, 
-        () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(conversationId)
+            .role(role)
+            .content(content)
+            .thinking(thinking)
+            .searchResults(searchResults)
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -612,8 +820,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -649,8 +862,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -674,7 +892,13 @@ class MessageServiceTest {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, 
-        () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(conversationId)
+            .role(role)
+            .content(content)
+            .thinking(thinking)
+            .searchResults(searchResults)
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -690,7 +914,13 @@ class MessageServiceTest {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, 
-        () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(conversationId)
+            .role(role)
+            .content(content)
+            .thinking(thinking)
+            .searchResults(searchResults)
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -706,7 +936,13 @@ class MessageServiceTest {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, 
-        () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(conversationId)
+            .role(role)
+            .content(content)
+            .thinking(thinking)
+            .searchResults(searchResults)
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -722,7 +958,13 @@ class MessageServiceTest {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, 
-        () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+        () -> messageService.saveMessage(MessageSaveRequest.builder()
+            .conversationId(conversationId)
+            .role(role)
+            .content(content)
+            .thinking(thinking)
+            .searchResults(searchResults)
+            .build()));
 
     verify(messageMapper, never()).insert(any());
   }
@@ -855,8 +1097,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -888,8 +1135,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -1591,7 +1843,12 @@ class MessageServiceTest {
     String searchResults = "零结果";
 
     // When & Then
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, searchResults));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build()));
     
     verify(messageMapper, never()).insert(any(Message.class));
   }
@@ -1605,7 +1862,12 @@ class MessageServiceTest {
     String searchResults = "负结果";
 
     // When & Then
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, searchResults));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .searchResults(searchResults)
+        .build()));
     
     verify(messageMapper, never()).insert(any(Message.class));
   }
@@ -1629,8 +1891,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -1662,8 +1929,13 @@ class MessageServiceTest {
         .insert(any(Message.class));
 
     // When
-    Message result =
-        messageService.saveMessage(conversationId, role, content, thinking, searchResults);
+    Message result = messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build());
 
     // Then
     assertNotNull(result);
@@ -1686,7 +1958,13 @@ class MessageServiceTest {
     String searchResults = "零结果";
 
     // When & Then
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build()));
     
     verify(messageMapper, never()).insert(any(Message.class));
   }
@@ -1701,7 +1979,13 @@ class MessageServiceTest {
     String searchResults = "负结果";
 
     // When & Then
-    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(conversationId, role, content, thinking, searchResults));
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(MessageSaveRequest.builder()
+        .conversationId(conversationId)
+        .role(role)
+        .content(content)
+        .thinking(thinking)
+        .searchResults(searchResults)
+        .build()));
     
     verify(messageMapper, never()).insert(any(Message.class));
   }
@@ -2125,5 +2409,201 @@ class MessageServiceTest {
         .verifyComplete();
         
     verify(messageMapper).selectByConversationId(conversationId);
+  }
+
+  // ========== saveMessage DTO方法测试 ==========
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_BasicFields() {
+    // Given
+    MessageSaveRequest request = MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role("user")
+        .content("测试消息内容")
+        .build();
+
+    doAnswer(invocation -> {
+          Message message = invocation.getArgument(0);
+          message.setId(100L);
+          return null;
+        })
+        .when(messageMapper)
+        .insert(any(Message.class));
+
+    // When
+    Message result = messageService.saveMessage(request);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(1L, result.getConversationId());
+    assertEquals("user", result.getRole());
+    assertEquals("测试消息内容", result.getContent());
+    assertNull(result.getThinking());
+    assertNull(result.getSearchResults());
+    assertEquals(100L, result.getId());
+    verify(messageMapper).insert(any(Message.class));
+  }
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_AllFields() {
+    // Given
+    MessageSaveRequest request = MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role("assistant")
+        .content("AI回复内容")
+        .thinking("思考过程")
+        .searchResults("搜索结果")
+        .build();
+
+    doAnswer(invocation -> {
+          Message message = invocation.getArgument(0);
+          message.setId(101L);
+          return null;
+        })
+        .when(messageMapper)
+        .insert(any(Message.class));
+
+    // When
+    Message result = messageService.saveMessage(request);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(1L, result.getConversationId());
+    assertEquals("assistant", result.getRole());
+    assertEquals("AI回复内容", result.getContent());
+    assertEquals("思考过程", result.getThinking());
+    assertEquals("搜索结果", result.getSearchResults());
+    assertEquals(101L, result.getId());
+    verify(messageMapper).insert(any(Message.class));
+  }
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_PartialFields() {
+    // Given
+    MessageSaveRequest request = MessageSaveRequest.builder()
+        .conversationId(2L)
+        .role("assistant")
+        .content("部分字段测试")
+        .thinking("有思考")
+        // searchResults为null
+        .build();
+
+    doAnswer(invocation -> {
+          Message message = invocation.getArgument(0);
+          message.setId(102L);
+          return null;
+        })
+        .when(messageMapper)
+        .insert(any(Message.class));
+
+    // When
+    Message result = messageService.saveMessage(request);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(2L, result.getConversationId());
+    assertEquals("assistant", result.getRole());
+    assertEquals("部分字段测试", result.getContent());
+    assertEquals("有思考", result.getThinking());
+    assertNull(result.getSearchResults());
+    assertEquals(102L, result.getId());
+    verify(messageMapper).insert(any(Message.class));
+  }
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_ValidationError() {
+    // Given - null request
+    MessageSaveRequest request = null;
+
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(request));
+    verify(messageMapper, never()).insert(any());
+  }
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_InvalidConversationId() {
+    // Given
+    MessageSaveRequest request = MessageSaveRequest.builder()
+        .conversationId(null)
+        .role("user")
+        .content("测试内容")
+        .build();
+
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(request));
+    verify(messageMapper, never()).insert(any());
+  }
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_InvalidRole() {
+    // Given
+    MessageSaveRequest request = MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role("") // empty role
+        .content("测试内容")
+        .build();
+
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(request));
+    verify(messageMapper, never()).insert(any());
+  }
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_InvalidContent() {
+    // Given
+    MessageSaveRequest request = MessageSaveRequest.builder()
+        .conversationId(1L)
+        .role("user")
+        .content("   ") // whitespace content
+        .build();
+
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessage(request));
+    verify(messageMapper, never()).insert(any());
+  }
+
+  @Test
+  void testSaveMessage_WithMessageSaveRequest_UsingBuilderMethods() {
+    // Given - 使用便利方法创建request
+    MessageSaveRequest userRequest = MessageSaveRequest.forUser(3L, "用户消息");
+    MessageSaveRequest assistantRequest = MessageSaveRequest.forAssistant(3L, "AI回复");
+    MessageSaveRequest assistantWithThinkingRequest = MessageSaveRequest
+        .forAssistantWithThinking(3L, "AI回复", "思考过程");
+    MessageSaveRequest assistantWithSearchRequest = MessageSaveRequest
+        .forAssistantWithSearch(3L, "AI回复", "搜索结果");
+    MessageSaveRequest completeRequest = MessageSaveRequest
+        .forAssistantComplete(3L, "完整AI回复", "思考", "搜索");
+
+    doAnswer(invocation -> {
+          Message message = invocation.getArgument(0);
+          message.setId(200L);
+          return null;
+        })
+        .when(messageMapper)
+        .insert(any(Message.class));
+
+    // When & Then - 测试用户消息
+    Message userResult = messageService.saveMessage(userRequest);
+    assertNotNull(userResult);
+    assertEquals("user", userResult.getRole());
+    assertEquals("用户消息", userResult.getContent());
+
+    // Reset mock counter
+    doAnswer(invocation -> {
+          Message message = invocation.getArgument(0);
+          message.setId(201L);
+          return null;
+        })
+        .when(messageMapper)
+        .insert(any(Message.class));
+
+    // 测试AI回复
+    Message assistantResult = messageService.saveMessage(assistantRequest);
+    assertNotNull(assistantResult);
+    assertEquals("assistant", assistantResult.getRole());
+    assertEquals("AI回复", assistantResult.getContent());
+
+    // 验证调用次数
+    verify(messageMapper, times(2)).insert(any(Message.class));
   }
 }

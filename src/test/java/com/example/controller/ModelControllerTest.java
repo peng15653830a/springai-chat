@@ -3,6 +3,8 @@ package com.example.controller;
 import com.example.dto.response.ApiResponse;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.common.ProviderInfo;
+import com.example.dto.request.UserModelPreferenceRequest;
+import com.example.dto.request.DeleteUserModelPreferenceRequest;
 import com.example.service.ModelManagementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 class ModelControllerTest {
@@ -251,5 +254,231 @@ class ModelControllerTest {
         assertTrue(response.getMessage().contains("检查模型可用性失败"));
         
         verify(modelManagementService).isModelAvailable(providerName, modelName);
+    }
+
+    @Test
+    void testSaveUserModelPreference_Success() {
+        // Given
+        UserModelPreferenceRequest request = UserModelPreferenceRequest.builder()
+                .userId(1L)
+                .providerName("testProvider")
+                .modelName("testModel")
+                .isDefault(true)
+                .build();
+        
+        when(modelManagementService.saveUserModelPreference(request)).thenReturn(true);
+
+        // When
+        ApiResponse<Boolean> response = modelController.saveUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertTrue(response.getData());
+        
+        verify(modelManagementService).saveUserModelPreference(request);
+    }
+
+    @Test
+    void testSaveUserModelPreference_Failed() {
+        // Given
+        UserModelPreferenceRequest request = UserModelPreferenceRequest.builder()
+                .userId(1L)
+                .providerName("testProvider")
+                .modelName("testModel")
+                .isDefault(false)
+                .build();
+        
+        when(modelManagementService.saveUserModelPreference(request)).thenReturn(false);
+
+        // When
+        ApiResponse<Boolean> response = modelController.saveUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("保存模型偏好失败", response.getMessage());
+        
+        verify(modelManagementService).saveUserModelPreference(request);
+    }
+
+    @Test
+    void testSaveUserModelPreference_Exception() {
+        // Given
+        UserModelPreferenceRequest request = UserModelPreferenceRequest.builder()
+                .userId(1L)
+                .providerName("testProvider")
+                .modelName("testModel")
+                .isDefault(true)
+                .build();
+        
+        when(modelManagementService.saveUserModelPreference(request))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // When
+        ApiResponse<Boolean> response = modelController.saveUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertTrue(response.getMessage().contains("保存模型偏好失败"));
+        assertTrue(response.getMessage().contains("Database error"));
+        
+        verify(modelManagementService).saveUserModelPreference(request);
+    }
+
+    @Test
+    void testDeleteUserModelPreference_Success() {
+        // Given
+        DeleteUserModelPreferenceRequest request = DeleteUserModelPreferenceRequest.builder()
+                .userId(1L)
+                .providerName("testProvider")
+                .modelName("testModel")
+                .build();
+        
+        when(modelManagementService.deleteUserModelPreference(request)).thenReturn(true);
+
+        // When
+        ApiResponse<Boolean> response = modelController.deleteUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertTrue(response.getData());
+        
+        verify(modelManagementService).deleteUserModelPreference(request);
+    }
+
+    @Test
+    void testDeleteUserModelPreference_Failed() {
+        // Given
+        DeleteUserModelPreferenceRequest request = DeleteUserModelPreferenceRequest.builder()
+                .userId(1L)
+                .providerName("testProvider")
+                .modelName("testModel")
+                .build();
+        
+        when(modelManagementService.deleteUserModelPreference(request)).thenReturn(false);
+
+        // When
+        ApiResponse<Boolean> response = modelController.deleteUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("删除模型偏好失败", response.getMessage());
+        
+        verify(modelManagementService).deleteUserModelPreference(request);
+    }
+
+    @Test
+    void testDeleteUserModelPreference_Exception() {
+        // Given
+        DeleteUserModelPreferenceRequest request = DeleteUserModelPreferenceRequest.builder()
+                .userId(1L)
+                .providerName("testProvider")
+                .modelName("testModel")
+                .build();
+        
+        when(modelManagementService.deleteUserModelPreference(request))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // When
+        ApiResponse<Boolean> response = modelController.deleteUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertTrue(response.getMessage().contains("删除模型偏好失败"));
+        assertTrue(response.getMessage().contains("Database error"));
+        
+        verify(modelManagementService).deleteUserModelPreference(request);
+    }
+
+    @Test
+    void testDeleteUserModelPreference_WithDTO_Success() {
+        // Given
+        DeleteUserModelPreferenceRequest request = DeleteUserModelPreferenceRequest.builder()
+                .userId(2L)
+                .providerName("dtoProvider")
+                .modelName("dtoModel")
+                .build();
+        
+        when(modelManagementService.deleteUserModelPreference(request)).thenReturn(true);
+
+        // When
+        ApiResponse<Boolean> response = modelController.deleteUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertTrue(response.getData());
+        
+        // 验证调用的是DTO版本的方法
+        verify(modelManagementService).deleteUserModelPreference(request);
+        // 确保没有调用参数版本的方法
+        verify(modelManagementService, never()).deleteUserModelPreference(2L, "dtoProvider", "dtoModel");
+    }
+
+    @Test
+    void testDeleteUserModelPreference_WithDTO_Failed() {
+        // Given
+        DeleteUserModelPreferenceRequest request = DeleteUserModelPreferenceRequest.builder()
+                .userId(3L)
+                .providerName("failProvider")
+                .modelName("failModel")
+                .build();
+        
+        when(modelManagementService.deleteUserModelPreference(request)).thenReturn(false);
+
+        // When
+        ApiResponse<Boolean> response = modelController.deleteUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("删除模型偏好失败", response.getMessage());
+        
+        verify(modelManagementService).deleteUserModelPreference(request);
+    }
+
+    @Test
+    void testDeleteUserModelPreference_WithDTO_Exception() {
+        // Given
+        DeleteUserModelPreferenceRequest request = DeleteUserModelPreferenceRequest.builder()
+                .userId(4L)
+                .providerName("errorProvider")
+                .modelName("errorModel")
+                .build();
+        
+        when(modelManagementService.deleteUserModelPreference(request))
+                .thenThrow(new RuntimeException("DTO method error"));
+
+        // When
+        ApiResponse<Boolean> response = modelController.deleteUserModelPreference(request);
+
+        // Then
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertTrue(response.getMessage().contains("删除模型偏好失败"));
+        assertTrue(response.getMessage().contains("DTO method error"));
+        
+        verify(modelManagementService).deleteUserModelPreference(request);
+    }
+
+    @Test
+    void testDeleteUserModelPreference_WithDTO_ValidationError() {
+        // Given - null request
+        DeleteUserModelPreferenceRequest request = null;
+
+        // When & Then
+        // Controller会在调用request.getUserId()时抛出NullPointerException
+        assertThrows(NullPointerException.class, () -> {
+            modelController.deleteUserModelPreference(request);
+        });
+        
+        // 验证服务未被调用
+        verify(modelManagementService, never()).deleteUserModelPreference((DeleteUserModelPreferenceRequest) any());
+        verify(modelManagementService, never()).deleteUserModelPreference(any(Long.class), any(String.class), any(String.class));
     }
 }

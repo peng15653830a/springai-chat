@@ -134,21 +134,22 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     }
 
     @Override
-    public boolean deleteUserModelPreference(Long userId, String providerName, String modelName) {
-        log.info("删除用户模型偏好，用户ID: {}, 模型: {}-{}", userId, providerName, modelName);
+    public boolean deleteUserModelPreference(com.example.dto.request.DeleteUserModelPreferenceRequest request) {
+        log.info("删除用户模型偏好，用户ID: {}, 模型: {}-{}", 
+                request.getUserId(), request.getProviderName(), request.getModelName());
         
-        if (userId == null || providerName == null || modelName == null) {
+        if (request.getUserId() == null || request.getProviderName() == null || request.getModelName() == null) {
             log.warn("参数不完整，无法删除用户模型偏好");
             return false;
         }
         
         try {
-            String expectedModel = providerName + ":" + modelName;
-            String currentDefault = userDefaultModelCache.get(String.valueOf(userId));
+            String expectedModel = request.getProviderName() + ":" + request.getModelName();
+            String currentDefault = userDefaultModelCache.get(String.valueOf(request.getUserId()));
             
             if (expectedModel.equals(currentDefault)) {
-                userDefaultModelCache.remove(String.valueOf(userId));
-                log.info("用户 {} 的默认模型偏好已删除", userId);
+                userDefaultModelCache.remove(String.valueOf(request.getUserId()));
+                log.info("用户 {} 的默认模型偏好已删除", request.getUserId());
                 return true;
             } else {
                 log.warn("用户模型偏好删除失败，可能不存在或不是默认模型");

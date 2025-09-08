@@ -2,6 +2,7 @@ package com.example.service.impl;
 
 import com.example.config.ChatStreamingProperties;
 import com.example.dto.request.StreamChatRequest;
+import com.example.dto.request.ChatExecutionParams;
 import com.example.entity.Message;
 import com.example.service.*;
 import com.example.dto.response.SseEventResponse;
@@ -110,7 +111,12 @@ class AiChatServiceImplTest {
   @Test
   void shouldStreamChatSuccessfully() {
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -132,7 +138,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just(searchResult));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, true, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(true)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.search("Searching for AI..."))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -143,7 +154,12 @@ class AiChatServiceImplTest {
   @Test
   void shouldStreamChatWithDeepThinking() {
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, true))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(true)
+        .build()))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -161,7 +177,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just(history));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -191,7 +212,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just(history));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -204,7 +230,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.error(new RuntimeException("Database error")));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.error("AI服务暂时不可用，请稍后重试"))
         .verifyComplete();
   }
@@ -216,7 +247,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.error(new RuntimeException("Search error")));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, true, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(true)
+        .deepThinking(false)
+        .build()))
         .expectNextMatches(event -> 
             "error".equals(event.getType()) && 
             event.getData().toString().contains("AI服务暂时不可用"))
@@ -230,7 +266,12 @@ class AiChatServiceImplTest {
         .thenReturn(Flux.error(new RuntimeException("Chat service error")));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.end(1L))  // 搜索步骤先返回
         .expectNextMatches(event -> 
             "error".equals(event.getType()) && 
@@ -241,7 +282,12 @@ class AiChatServiceImplTest {
   @Test
   void shouldGenerateTitleAsynchronously() {
     // When
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -259,7 +305,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just(emptySearchResult));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
   }
@@ -273,7 +324,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just(searchResult));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, true, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(true)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
   }
@@ -285,7 +341,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just(Arrays.asList()));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -298,7 +359,12 @@ class AiChatServiceImplTest {
         .thenReturn(Mono.just(Arrays.asList()));
 
     // When & Then
-    StepVerifier.create(aiChatService.streamChat(conversationId, userMessage, false, false))
+    StepVerifier.create(aiChatService.streamChatWithModel(ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .build()))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();
@@ -518,8 +584,46 @@ class AiChatServiceImplTest {
     when(modelSelector.getModelProvider(providerName)).thenReturn(mockModelProvider);
     when(modelSelector.getActualModelName(mockModelProvider, modelName)).thenReturn("test-model");
     
+    // Build ChatExecutionParams for the old test
+    ChatExecutionParams params = ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .userId(null)
+        .providerName(providerName)
+        .modelName(modelName)
+        .build();
+    
     // When & Then
-    StepVerifier.create(aiChatService.streamChatWithModel(conversationId, userMessage, false, false, null, providerName, modelName))
+    StepVerifier.create(aiChatService.streamChatWithModel(params))
+        .expectNext(SseEventResponse.end(1L))
+        .expectNext(SseEventResponse.chunk("Test response"))
+        .verifyComplete();
+  }
+
+  @Test
+  void shouldStreamChatWithModelUsingChatExecutionParams() {
+    // Given
+    String providerName = "test-provider";
+    String modelName = "test-model";
+    
+    ChatExecutionParams params = ChatExecutionParams.builder()
+        .conversationId(conversationId)
+        .userMessage(userMessage)
+        .searchEnabled(false)
+        .deepThinking(false)
+        .userId(null)
+        .providerName(providerName)
+        .modelName(modelName)
+        .build();
+    
+    // Setup model selector mock for this specific test
+    when(modelSelector.getModelProvider(providerName)).thenReturn(mockModelProvider);
+    when(modelSelector.getActualModelName(mockModelProvider, modelName)).thenReturn("test-model");
+    
+    // When & Then
+    StepVerifier.create(aiChatService.streamChatWithModel(params))
         .expectNext(SseEventResponse.end(1L))
         .expectNext(SseEventResponse.chunk("Test response"))
         .verifyComplete();

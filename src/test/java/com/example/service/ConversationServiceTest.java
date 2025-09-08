@@ -613,9 +613,12 @@ class ConversationServiceTest {
         .thenThrow(new RuntimeException("数据库连接失败"));
 
     // When & Then
-    StepVerifier.create(conversationService.generateTitleIfNeededAsync(conversationId, userMessage))
-        .verifyComplete();  // 错误应该被捕获并返回空Mono
-        
+    // 错误应该被捕获并返回空Mono，不会抛出异常
+    assertDoesNotThrow(() -> {
+      StepVerifier.create(conversationService.generateTitleIfNeededAsync(conversationId, userMessage))
+          .verifyComplete();  // 错误应该被捕获并返回空Mono
+    });
+    
     verify(conversationMapper).selectById(conversationId);
   }
 

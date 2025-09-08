@@ -9,6 +9,8 @@ import lombok.Data;
  */
 @Data
 public class ConversationRequest {
+  /** 用户ID */
+  private Long userId;
   /** 对话标题 */
   private String title;
 }

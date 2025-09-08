@@ -11,16 +11,6 @@ import reactor.core.publisher.Flux;
  */
 public interface AiChatService {
 
-  /**
-   * 响应式流式聊天
-   *
-   * @param conversationId 会话ID
-   * @param userMessage 用户消息
-   * @param searchEnabled 搜索开关
-   * @param deepThinking 是否启用深度思考模式
-   * @return 响应式SSE事件流
-   */
-  Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, boolean searchEnabled, boolean deepThinking);
 
   /**
    * 响应式流式聊天（使用封装的请求对象）
@@ -33,18 +23,10 @@ public interface AiChatService {
   /**
    * 响应式流式聊天（支持模型选择）
    *
-   * @param conversationId 会话ID
-   * @param userMessage 用户消息
-   * @param searchEnabled 搜索开关
-   * @param deepThinking 是否启用深度思考模式
-   * @param userId 用户ID（用于获取模型偏好）
-   * @param providerName 指定的提供者名称（可选）
-   * @param modelName 指定的模型名称（可选）
+   * @param params 聊天执行参数，包含会话ID、用户消息、搜索开关、深度思考模式、用户ID和模型信息
    * @return 响应式SSE事件流
    */
-  Flux<SseEventResponse> streamChatWithModel(Long conversationId, String userMessage, 
-                                           boolean searchEnabled, boolean deepThinking,
-                                           Long userId, String providerName, String modelName);
+  Flux<SseEventResponse> streamChatWithModel(com.example.dto.request.ChatExecutionParams params);
 
   // ========================= 内部流式处理方法 =========================
   

@@ -10,6 +10,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import com.example.dto.request.AiMessageSaveRequest;
+import com.example.dto.request.MessageSaveRequest;
 
 import static com.example.service.constants.AiChatConstants.ROLE_ASSISTANT;
 import static com.example.service.constants.AiChatConstants.ROLE_USER;
@@ -27,36 +28,34 @@ public class MessageServiceImpl implements MessageService {
   private final MessageMapper messageMapper;
 
   @Override
-  public Message saveMessage(Long conversationId, String role, String content) {
-    return saveMessage(conversationId, role, content, null);
-  }
-
-  @Override
-  public Message saveMessage(
-      Long conversationId, String role, String content, String searchResults) {
-    return saveMessage(conversationId, role, content, null, searchResults);
-  }
-
-  @Override
-  public Message saveMessage(
-      Long conversationId, String role, String content, String thinking, String searchResults) {
-    if (conversationId == null || conversationId <= 0) {
+  public Message saveMessage(com.example.dto.request.MessageSaveRequest request) {
+    // 参数验证
+    if (request == null) {
+      throw new IllegalArgumentException("消息保存请求不能为空");
+    }
+    if (request.getConversationId() == null || request.getConversationId() <= 0) {
       throw new IllegalArgumentException("对话ID无效");
     }
-    if (role == null || role.trim().isEmpty()) {
+    if (request.getRole() == null || request.getRole().trim().isEmpty()) {
       throw new IllegalArgumentException("消息角色不能为空");
     }
-    if (content == null || content.trim().isEmpty()) {
+    if (request.getContent() == null || request.getContent().trim().isEmpty()) {
       throw new IllegalArgumentException("消息内容不能为空");
     }
 
+    log.debug("保存消息，会话ID: {}, 角色: {}, 内容长度: {}, 是否有思考: {}, 是否有搜索结果: {}", 
+            request.getConversationId(), request.getRole(), request.getContent().length(),
+            request.getThinking() != null, request.getSearchResults() != null);
+
     Message message = new Message();
-    message.setConversationId(conversationId);
-    message.setRole(role);
-    message.setContent(content);
-    message.setThinking(thinking);
-    message.setSearchResults(searchResults);
+    message.setConversationId(request.getConversationId());
+    message.setRole(request.getRole());
+    message.setContent(request.getContent());
+    message.setThinking(request.getThinking());
+    message.setSearchResults(request.getSearchResults());
     messageMapper.insert(message);
+    
+    log.debug("消息保存成功，消息ID: {}", message.getId());
     return message;
   }
 
@@ -91,7 +90,11 @@ public class MessageServiceImpl implements MessageService {
   @Override
   public Mono<Message> saveUserMessageAsync(Long conversationId, String content) {
     return Mono.fromCallable(() -> {
-          Message userMessage = saveMessage(conversationId, ROLE_USER, content);
+          Message userMessage = saveMessage(MessageSaveRequest.builder()
+              .conversationId(conversationId)
+              .role(ROLE_USER)
+              .content(content)
+              .build());
           log.info("用户消息保存成功，消息ID: {}", userMessage.getId());
           return userMessage;
         })
@@ -105,7 +108,13 @@ public class MessageServiceImpl implements MessageService {
   public Mono<SseEventResponse> saveAiMessageAsync(Long conversationId, String content, String thinking) {
     return Mono.fromCallable(() -> {
           // 保存AI消息，包含thinking内容
-          Message aiMessage = saveMessage(conversationId, ROLE_ASSISTANT, content, thinking, null);
+          Message aiMessage = saveMessage(MessageSaveRequest.builder()
+              .conversationId(conversationId)
+              .role(ROLE_ASSISTANT)
+              .content(content)
+              .thinking(thinking)
+              .searchResults(null)
+              .build());
           
           log.info("AI消息保存成功，消息ID: {}, thinking内容: {}", 
               aiMessage.getId(), thinking != null ? "有" : "无");
@@ -132,8 +141,13 @@ public class MessageServiceImpl implements MessageService {
           }
           
           // 保存AI消息，包含thinking和搜索结果
-          Message aiMessage = saveMessage(request.getConversationId(), ROLE_ASSISTANT, 
-                  request.getContent(), request.getThinking(), searchResultsJson);
+          Message aiMessage = saveMessage(MessageSaveRequest.builder()
+                  .conversationId(request.getConversationId())
+                  .role(ROLE_ASSISTANT)
+                  .content(request.getContent())
+                  .thinking(request.getThinking())
+                  .searchResults(searchResultsJson)
+                  .build());
           
           log.info("AI消息保存成功，消息ID: {}, thinking: {}, 搜索结果: {}", 
               aiMessage.getId(), request.getThinking() != null ? "有" : "无", 

@@ -141,7 +141,11 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
   public ApiResponse<Object> handleNullPointerException(
       NullPointerException e, HttpServletRequest request) {
-    log.error("空指针异常 - 请求路径: {}", request.getRequestURI(), e);
+    String requestUri = request.getRequestURI();
+    if (requestUri == null) {
+      requestUri = "Unknown";
+    }
+    log.error("空指针异常 - 请求路径: {}", requestUri, e);
     return ApiResponse.error("系统内部错误，请联系管理员");
   }
 
@@ -156,7 +160,11 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
   public ApiResponse<Object> handleRuntimeException(
       RuntimeException e, HttpServletRequest request) {
-    log.error("运行时异常 - 请求路径: {}", request.getRequestURI(), e);
+    String requestUri = request.getRequestURI();
+    if (requestUri == null) {
+      requestUri = "Unknown";
+    }
+    log.error("运行时异常 - 请求路径: {}", requestUri, e);
     return ApiResponse.error("系统运行异常: " + e.getMessage());
   }
 
@@ -170,7 +178,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
   public ApiResponse<Object> handleGeneralException(Exception e, HttpServletRequest request) {
-    log.error("未知异常 - 请求路径: {}, Method: {}", request.getRequestURI(), request.getMethod(), e);
+    String requestUri = request.getRequestURI();
+    if (requestUri == null) {
+      requestUri = "Unknown";
+    }
+    log.error("未知异常 - 请求路径: {}, Method: {}", requestUri, request.getMethod(), e);
     return ApiResponse.error("系统错误，请联系管理员");
   }
 }

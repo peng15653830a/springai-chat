@@ -31,14 +31,16 @@ public class ConversationServiceImpl implements ConversationService {
       throw new IllegalArgumentException("用户ID无效");
     }
 
-    // 如果标题为空，使用默认标题"新对话"
-    if (title == null || title.trim().isEmpty()) {
-      title = "新对话";
-    }
-
     Conversation conversation = new Conversation();
     conversation.setUserId(userId);
-    conversation.setTitle(title.trim());
+    
+    // 处理标题：如果为null或空则使用默认标题
+    if (title == null || title.trim().isEmpty()) {
+      conversation.setTitle("新对话");
+    } else {
+      conversation.setTitle(title.trim());
+    }
+    
     conversationMapper.insert(conversation);
     return conversation;
   }

@@ -66,37 +66,22 @@ public class AiChatServiceImpl implements AiChatService {
         .onErrorResume(errorHandler::handleChatError);
     }
 
-    @Override
-    public Flux<SseEventResponse> streamChat(Long conversationId, String userMessage, 
-                                           boolean searchEnabled, boolean deepThinking) {
-        return streamChatWithModel(conversationId, userMessage, searchEnabled, deepThinking, 
-                                  null, null, null);
-    }
 
     @Override
-    public Flux<SseEventResponse> streamChatWithModel(Long conversationId, String userMessage, 
-                                                     boolean searchEnabled, boolean deepThinking,
-                                                     Long userId, String providerName, String modelName) {
+    public Flux<SseEventResponse> streamChatWithModel(com.example.dto.request.ChatExecutionParams params) {
         log.info("开始响应式流式聊天，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}", 
-                conversationId, userMessage.length(), searchEnabled, deepThinking, userId, providerName, modelName);
+                params.getConversationId(), params.getUserMessage().length(), params.isSearchEnabled(), 
+                params.isDeepThinking(), params.getUserId(), params.getProviderName(), params.getModelName());
 
         return Flux.concat(
             // 1. 保存用户消息并生成标题
-            saveUserMessageAndGenerateTitle(conversationId, userMessage),
+            saveUserMessageAndGenerateTitle(params.getConversationId(), params.getUserMessage()),
             
             // 2. 执行搜索（如果启用）
-            performSearchStep(userMessage, searchEnabled),
+            performSearchStep(params.getUserMessage(), params.isSearchEnabled()),
             
             // 3. 构建提示并执行流式聊天
-            buildPromptAndStreamChatWithModel(ChatExecutionParams.builder()
-                    .conversationId(conversationId)
-                    .userMessage(userMessage)
-                    .searchEnabled(searchEnabled)
-                    .deepThinking(deepThinking)
-                    .userId(userId)
-                    .providerName(providerName)
-                    .modelName(modelName)
-                    .build())
+            buildPromptAndStreamChatWithModel(params)
         )
         .onErrorResume(errorHandler::handleChatError);
     }

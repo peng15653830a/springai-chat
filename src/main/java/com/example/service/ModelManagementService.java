@@ -63,12 +63,26 @@ public interface ModelManagementService {
     /**
      * 删除用户模型偏好
      * 
+     * @param request 删除请求，包含用户ID、提供者名称和模型名称
+     * @return 是否删除成功
+     */
+    boolean deleteUserModelPreference(com.example.dto.request.DeleteUserModelPreferenceRequest request);
+
+    /**
+     * 删除用户模型偏好（向后兼容）
+     * 
      * @param userId 用户ID
      * @param providerName 提供者名称
      * @param modelName 模型名称
      * @return 是否删除成功
      */
-    boolean deleteUserModelPreference(Long userId, String providerName, String modelName);
+    default boolean deleteUserModelPreference(Long userId, String providerName, String modelName) {
+        return deleteUserModelPreference(com.example.dto.request.DeleteUserModelPreferenceRequest.builder()
+                .userId(userId)
+                .providerName(providerName)
+                .modelName(modelName)
+                .build());
+    }
 
     /**
      * 获取模型详细信息

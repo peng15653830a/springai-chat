@@ -14,38 +14,13 @@ import java.util.List;
 public interface MessageService {
 
   /**
-   * 保存消息
+   * 保存消息（统一方法）
    *
-   * @param conversationId 会话ID
-   * @param role 消息角色
-   * @param content 消息内容
+   * @param request 消息保存请求，包含会话ID、角色、内容等信息
    * @return 消息实体
    */
-  Message saveMessage(Long conversationId, String role, String content);
+  Message saveMessage(com.example.dto.request.MessageSaveRequest request);
 
-  /**
-   * 保存消息
-   *
-   * @param conversationId 会话ID
-   * @param role 消息角色
-   * @param content 消息内容
-   * @param searchResults 搜索结果
-   * @return 消息实体
-   */
-  Message saveMessage(Long conversationId, String role, String content, String searchResults);
-
-  /**
-   * 保存消息
-   *
-   * @param conversationId 会话ID
-   * @param role 消息角色
-   * @param content 消息内容
-   * @param thinking 思考过程
-   * @param searchResults 搜索结果
-   * @return 消息实体
-   */
-  Message saveMessage(
-      Long conversationId, String role, String content, String thinking, String searchResults);
 
   /**
    * 根据ID获取消息

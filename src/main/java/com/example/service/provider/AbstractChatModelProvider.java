@@ -17,6 +17,7 @@ import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -46,8 +47,12 @@ public abstract class AbstractChatModelProvider implements ModelProvider {
 
     @Override
     public List<ModelInfo> getAvailableModels() {
-        MultiModelProperties.ProviderConfig providerConfig = 
-            multiModelProperties.getProviders().get(getProviderName());
+        Map<String, MultiModelProperties.ProviderConfig> providers = multiModelProperties.getProviders();
+        if (providers == null) {
+            return Collections.emptyList();
+        }
+        
+        MultiModelProperties.ProviderConfig providerConfig = providers.get(getProviderName());
         
         if (providerConfig == null || !providerConfig.isEnabled()) {
             return Collections.emptyList();

@@ -38,7 +38,7 @@ export const userApi = {
 // 对话API
 export const conversationApi = {
   getList: (userId) => api.get('/conversations', { params: { userId } }),
-  create: (userId, data) => api.post('/conversations', data, { params: { userId } }),
+  create: (data) => api.post('/conversations', data),
   getDetail: (id) => api.get(`/conversations/${id}`),
   delete: (id) => api.delete(`/conversations/${id}`),
   getMessages: (id) => api.get(`/conversations/${id}/messages`)

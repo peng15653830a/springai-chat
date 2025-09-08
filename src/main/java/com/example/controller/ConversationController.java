@@ -52,16 +52,14 @@ public class ConversationController {
   /**
    * 创建新对话
    *
-   * @param userId 用户ID
-   * @param request 对话请求对象，包含对话标题
+   * @param request 对话请求对象，包含用户ID和对话标题
    * @return 新创建对话的ApiResponse
    */
   @PostMapping
-  public ApiResponse<Conversation> createConversation(
-      @RequestParam Long userId, @RequestBody ConversationRequest request) {
-    log.info("创建新对话，用户ID: {}, 标题: {}", userId, request.getTitle());
+  public ApiResponse<Conversation> createConversation(@RequestBody ConversationRequest request) {
+    log.info("创建新对话，用户ID: {}, 标题: {}", request.getUserId(), request.getTitle());
 
-    if (userId == null || userId <= 0) {
+    if (request.getUserId() == null || request.getUserId() <= 0) {
       throw new IllegalArgumentException("用户ID无效");
     }
 
@@ -69,12 +67,12 @@ public class ConversationController {
     
     // 如果标题为空，使用默认标题"新对话"，后续会在发送第一条消息时自动生成
     if (title == null || title.trim().isEmpty()) {
-      title = "新对话";
+      title = DEFAULT_CONVERSATION_TITLE;
     } else {
       title = title.trim();
     }
 
-    Conversation conversation = conversationService.createConversation(userId, title);
+    Conversation conversation = conversationService.createConversation(request.getUserId(), title);
     log.info("对话创建成功，对话ID: {}", conversation.getId());
     return ApiResponse.success("创建对话成功", conversation);
   }
@@ -136,7 +134,8 @@ public class ConversationController {
   @PostMapping("/{id}/messages")
   public ApiResponse<Message> sendMessage(
       @PathVariable Long id, @RequestBody MessageRequest request) {
-    Message userMessage = messageService.saveMessage(id, "user", request.getContent());
+    Message userMessage = messageService.saveMessage(
+        com.example.dto.request.MessageSaveRequest.forUser(id, request.getContent()));
     return ApiResponse.success("消息发送成功", userMessage);
   }
 }

@@ -446,7 +446,8 @@ export default {
     // 创建新对话
     const createNewConversation = async () => {
       try {
-        const response = await conversationApi.create(userStore.currentUser.id, {
+        const response = await conversationApi.create({
+          userId: userStore.currentUser.id,
           title: null // 不传递硬编码标题，让后端自动生成
         })
         if (response.success) {

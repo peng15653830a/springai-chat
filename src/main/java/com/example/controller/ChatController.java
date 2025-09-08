@@ -1,18 +1,13 @@
 package com.example.controller;
 
-import com.example.dto.response.ApiResponse;
-import com.example.dto.request.MessageRequest;
 import com.example.dto.request.StreamChatRequest;
-import com.example.entity.Message;
-import com.example.service.AiChatService;
 import com.example.dto.response.SseEventResponse;
+import com.example.service.AiChatService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import java.time.Duration;
 
 /**
  * 聊天控制器，处理聊天相关的HTTP请求
