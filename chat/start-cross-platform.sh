@@ -67,18 +67,22 @@ check_port 3000 "前端"
 
 # 启动后端服务
 echo "📦 启动后端服务..."
-if [ ! -f "target/classes/com/example/springai/SpringaiApplication.class" ]; then
+if [ ! -f "backend/target/classes/com/example/springai/SpringaiApplication.class" ]; then
     echo "编译后端代码..."
+    cd backend
     mvn clean compile -q
+    cd ..
 fi
 
 # 在后台启动Spring Boot
 echo "启动Spring Boot应用..."
 # 确保环境变量被加载
 source ~/.bashrc 2>/dev/null || true
-mvn spring-boot:run > backend.log 2>&1 &
+cd backend
+mvn spring-boot:run > ../backend.log 2>&1 &
 BACKEND_PID=$!
 echo "后端服务PID: $BACKEND_PID"
+cd ..
 
 # 2025年最佳实践健康检查函数 - 使用curl重试机制
 wait_for_backend() {
@@ -263,7 +267,7 @@ if [[ "$OS_TYPE" == "macos" ]]; then
 else
     echo "   kill $BACKEND_PID $FRONTEND_PID"
 fi
-echo "   或运行: ./stop.sh"
+echo "   或运行: ./stop-cross-platform.sh"
 echo ""
 echo "📝 查看日志:"
 echo "   后端: tail -f backend.log"
