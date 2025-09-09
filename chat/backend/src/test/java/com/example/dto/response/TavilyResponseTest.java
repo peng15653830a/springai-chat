@@ -32,13 +32,13 @@ class TavilyResponseTest {
         TavilyResponse response = new TavilyResponse();
         response.setAnswer(answer);
         response.setQuery(query);
-        response.setResponse_time(responseTime);
+        response.setResponseTime(responseTime);
         response.setResults(results);
 
         // Then
         assertEquals(answer, response.getAnswer());
         assertEquals(query, response.getQuery());
-        assertEquals(responseTime, response.getResponse_time(), 0.001);
+        assertEquals(responseTime, response.getResponseTime(), 0.001);
         assertEquals(results, response.getResults());
         assertEquals(2, response.getResults().size());
     }
@@ -60,8 +60,8 @@ class TavilyResponseTest {
         assertEquals(title, result.getTitle());
         assertEquals(url, result.getUrl());
         assertEquals(content, result.getContent());
-        assertEquals(rawContent, result.getRaw_content());
-        assertEquals(publishedDate, result.getPublished_date());
+        assertEquals(rawContent, result.getRawContent());
+        assertEquals(publishedDate, result.getPublishedDate());
         assertEquals(score, result.getScore());
     }
 
@@ -89,13 +89,13 @@ class TavilyResponseTest {
         TavilyResponse response = new TavilyResponse();
         response.setAnswer("无结果");
         response.setQuery("测试查询");
-        response.setResponse_time(0.1);
+        response.setResponseTime(0.1);
         response.setResults(Arrays.asList());
 
         // Then
         assertEquals("无结果", response.getAnswer());
         assertEquals("测试查询", response.getQuery());
-        assertEquals(0.1, response.getResponse_time(), 0.001);
+        assertEquals(0.1, response.getResponseTime(), 0.001);
         assertTrue(response.getResults().isEmpty());
     }
 
@@ -108,8 +108,8 @@ class TavilyResponseTest {
         assertNull(result.getTitle());
         assertNull(result.getUrl());
         assertNull(result.getContent());
-        assertNull(result.getRaw_content());
-        assertNull(result.getPublished_date());
+        assertNull(result.getRawContent());
+        assertNull(result.getPublishedDate());
         assertNull(result.getScore());
     }
 
@@ -137,8 +137,8 @@ class TavilyResponseTest {
         assertEquals("标题", result.getTitle());
         assertEquals("url", result.getUrl());
         assertEquals("内容", result.getContent());
-        assertEquals("原始", result.getRaw_content());
-        assertEquals("日期", result.getPublished_date());
+        assertEquals("原始", result.getRawContent());
+        assertEquals("日期", result.getPublishedDate());
         assertEquals(0.8, result.getScore());
     }
 }

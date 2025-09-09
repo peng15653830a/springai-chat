@@ -27,20 +27,20 @@ class TavilyRequestTest {
 
     // When
     TavilyRequest request = new TavilyRequest();
-    request.setApi_key(apiKey);
+    request.setApiKey(apiKey);
     request.setQuery(query);
-    request.setSearch_depth(searchDepth);
-    request.setInclude_answer(includeAnswer);
-    request.setInclude_raw_content(includeRawContent);
-    request.setMax_results(maxResults);
+    request.setSearchDepth(searchDepth);
+    request.setIncludeAnswer(includeAnswer);
+    request.setIncludeRawContent(includeRawContent);
+    request.setMaxResults(maxResults);
 
     // Then
-    assertEquals(apiKey, request.getApi_key());
+    assertEquals(apiKey, request.getApiKey());
     assertEquals(query, request.getQuery());
-    assertEquals(searchDepth, request.getSearch_depth());
-    assertFalse(request.getInclude_answer());
-    assertTrue(request.getInclude_raw_content());
-    assertEquals(maxResults, request.getMax_results());
+    assertEquals(searchDepth, request.getSearchDepth());
+    assertFalse(request.getIncludeAnswer());
+    assertTrue(request.getIncludeRawContent());
+    assertEquals(maxResults, request.getMaxResults());
   }
 
   
@@ -50,14 +50,14 @@ class TavilyRequestTest {
     TavilyRequest request = new TavilyRequest();
 
     // Then
-    assertNull(request.getApi_key());
+    assertNull(request.getApiKey());
     assertNull(request.getQuery());
-    assertNull(request.getSearch_depth());
-    assertNull(request.getInclude_answer());
-    assertNull(request.getInclude_raw_content());
-    assertEquals(5, request.getMax_results());
-    assertNull(request.getInclude_domains());
-    assertNull(request.getExclude_domains());
+    assertNull(request.getSearchDepth());
+    assertNull(request.getIncludeAnswer());
+    assertNull(request.getIncludeRawContent());
+    assertEquals(5, request.getMaxResults());
+    assertNull(request.getIncludeDomains());
+    assertNull(request.getExcludeDomains());
   }
 
   @Test
@@ -67,10 +67,10 @@ class TavilyRequestTest {
     String apiKey = "test-api-key-123";
 
     // When
-    request.setApi_key(apiKey);
+    request.setApiKey(apiKey);
 
     // Then
-    assertEquals(apiKey, request.getApi_key());
+    assertEquals(apiKey, request.getApiKey());
   }
 
   @Test
@@ -92,11 +92,11 @@ class TavilyRequestTest {
     TavilyRequest request = new TavilyRequest();
 
     // When & Then
-    request.setSearch_depth("basic");
-    assertEquals("basic", request.getSearch_depth());
+    request.setSearchDepth("basic");
+    assertEquals("basic", request.getSearchDepth());
 
-    request.setSearch_depth("advanced");
-    assertEquals("advanced", request.getSearch_depth());
+    request.setSearchDepth("advanced");
+    assertEquals("advanced", request.getSearchDepth());
   }
 
   @Test
@@ -105,11 +105,11 @@ class TavilyRequestTest {
     TavilyRequest request = new TavilyRequest();
 
     // When & Then
-    request.setInclude_answer(true);
-    assertTrue(request.getInclude_answer());
+    request.setIncludeAnswer(true);
+    assertTrue(request.getIncludeAnswer());
 
-    request.setInclude_answer(false);
-    assertFalse(request.getInclude_answer());
+    request.setIncludeAnswer(false);
+    assertFalse(request.getIncludeAnswer());
   }
 
   @Test
@@ -118,11 +118,11 @@ class TavilyRequestTest {
     TavilyRequest request = new TavilyRequest();
 
     // When & Then
-    request.setInclude_raw_content(true);
-    assertTrue(request.getInclude_raw_content());
+    request.setIncludeRawContent(true);
+    assertTrue(request.getIncludeRawContent());
 
-    request.setInclude_raw_content(false);
-    assertFalse(request.getInclude_raw_content());
+    request.setIncludeRawContent(false);
+    assertFalse(request.getIncludeRawContent());
   }
 
   @Test
@@ -131,11 +131,11 @@ class TavilyRequestTest {
     TavilyRequest request = new TavilyRequest();
 
     // When & Then
-    request.setMax_results(20);
-    assertEquals(20, request.getMax_results());
+    request.setMaxResults(20);
+    assertEquals(20, request.getMaxResults());
 
-    request.setMax_results(1);
-    assertEquals(1, request.getMax_results());
+    request.setMaxResults(1);
+    assertEquals(1, request.getMaxResults());
   }
 
   @Test
@@ -146,12 +146,12 @@ class TavilyRequestTest {
     List<String> excludeDomains = Arrays.asList("spam.com", "bad.net");
 
     // When
-    request.setInclude_domains(includeDomains);
-    request.setExclude_domains(excludeDomains);
+    request.setIncludeDomains(includeDomains);
+    request.setExcludeDomains(excludeDomains);
 
     // Then
-    assertEquals(includeDomains, request.getInclude_domains());
-    assertEquals(excludeDomains, request.getExclude_domains());
+    assertEquals(includeDomains, request.getIncludeDomains());
+    assertEquals(excludeDomains, request.getExcludeDomains());
   }
 
   @Test
@@ -176,12 +176,12 @@ class TavilyRequestTest {
     TavilyRequest request = TavilyRequest.createBasic(apiKey, query);
 
     // Then
-    assertEquals(apiKey, request.getApi_key());
+    assertEquals(apiKey, request.getApiKey());
     assertEquals(query, request.getQuery());
-    assertEquals("basic", request.getSearch_depth());
-    assertTrue(request.getInclude_answer());
-    assertFalse(request.getInclude_raw_content());
-    assertEquals(5, request.getMax_results());
+    assertEquals("basic", request.getSearchDepth());
+    assertTrue(request.getIncludeAnswer());
+    assertFalse(request.getIncludeRawContent());
+    assertEquals(5, request.getMaxResults());
   }
 
   @Test
@@ -192,20 +192,20 @@ class TavilyRequestTest {
     
     // When
     TavilyRequest request = new TavilyRequest();
-    request.setApi_key(apiKey);
+    request.setApiKey(apiKey);
     request.setQuery(query);
-    request.setSearch_depth("advanced");
-    request.setInclude_raw_content(false);
-    request.setInclude_answer(true);
-    request.setMax_results(15);
+    request.setSearchDepth("advanced");
+    request.setIncludeRawContent(false);
+    request.setIncludeAnswer(true);
+    request.setMaxResults(15);
 
     // Then
-    assertEquals(apiKey, request.getApi_key());
+    assertEquals(apiKey, request.getApiKey());
     assertEquals(query, request.getQuery());
-    assertEquals("advanced", request.getSearch_depth());
-    assertFalse(request.getInclude_raw_content());
-    assertTrue(request.getInclude_answer());
-    assertEquals(15, request.getMax_results());
+    assertEquals("advanced", request.getSearchDepth());
+    assertFalse(request.getIncludeRawContent());
+    assertTrue(request.getIncludeAnswer());
+    assertEquals(15, request.getMaxResults());
   }
 
   @Test
@@ -225,11 +225,11 @@ class TavilyRequestTest {
   void shouldTestEqualsWithDifferentApiKey() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key1");
+    request1.setApiKey("key1");
     request1.setQuery("test");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key2");
+    request2.setApiKey("key2");
     request2.setQuery("test");
     
     // Then
@@ -240,10 +240,10 @@ class TavilyRequestTest {
   void shouldTestEqualsWithNullQuery() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
+    request1.setApiKey("key");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
+    request2.setApiKey("key");
     
     // Then
     assertEquals(request1, request2); // 两个都是null query
@@ -253,12 +253,12 @@ class TavilyRequestTest {
   void shouldTestEqualsWithDifferentSearchDepth() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
-    request1.setSearch_depth("basic");
+    request1.setApiKey("key");
+    request1.setSearchDepth("basic");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
-    request2.setSearch_depth("advanced");
+    request2.setApiKey("key");
+    request2.setSearchDepth("advanced");
     
     // Then
     assertNotEquals(request1, request2);
@@ -268,10 +268,10 @@ class TavilyRequestTest {
   void shouldTestEqualsWithNullSearchDepth() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
+    request1.setApiKey("key");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
+    request2.setApiKey("key");
     
     // Then
     assertEquals(request1, request2); // 两个都是null searchDepth
@@ -281,12 +281,12 @@ class TavilyRequestTest {
   void shouldTestEqualsWithDifferentIncludeAnswer() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
-    request1.setInclude_answer(true);
+    request1.setApiKey("key");
+    request1.setIncludeAnswer(true);
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
-    request2.setInclude_answer(false);
+    request2.setApiKey("key");
+    request2.setIncludeAnswer(false);
     
     // Then
     assertNotEquals(request1, request2);
@@ -296,10 +296,10 @@ class TavilyRequestTest {
   void shouldTestEqualsWithNullIncludeAnswer() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
+    request1.setApiKey("key");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
+    request2.setApiKey("key");
     
     // Then
     assertEquals(request1, request2); // 两个都是null includeAnswer
@@ -309,12 +309,12 @@ class TavilyRequestTest {
   void shouldTestEqualsWithDifferentIncludeRawContent() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
-    request1.setInclude_raw_content(true);
+    request1.setApiKey("key");
+    request1.setIncludeRawContent(true);
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
-    request2.setInclude_raw_content(false);
+    request2.setApiKey("key");
+    request2.setIncludeRawContent(false);
     
     // Then
     assertNotEquals(request1, request2);
@@ -324,10 +324,10 @@ class TavilyRequestTest {
   void shouldTestEqualsWithNullIncludeRawContent() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
+    request1.setApiKey("key");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
+    request2.setApiKey("key");
     
     // Then
     assertEquals(request1, request2); // 两个都是null includeRawContent
@@ -337,12 +337,12 @@ class TavilyRequestTest {
   void shouldTestEqualsWithDifferentMaxResults() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
-    request1.setMax_results(5);
+    request1.setApiKey("key");
+    request1.setMaxResults(5);
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
-    request2.setMax_results(10);
+    request2.setApiKey("key");
+    request2.setMaxResults(10);
     
     // Then
     assertNotEquals(request1, request2);
@@ -352,10 +352,10 @@ class TavilyRequestTest {
   void shouldTestEqualsWithNullMaxResults() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
+    request1.setApiKey("key");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
+    request2.setApiKey("key");
     
     // Then
     assertEquals(request1, request2); // 两个都是null maxResults
@@ -365,12 +365,12 @@ class TavilyRequestTest {
   void shouldTestEqualsWithDifferentIncludeDomains() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
-    request1.setInclude_domains(Arrays.asList("example.com"));
+    request1.setApiKey("key");
+    request1.setIncludeDomains(Arrays.asList("example.com"));
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
-    request2.setInclude_domains(Arrays.asList("test.com"));
+    request2.setApiKey("key");
+    request2.setIncludeDomains(Arrays.asList("test.com"));
     
     // Then
     assertNotEquals(request1, request2);
@@ -380,10 +380,10 @@ class TavilyRequestTest {
   void shouldTestEqualsWithNullIncludeDomains() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
+    request1.setApiKey("key");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
+    request2.setApiKey("key");
     
     // Then
     assertEquals(request1, request2); // 两个都是null includeDomains
@@ -393,12 +393,12 @@ class TavilyRequestTest {
   void shouldTestEqualsWithDifferentExcludeDomains() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
-    request1.setExclude_domains(Arrays.asList("spam.com"));
+    request1.setApiKey("key");
+    request1.setExcludeDomains(Arrays.asList("spam.com"));
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
-    request2.setExclude_domains(Arrays.asList("bad.com"));
+    request2.setApiKey("key");
+    request2.setExcludeDomains(Arrays.asList("bad.com"));
     
     // Then
     assertNotEquals(request1, request2);
@@ -408,10 +408,10 @@ class TavilyRequestTest {
   void shouldTestEqualsWithNullExcludeDomains() {
     // Given
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("key");
+    request1.setApiKey("key");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("key");
+    request2.setApiKey("key");
     
     // Then
     assertEquals(request1, request2); // 两个都是null excludeDomains
@@ -421,7 +421,7 @@ class TavilyRequestTest {
   void shouldTestHashCodeConsistency() {
     // Given
     TavilyRequest request = new TavilyRequest();
-    request.setApi_key("test");
+    request.setApiKey("test");
     request.setQuery("test query");
     
     int hashCode1 = request.hashCode();
@@ -448,14 +448,14 @@ class TavilyRequestTest {
   void shouldTestToStringWithAllFields() {
     // Given
     TavilyRequest request = new TavilyRequest();
-    request.setApi_key("key");
+    request.setApiKey("key");
     request.setQuery("query");
-    request.setSearch_depth("basic");
-    request.setInclude_answer(true);
-    request.setInclude_raw_content(false);
-    request.setMax_results(10);
-    request.setInclude_domains(Arrays.asList("example.com"));
-    request.setExclude_domains(Arrays.asList("spam.com"));
+    request.setSearchDepth("basic");
+    request.setIncludeAnswer(true);
+    request.setIncludeRawContent(false);
+    request.setMaxResults(10);
+    request.setIncludeDomains(Arrays.asList("example.com"));
+    request.setExcludeDomains(Arrays.asList("spam.com"));
     
     // When
     String toString = request.toString();
@@ -478,18 +478,18 @@ class TavilyRequestTest {
     TavilyRequest request = TavilyRequest.createBasic(null, null);
     
     // Then
-    assertNull(request.getApi_key());
+    assertNull(request.getApiKey());
     assertNull(request.getQuery());
-    assertEquals("basic", request.getSearch_depth());
-    assertTrue(request.getInclude_answer());
-    assertFalse(request.getInclude_raw_content());
-    assertEquals(5, request.getMax_results());
+    assertEquals("basic", request.getSearchDepth());
+    assertTrue(request.getIncludeAnswer());
+    assertFalse(request.getIncludeRawContent());
+    assertEquals(5, request.getMaxResults());
   }
 
   @Test
   void shouldTestTavilyRequestEqualsWithSameInstance() {
     TavilyRequest request = new TavilyRequest();
-    request.setApi_key("test");
+    request.setApiKey("test");
     assertEquals(request, request); // Same instance reference
   }
 
@@ -508,7 +508,7 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithCanEqualFalse() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
+    request1.setApiKey("test");
     
     // Anonymous subclass that overrides canEqual to return false
     TavilyRequest request2 = new TavilyRequest() {
@@ -517,7 +517,7 @@ class TavilyRequestTest {
         return false;
       }
     };
-    request2.setApi_key("test");
+    request2.setApiKey("test");
     
     assertNotEquals(request1, request2); // canEqual returns false
   }
@@ -533,11 +533,11 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestHashCodeWithMixedNullFields() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
+    request1.setApiKey("test");
     request1.setQuery(null);
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
+    request2.setApiKey("test");
     request2.setQuery(null);
     
     assertEquals(request1.hashCode(), request2.hashCode()); // Same with mixed null fields
@@ -546,11 +546,11 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullApiKeyField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
+    request1.setApiKey("test");
     request1.setQuery("query");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key(null);
+    request2.setApiKey(null);
     request2.setQuery("query");
     
     assertNotEquals(request1, request2); // One has null apiKey, other doesn't
@@ -559,11 +559,11 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullQueryField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
+    request1.setApiKey("test");
     request1.setQuery("query");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
+    request2.setApiKey("test");
     request2.setQuery(null);
     
     assertNotEquals(request1, request2); // One has null query, other doesn't
@@ -572,12 +572,12 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullSearchDepthField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
-    request1.setSearch_depth("basic");
+    request1.setApiKey("test");
+    request1.setSearchDepth("basic");
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
-    request2.setSearch_depth(null);
+    request2.setApiKey("test");
+    request2.setSearchDepth(null);
     
     assertNotEquals(request1, request2); // One has null searchDepth, other doesn't
   }
@@ -585,12 +585,12 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullIncludeAnswerField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
-    request1.setInclude_answer(true);
+    request1.setApiKey("test");
+    request1.setIncludeAnswer(true);
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
-    request2.setInclude_answer(null);
+    request2.setApiKey("test");
+    request2.setIncludeAnswer(null);
     
     assertNotEquals(request1, request2); // One has null includeAnswer, other doesn't
   }
@@ -598,12 +598,12 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullIncludeRawContentField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
-    request1.setInclude_raw_content(false);
+    request1.setApiKey("test");
+    request1.setIncludeRawContent(false);
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
-    request2.setInclude_raw_content(null);
+    request2.setApiKey("test");
+    request2.setIncludeRawContent(null);
     
     assertNotEquals(request1, request2); // One has null includeRawContent, other doesn't
   }
@@ -611,12 +611,12 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullMaxResultsField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
-    request1.setMax_results(5);
+    request1.setApiKey("test");
+    request1.setMaxResults(5);
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
-    request2.setMax_results(0);
+    request2.setApiKey("test");
+    request2.setMaxResults(0);
     
     assertNotEquals(request1, request2); // One has null maxResults, other doesn't
   }
@@ -624,12 +624,12 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullIncludeDomainsField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
-    request1.setInclude_domains(Arrays.asList("example.com"));
+    request1.setApiKey("test");
+    request1.setIncludeDomains(Arrays.asList("example.com"));
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
-    request2.setInclude_domains(null);
+    request2.setApiKey("test");
+    request2.setIncludeDomains(null);
     
     assertNotEquals(request1, request2); // One has null includeDomains, other doesn't
   }
@@ -637,12 +637,12 @@ class TavilyRequestTest {
   @Test
   void shouldTestTavilyRequestEqualsWithOneNullExcludeDomainsField() {
     TavilyRequest request1 = new TavilyRequest();
-    request1.setApi_key("test");
-    request1.setExclude_domains(Arrays.asList("spam.com"));
+    request1.setApiKey("test");
+    request1.setExcludeDomains(Arrays.asList("spam.com"));
     
     TavilyRequest request2 = new TavilyRequest();
-    request2.setApi_key("test");
-    request2.setExclude_domains(null);
+    request2.setApiKey("test");
+    request2.setExcludeDomains(null);
     
     assertNotEquals(request1, request2); // One has null excludeDomains, other doesn't
   }

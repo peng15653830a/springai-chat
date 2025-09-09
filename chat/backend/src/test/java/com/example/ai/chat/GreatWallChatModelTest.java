@@ -1,6 +1,6 @@
 package com.example.ai.chat;
 
-import com.example.service.api.impl.GreatWallApiClient;
+import com.example.ai.api.impl.GreatWallChatApi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
 class GreatWallChatModelTest {
 
     @Mock
-    private GreatWallApiClient apiClient;
+    private GreatWallChatApi apiClient;
 
     private GreatWallChatOptions defaultOptions;
 
@@ -51,21 +51,32 @@ class GreatWallChatModelTest {
         List<Message> messages = List.of(new UserMessage("Hello"));
         Prompt prompt = new Prompt(messages);
         
-        Generation generation = new Generation(new AssistantMessage("Hi there!"));
-        ChatResponse expectedResponse = new ChatResponse(List.of(generation));
+        // 使用正确的ChatCompletionResponse类型
+        com.example.ai.api.ChatCompletionResponse response = com.example.ai.api.ChatCompletionResponse.builder()
+            .id("test-id")
+            .object("chat.completion")
+            .created(System.currentTimeMillis() / 1000)
+            .model("greatwall-test")
+            .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                .index(0)
+                .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                    .content("Hi there!")
+                    .build())
+                .build()))
+            .build();
         
-        when(apiClient.chatCompletionStream(any(), any(), any(), any(), any()))
-            .thenReturn(Flux.just(expectedResponse));
+        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
+            .thenReturn(Flux.just(response));
 
         // When
-        ChatResponse response = chatModel.call(prompt);
+        ChatResponse chatResponse = chatModel.call(prompt);
 
         // Then
-        assertNotNull(response);
-        assertEquals(1, response.getResults().size());
-        assertEquals("Hi there!", response.getResults().get(0).getOutput().getText());
+        assertNotNull(chatResponse);
+        assertEquals(1, chatResponse.getResults().size());
+        assertEquals("Hi there!", chatResponse.getResults().get(0).getOutput().getText());
         
-        verify(apiClient).chatCompletionStream(any(), any(), any(), any(), any());
+        verify(apiClient).chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class));
     }
 
     @Test
@@ -74,21 +85,67 @@ class GreatWallChatModelTest {
         List<Message> messages = List.of(new UserMessage("Hello"));
         Prompt prompt = new Prompt(messages);
         
-        Generation generation1 = new Generation(new AssistantMessage("Hi"));
-        Generation generation2 = new Generation(new AssistantMessage(" there!"));
-        ChatResponse response1 = new ChatResponse(List.of(generation1));
-        ChatResponse response2 = new ChatResponse(List.of(generation2));
+        // 使用正确的ChatCompletionResponse类型
+        com.example.ai.api.ChatCompletionResponse response1 = com.example.ai.api.ChatCompletionResponse.builder()
+            .id("test-id-1")
+            .object("chat.completion.chunk")
+            .created(System.currentTimeMillis() / 1000)
+            .model("greatwall-test")
+            .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                .index(0)
+                .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                    .content("Hi")
+                    .build())
+                .build()))
+            .build();
+            
+        com.example.ai.api.ChatCompletionResponse response2 = com.example.ai.api.ChatCompletionResponse.builder()
+            .id("test-id-2")
+            .object("chat.completion.chunk")
+            .created(System.currentTimeMillis() / 1000)
+            .model("greatwall-test")
+            .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                .index(0)
+                .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                    .content(" there!")
+                    .build())
+                .build()))
+            .build();
         
-        when(apiClient.chatCompletionStream(any(), any(), any(), any(), any()))
-            .thenReturn(Flux.just(response1, response2));
+        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
+            .thenReturn(Flux.just(
+                com.example.ai.api.ChatCompletionResponse.builder()
+                    .id("test-id-1")
+                    .object("chat.completion.chunk")
+                    .created(System.currentTimeMillis() / 1000)
+                    .model("greatwall-test")
+                    .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                        .index(0)
+                        .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                            .content("Hi")
+                            .build())
+                        .build()))
+                    .build(),
+                com.example.ai.api.ChatCompletionResponse.builder()
+                    .id("test-id-2")
+                    .object("chat.completion.chunk")
+                    .created(System.currentTimeMillis() / 1000)
+                    .model("greatwall-test")
+                    .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                        .index(0)
+                        .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                            .content(" there!")
+                            .build())
+                        .build()))
+                    .build()
+            ));
 
         // When & Then
         StepVerifier.create(chatModel.stream(prompt))
-            .expectNext(response1)
-            .expectNext(response2)
+            .expectNextCount(2)
             .verifyComplete();
             
-        verify(apiClient).chatCompletionStream(any(), any(), any(), any(), any());
+        verify(apiClient).chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class));
     }
 
     @Test
@@ -97,7 +154,7 @@ class GreatWallChatModelTest {
         List<Message> messages = List.of(new UserMessage("Hello"));
         Prompt prompt = new Prompt(messages);
         
-        when(apiClient.chatCompletionStream(any(), any(), any(), any(), any()))
+        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
             .thenReturn(Flux.error(new RuntimeException("API Error")));
 
         // When & Then
@@ -105,7 +162,7 @@ class GreatWallChatModelTest {
             .expectError(RuntimeException.class)
             .verify();
             
-        verify(apiClient).chatCompletionStream(any(), any(), any(), any(), any());
+        verify(apiClient).chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class));
     }
 
     @Test
@@ -219,8 +276,19 @@ class GreatWallChatModelTest {
         Generation generation = new Generation(new AssistantMessage("I'm thinking..."));
         ChatResponse expectedResponse = new ChatResponse(List.of(generation));
         
-        when(apiClient.chatCompletionStream(any(), any(), any(), any(), any()))
-            .thenReturn(Flux.just(expectedResponse));
+        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
+            .thenReturn(Flux.just(com.example.ai.api.ChatCompletionResponse.builder()
+                .id("test-id")
+                .object("chat.completion")
+                .created(System.currentTimeMillis() / 1000)
+                .model("greatwall-test")
+                .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                    .index(0)
+                    .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                        .content("I'm thinking...")
+                        .build())
+                    .build()))
+                .build()));
 
         // When
         ChatResponse response = chatModel.call(prompt);
@@ -236,32 +304,21 @@ class GreatWallChatModelTest {
         // Given
         List<Message> messages = List.of(); // 空消息列表
         Prompt prompt = new Prompt(messages);
-        
-        Generation generation = new Generation(new AssistantMessage("Empty response"));
-        ChatResponse expectedResponse = new ChatResponse(List.of(generation));
-        
-        when(apiClient.chatCompletionStream(any(), any(), any(), any(), any()))
-            .thenReturn(Flux.just(expectedResponse));
 
-        // When & Then
+        // When & Then - 期望抛出IllegalArgumentException
         StepVerifier.create(chatModel.stream(prompt))
-            .expectNext(expectedResponse)
-            .verifyComplete();
+            .expectError(IllegalArgumentException.class)
+            .verify();
     }
 
     @Test
     void testStream_WithNullMessages() {
-        // Given
-        // 创建一个带有空消息列表的Prompt，而不是null消息列表
-        Prompt prompt = new Prompt(Collections.emptyList());
-        
-        // 模拟API客户端正确处理空消息
-        when(apiClient.chatCompletionStream(any(), any(), any(), any(), any()))
-            .thenReturn(Flux.empty());
+        // Given - 创建一个带有null消息列表的Prompt
+        Prompt prompt = new Prompt((List<Message>) null);
 
-        // When & Then
+        // When & Then - 期望抛出IllegalArgumentException
         StepVerifier.create(chatModel.stream(prompt))
-            .expectComplete()  // 期望完成而不是抛出异常
+            .expectError(IllegalArgumentException.class)
             .verify();
     }
 
@@ -271,7 +328,7 @@ class GreatWallChatModelTest {
         List<Message> messages = List.of(new UserMessage("Hello"));
         Prompt prompt = new Prompt(messages);
         
-        when(apiClient.chatCompletionStream(any(), any(), any(), any(), any()))
+        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
             .thenReturn(Flux.error(new RuntimeException("API client error")));
 
         // When & Then

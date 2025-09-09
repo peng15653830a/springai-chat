@@ -3,6 +3,8 @@ package com.example.service.provider.impl;
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
 import com.example.service.provider.AbstractModelRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.service.MessageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,9 +20,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OpenaiModelProviderTest {
-
-    @Mock
-    private EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory;
 
     @Mock
     private ObjectMapper objectMapper;

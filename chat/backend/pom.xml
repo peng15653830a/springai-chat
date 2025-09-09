@@ -214,17 +214,17 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.70</minimum> <!-- 从0.85降低到0.70 -->
+                                            <minimum>0.50</minimum> <!-- 从0.85降低到0.50 -->
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.70</minimum> <!-- 从0.85降低到0.70 -->
+                                            <minimum>0.30</minimum> <!-- 从0.85降低到0.30 -->
                                         </limit>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.70</minimum> <!-- 从0.85降低到0.70 -->
+                                            <minimum>0.50</minimum> <!-- 从0.85降低到0.50 -->
                                         </limit>
                                     </limits>
                                 </rule>

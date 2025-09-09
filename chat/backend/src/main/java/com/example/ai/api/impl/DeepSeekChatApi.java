@@ -28,6 +28,13 @@ import java.util.Map;
 public class DeepSeekChatApi implements ChatApi {
 
     private static final String PROVIDER_NAME = "DeepSeek";
+
+    // 魔法常量定义
+    private static final String JSON_START = "{";
+    private static final String JSON_END = "}";
+    private static final String DONE_MARKER = "[DONE]";
+    private static final String CHAT_COMPLETION_CHUNK = "chat.completion.chunk";
+    private static final String DEEPSEEK_MODEL = "deepseek";
     
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -43,6 +50,7 @@ public class DeepSeekChatApi implements ChatApi {
         this.webClient = webClientBuilder
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
                 .build();
+        // 初始化完成
         
         log.info("🏗️ 初始化DeepSeek Chat API完成");
     }
@@ -69,7 +77,7 @@ public class DeepSeekChatApi implements ChatApi {
                     .bodyToFlux(String.class)
                     .timeout(Duration.ofMillis(providerConfig.getReadTimeoutMs()))
                     .filter(this::isValidSseLine)
-                    .filter(line -> !"[DONE]".equals(line.trim())) // 过滤[DONE]标记
+                    .filter(line -> !DONE_MARKER.equals(line.trim())) // 过滤[DONE]标记
                     .map(this::extractJsonData)
                     .filter(json -> json != null && !json.trim().isEmpty())
                     .concatMap(this::parseJsonChunk)
@@ -87,8 +95,11 @@ public class DeepSeekChatApi implements ChatApi {
     @Override
     public boolean isAvailable() {
         MultiModelProperties.ProviderConfig providerConfig = getProviderConfig();
+        if (providerConfig == null) {
+            throw new NullPointerException("Provider config not found");
+        }
         String apiKey = multiModelProperties.getApiKey(PROVIDER_NAME);
-        return providerConfig != null && providerConfig.isEnabled() && 
+        return providerConfig.isEnabled() &&
                apiKey != null && !apiKey.trim().isEmpty();
     }
 
@@ -102,7 +113,7 @@ public class DeepSeekChatApi implements ChatApi {
      * 构建请求体
      */
     private String buildRequestBody(ChatCompletionRequest request) throws JsonProcessingException {
-        Map<String, Object> requestBody = new HashMap<>();
+        Map<String, Object> requestBody = new HashMap<>(8);
         
         // 基本参数
         requestBody.put("model", request.getModel());
@@ -147,12 +158,12 @@ public class DeepSeekChatApi implements ChatApi {
         String trimmed = line.trim();
         
         // ModelScope直接返回JSON格式
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        if (trimmed.startsWith(JSON_START) && trimmed.endsWith(JSON_END)) {
             return true;
         }
-        
+
         // 结束标记
-        if (trimmed.equals("[DONE]")) {
+        if (trimmed.equals(DONE_MARKER)) {
             return true;
         }
         

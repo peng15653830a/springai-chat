@@ -10,26 +10,26 @@ import java.util.List;
  */
 @Data
 public class TavilyRequest {
-    private String api_key;
+    private String apiKey;
     private String query;
-    private String search_depth;
-    private Boolean include_answer;
-    private Boolean include_raw_content;
-    private int max_results = 5;
-    private List<String> include_domains;
-    private List<String> exclude_domains;
+    private String searchDepth;
+    private Boolean includeAnswer;
+    private Boolean includeRawContent;
+    private int maxResults = 5;
+    private List<String> includeDomains;
+    private List<String> excludeDomains;
 
     /**
      * 创建基础搜索请求
      */
     public static TavilyRequest createBasic(String apiKey, String query) {
         TavilyRequest request = new TavilyRequest();
-        request.setApi_key(apiKey);
+        request.setApiKey(apiKey);
         request.setQuery(query);
-        request.setSearch_depth("basic");
-        request.setInclude_answer(true);
-        request.setInclude_raw_content(false);
-        request.setMax_results(5);
+        request.setSearchDepth("basic");
+        request.setIncludeAnswer(true);
+        request.setIncludeRawContent(false);
+        request.setMaxResults(5);
         return request;
     }
 }

@@ -44,13 +44,14 @@ public class SearchServiceImpl implements SearchService {
   /** 主搜索方法：使用Tavily搜索API */
   @Override
   public List<SearchResult> searchMetaso(String query) {
-    log.info("开始搜索，查询词: {}, 搜索启用: {}", query, searchProperties.isEnabled());
+    log.info("开始搜索，查询词: {}", query);
 
     if (!searchProperties.isEnabled()) {
-      log.info("搜索功能已禁用，返回空结果");
+      log.debug("搜索功能已禁用");
       return new ArrayList<>();
     }
 
+    log.info("搜索功能已启用，继续进入搜索流程，查询词: {}", query);
     // 使用Tavily搜索API
     List<SearchResult> searchResults = callTavilyApi(query);
 

@@ -2,7 +2,8 @@ package com.example.integration;
 
 import com.example.config.MultiModelProperties;
 import com.example.service.provider.impl.GreatWallModelProvider;
-import com.example.service.api.impl.GreatWallApiClient;
+// 将GreatWallApiClient替换为GreatWallChatApi
+import com.example.ai.api.impl.GreatWallChatApi;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -26,8 +27,9 @@ public class GreatWallIntegrationTest {
     @Autowired(required = false)
     private GreatWallModelProvider greatWallModelProvider;
     
+    // 将greatWallApiClient类型从GreatWallApiClient改为GreatWallChatApi
     @Autowired(required = false)
-    private GreatWallApiClient greatWallApiClient;
+    private GreatWallChatApi greatWallChatApi;
 
     @Test
     void shouldLoadMultiModelProperties() {
@@ -45,7 +47,8 @@ public class GreatWallIntegrationTest {
     @Test  
     void shouldLoadGreatWallServices() {
         assertNotNull(greatWallModelProvider, "GreatWallModelProvider应该被正确加载");
-        assertNotNull(greatWallApiClient, "GreatWallApiClient应该被正确加载");
+        // 将greatWallApiClient改为greatWallChatApi
+        assertNotNull(greatWallChatApi, "GreatWallChatApi应该被正确加载");
         
         assertEquals("greatwall", greatWallModelProvider.getProviderName(), 
                     "提供者名称应为'greatwall'");

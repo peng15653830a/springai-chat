@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.example.config.SearchProperties;
 import com.example.dto.response.SearchResult;
 import com.example.dto.response.SseEventResponse;
 import com.example.service.impl.SearchServiceImpl;
@@ -14,35 +15,25 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import reactor.test.StepVerifier;
 
-@SpringBootTest(classes = com.example.springai.SpringaiApplication.class)
-@TestPropertySource(locations = "classpath:application-test.yml")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+// 移除SpringBootTest相关注解，改为纯Mockito测试
 @ExtendWith(MockitoExtension.class)
-// 添加ActiveProfiles注解确保使用test profile
-@org.springframework.test.context.ActiveProfiles("test")
 public class SearchServiceTest {
 
-  @Autowired private SearchService searchService;
+  @Mock
+  private SearchProperties searchProperties;
 
-  @Value("${search.tavily.api-key:}")
-  private String tavilyApiKey;
+  @Mock
+  private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
-  @Value("${search.enabled:true}")
-  private boolean searchEnabled;
+  private SearchService searchService;
 
   @BeforeEach
   void setUp() {
-    // 确保测试开始时使用正确的配置
-    // 注意：SearchServiceImpl现在使用SearchProperties，所以这些字段可能不存在
-    // 我们将依赖application-test.yml中的配置
+    // 创建SearchServiceImpl实例，使用mock的依赖
+    searchService = new SearchServiceImpl(searchProperties, objectMapper);
   }
 
   // ========== 搜索触发条件测试 ==========
@@ -79,58 +70,66 @@ public class SearchServiceTest {
   @Test
   void testSearchMetaso_SearchDisabled() {
     // Given - 禁用搜索
-    // 注意：SearchServiceImpl现在使用SearchProperties，所以这些字段可能不存在
-    // 我们将依赖application-test.yml中的配置
+    when(searchProperties.isEnabled()).thenReturn(false);
 
     // When
     List<SearchResult> results = searchService.searchMetaso("测试查询");
 
     // Then
     assertNotNull(results);
-    // 由于我们无法在运行时修改配置，这个测试可能不会按预期工作
-    // 在实际应用中，我们应该通过配置文件来控制这个行为
+    assertTrue(results.isEmpty());
+    // 验证没有调用Tavily API
+    verify(searchProperties).isEnabled();
+    verifyNoMoreInteractions(searchProperties);
   }
 
   @Test
   void testSearchMetaso_EmptyApiKey() {
-    // Given - 空API密钥
-    // 注意：SearchServiceImpl现在使用SearchProperties，所以这些字段可能不存在
-    // 我们将依赖application-test.yml中的配置
+    // Given - 启用搜索但API密钥为空
+    when(searchProperties.isEnabled()).thenReturn(true);
+    when(searchProperties.getTavily()).thenReturn(new SearchProperties.Tavily());
+    // Tavily对象的apiKey默认为空字符串
 
     // When
     List<SearchResult> results = searchService.searchMetaso("测试查询");
 
     // Then
     assertNotNull(results);
-    // 由于我们无法在运行时修改配置，这个测试可能不会按预期工作
-    // 在实际应用中，我们应该通过配置文件来控制这个行为
+    assertTrue(results.isEmpty());
   }
 
   @Test
   void testSearchMetaso_NullApiKey() {
-    // Given - null API密钥
-    // 注意：SearchServiceImpl现在使用SearchProperties，所以这些字段可能不存在
-    // 我们将依赖application-test.yml中的配置
+    // Given - 启用搜索但API密钥为null
+    when(searchProperties.isEnabled()).thenReturn(true);
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey(null);
+    when(searchProperties.getTavily()).thenReturn(tavily);
 
     // When
     List<SearchResult> results = searchService.searchMetaso("测试查询");
 
     // Then
     assertNotNull(results);
-    // 由于我们无法在运行时修改配置，这个测试可能不会按预期工作
-    // 在实际应用中，我们应该通过配置文件来控制这个行为
+    assertTrue(results.isEmpty());
   }
 
   @Test
   void testSearchMetaso_ValidQuery() {
-    // Given - 有效查询（注意：由于没有有效的API密钥，实际会返回空结果）
+    // Given - 启用搜索且有API密钥
+    when(searchProperties.isEnabled()).thenReturn(true);
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("test-key");
+    tavily.setBaseUrl("https://api.test.com/search");
+    when(searchProperties.getTavily()).thenReturn(tavily);
+
     // When
     List<SearchResult> results = searchService.searchMetaso("测试查询");
 
     // Then
     assertNotNull(results);
-    // 由于测试环境中可能没有配置有效的API密钥，结果可能为空，这是正常的
-    // 我们只需要验证不会抛出异常并且返回值不为null
+    // 由于是mock测试，不会实际调用API，结果应该为空
+    assertTrue(results.isEmpty());
   }
 
   // ========== 格式化测试 ==========
@@ -217,6 +216,12 @@ public class SearchServiceTest {
   @Test
   void testSearchMetaso_SpecialCharacters() {
     // Given
+    when(searchProperties.isEnabled()).thenReturn(true);
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("test-key");
+    tavily.setBaseUrl("https://api.test.com/search");
+    when(searchProperties.getTavily()).thenReturn(tavily);
+    
     String specialQuery = "特殊字符!@#$%^&*()测试";
 
     // When
@@ -225,11 +230,18 @@ public class SearchServiceTest {
     // Then
     assertNotNull(results);
     // 不应该抛出异常
+    assertTrue(results.isEmpty()); // mock测试不会返回实际结果
   }
 
   @Test
   void testSearchMetaso_LongQuery() {
     // Given
+    when(searchProperties.isEnabled()).thenReturn(true);
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("test-key");
+    tavily.setBaseUrl("https://api.test.com/search");
+    when(searchProperties.getTavily()).thenReturn(tavily);
+    
     StringBuilder longQuery = new StringBuilder();
     for (int i = 0; i < 1000; i++) {
       longQuery.append("长查询内容");
@@ -241,11 +253,18 @@ public class SearchServiceTest {
     // Then
     assertNotNull(results);
     // 不应该抛出异常
+    assertTrue(results.isEmpty()); // mock测试不会返回实际结果
   }
 
   @Test
   void testSearchMetaso_UnicodeCharacters() {
     // Given
+    when(searchProperties.isEnabled()).thenReturn(true);
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("test-key");
+    tavily.setBaseUrl("https://api.test.com/search");
+    when(searchProperties.getTavily()).thenReturn(tavily);
+    
     String unicodeQuery = "测试🔍搜索🌟功能";
 
     // When
@@ -254,6 +273,7 @@ public class SearchServiceTest {
     // Then
     assertNotNull(results);
     // 不应该抛出异常
+    assertTrue(results.isEmpty()); // mock测试不会返回实际结果
   }
 
   private List<SearchResult> createTestSearchResults() {
@@ -274,6 +294,7 @@ public class SearchServiceTest {
   @Test
   void testPerformSearchWithEvents_SearchEnabled() {
     // Given
+    when(searchProperties.isEnabled()).thenReturn(true);
     String userMessage = "今天天气如何";
     
     // When & Then
@@ -290,18 +311,23 @@ public class SearchServiceTest {
   @Test
   void testPerformSearchWithEvents_SearchDisabled() {
     // Given
+    when(searchProperties.isEnabled()).thenReturn(false);
     String userMessage = "test message";
 
     // When & Then
-    StepVerifier.create(searchService.performSearchWithEvents(userMessage, false))
+    StepVerifier.create(searchService.performSearchWithEvents(userMessage, true))
         .expectNextMatches(result -> 
             result.getSearchContext().isEmpty() &&
-            result.getSearchResults() == null)
+            result.getSearchResults() == null &&
+            result.getSearchEvents() != null)
         .verifyComplete();
   }
 
   @Test
   void testPerformSearchWithEvents_NullUserMessage() {
+    // Given - 搜索启用
+    lenient().when(searchProperties.isEnabled()).thenReturn(true);
+    
     // When & Then
     assertThrows(IllegalArgumentException.class, () -> {
         searchService.performSearchWithEvents(null, true);
@@ -355,6 +381,7 @@ public class SearchServiceTest {
   @Test
   void testPerformSearchWithEvents_LongUserMessage() {
     // Given - 创建一个超过50个字符的消息
+    when(searchProperties.isEnabled()).thenReturn(true);
     String longMessage = "这是一个非常长的用户消息，用来测试字符串截取功能，它超过50个字符长度限制";
 
     // When & Then
@@ -368,6 +395,7 @@ public class SearchServiceTest {
   @Test
   void testPerformSearchWithEvents_ShortUserMessage() {
     // Given - 短消息测试
+    when(searchProperties.isEnabled()).thenReturn(true);
     String shortMessage = "短消息";
 
     // When & Then
@@ -381,8 +409,7 @@ public class SearchServiceTest {
   @Test
   void testPerformSearchWithEvents_ErrorHandling() {
     // Given - 测试错误处理，通过禁用搜索和使用无效API密钥来模拟
-    // 注意：SearchServiceImpl现在使用SearchProperties，所以这些字段可能不存在
-    // 我们将依赖application-test.yml中的配置
+    when(searchProperties.isEnabled()).thenReturn(true);
     String userMessage = "测试错误处理";
 
     // When & Then
@@ -419,17 +446,18 @@ public class SearchServiceTest {
   void testSearchContextResult_NullValidation() {
     // When & Then - 测试构造函数的null校验
     assertThrows(NullPointerException.class, () -> {
-        new SearchService.SearchContextResult(null, null, reactor.core.publisher.Flux.empty());
+        new SearchService.SearchContextResult(null, new ArrayList<>(), reactor.core.publisher.Flux.empty());
     }, "搜索上下文为null时应抛出NullPointerException");
     
     assertThrows(NullPointerException.class, () -> {
-        new SearchService.SearchContextResult("test", null, null);
+        new SearchService.SearchContextResult("test", new ArrayList<>(), null);
     }, "搜索事件流为null时应抛出NullPointerException");
   }
 
   @Test
   void testPerformSearchWithEvents_EmptyUserMessage() {
     // Given
+    when(searchProperties.isEnabled()).thenReturn(true);
     String emptyMessage = "";
 
     // When & Then
@@ -443,6 +471,7 @@ public class SearchServiceTest {
   @Test
   void testPerformSearchWithEvents_WhitespaceUserMessage() {
     // Given
+    when(searchProperties.isEnabled()).thenReturn(true);
     String whitespaceMessage = "   ";
 
     // When & Then
@@ -462,15 +491,27 @@ public class SearchServiceTest {
     
     // When & Then
     StepVerifier.create(searchService.createSearchEvents(results))
-        .expectNextMatches(event -> "search".equals(event.getType()))
+        .expectNextMatches(event -> {
+            return "search".equals(event.getType()) && 
+                   event.getData().toString().contains("start");
+        })
         .expectNextMatches(event -> "search_results".equals(event.getType()))
-        .expectNextMatches(event -> "search".equals(event.getType()))
+        .expectNextMatches(event -> {
+            return "search".equals(event.getType()) && 
+                   event.getData().toString().contains("complete");
+        })
         .verifyComplete();
   }
 
   @Test
   void testSearchMetaso_ExceptionHandling() {
     // Given - 测试异常处理
+    when(searchProperties.isEnabled()).thenReturn(true);
+    SearchProperties.Tavily tavily = new SearchProperties.Tavily();
+    tavily.setApiKey("test-key");
+    tavily.setBaseUrl("https://api.test.com/search");
+    when(searchProperties.getTavily()).thenReturn(tavily);
+    
     String query = "测试异常处理";
 
     // When
@@ -479,6 +520,7 @@ public class SearchServiceTest {
     // Then
     assertNotNull(results);
     // 不应该抛出异常
+    assertTrue(results.isEmpty()); // mock测试不会返回实际结果
   }
 
   @Test
