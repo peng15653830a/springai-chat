@@ -1,6 +1,6 @@
 <template>
   <div class="natural-language-order">
-    <h2>自然语言下单</h2>
+    <h2>指令发送</h2>
     <el-form :model="orderForm" ref="orderForm" label-width="120px">
       <el-form-item label="请输入指令">
         <el-input
@@ -11,25 +11,21 @@
         ></el-input>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="submitOrder">提交订单</el-button>
+        <el-button type="primary" @click="submitOrder">提交</el-button>
         <el-button @click="resetForm">重置</el-button>
       </el-form-item>
     </el-form>
     
-    <el-dialog v-model="dialogVisible" title="订单结果" width="30%">
-      <div v-if="orderResult">
-        <p>订单ID: {{ orderResult.id }}</p>
-        <p>商品: {{ getProductName(orderResult.productId) }}</p>
-        <p>数量: {{ orderResult.quantity }}</p>
-        <p>总价: ¥{{ orderResult.totalPrice }}</p>
-        <p>状态: {{ orderResult.status }}</p>
+    <el-dialog v-model="dialogVisible" title="处理结果" width="50%">
+      <div v-if="orderResult" style="white-space: pre-line; line-height: 1.6;">
+        {{ orderResult }}
       </div>
       <div v-else>
-        <p>下单失败，请重试</p>
+        <p>处理失败，请重试</p>
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">确定</el-button>
+          <el-button @click="handleConfirm">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -47,12 +43,8 @@ export default {
         instruction: ''
       },
       dialogVisible: false,
-      orderResult: null,
-      products: []
+      orderResult: null
     }
-  },
-  mounted() {
-    this.loadProducts()
   },
   methods: {
     async submitOrder() {
@@ -62,31 +54,31 @@ export default {
       }
       
       try {
-        const response = await axios.post('http://localhost:8080/api/nl-orders', {
-          instruction: this.orderForm.instruction
-        })
+        const response = await axios.post('http://localhost:8081/api/nl-orders', 
+          this.orderForm.instruction,
+          {
+            headers: {
+              'Content-Type': 'text/plain'
+              }
+          }
+        )
         
+        // 直接使用AI返回的文本
         this.orderResult = response.data
         this.dialogVisible = true
       } catch (error) {
-        console.error('下单失败:', error)
-        this.$message.error('下单失败: ' + (error.response?.data?.message || error.message))
+        console.error('处理失败:', error)
+        this.$message.error('处理失败: ' + (error.response?.data?.message || error.message))
       }
     },
     resetForm() {
       this.orderForm.instruction = ''
     },
-    async loadProducts() {
-      try {
-        const response = await axios.get('http://localhost:8080/api/products')
-        this.products = response.data
-      } catch (error) {
-        console.error('加载商品失败:', error)
-      }
-    },
-    getProductName(productId) {
-      const product = this.products.find(p => p.id === productId)
-      return product ? product.name : '未知商品'
+    handleConfirm() {
+      // 关闭对话框
+      this.dialogVisible = false
+      // 发出事件通知父组件刷新商品和订单列表
+      this.$emit('refresh-data')
     }
   }
 }

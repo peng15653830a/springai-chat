@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: mcp-server
+
+  # H2 Database Configuration
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ""
+
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  # H2 Console (for development)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # Server Configuration
+  server:
+    port: 8080
+
+  # Spring AI Configuration
+  ai:
+    enabled: true
+
+    # ModelScope Configuration (using your DEEPSEEK_API_KEY environment variable)
+    openai:
+      base-url: https://api-inference.modelscope.cn
+      api-key: ${DEEPSEEK_API_KEY:ms-d2ce925e-2397-4c4c-9de2-62e820357af6}
+      chat:
+        options:
+          model: deepseek-ai/DeepSeek-V3.1
+          temperature: 0.7
+          max-tokens: 1000
+          top-p: 1.0
+          frequency-penalty: 0.0
+          presence-penalty: 0.0
+        enabled: true
+
+    # MCP Configuration
+  profiles:
+    active: sse

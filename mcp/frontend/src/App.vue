@@ -2,7 +2,7 @@
   <div id="app">
     <el-container>
       <el-header>
-        <h1>自然语言下单系统</h1>
+        <h1>自然语言指令系统</h1>
       </el-header>
       <el-main>
         <router-view></router-view>

@@ -1,0 +1,17 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: mcp-client
+  profiles:
+    active: mcp-client
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:ms-d2ce925e-2397-4c4c-9de2-62e820357af6}
+      chat:
+        base-url: https://api-inference.modelscope.cn
+        completions-path: /v1/chat/completions
+        options:
+          model: deepseek-ai/DeepSeek-V3
+    # MCP配置在 application-mcp-client.yaml 中定义

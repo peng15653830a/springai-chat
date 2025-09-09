@@ -10,11 +10,11 @@
     </parent>
     
     <groupId>com.example</groupId>
-    <artifactId>order-system</artifactId>
+    <artifactId>mcp</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>order-system</name>
-    <description>自然语言下单系统</description>
+    <name>mcp</name>
+    <description>springai-mcp</description>
     <modules>
         <module>mcp-server</module>
         <module>mcp-client</module>

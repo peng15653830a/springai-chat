@@ -1,14 +1,14 @@
 <template>
   <div class="home">
     <el-tabs type="border-card">
-      <el-tab-pane label="自然语言下单">
-        <NaturalLanguageOrder />
+      <el-tab-pane label="发送指令">
+        <NaturalLanguageOrder @refresh-data="refreshData" />
       </el-tab-pane>
       <el-tab-pane label="商品列表">
-        <ProductList />
+        <ProductList ref="productList" />
       </el-tab-pane>
       <el-tab-pane label="订单列表">
-        <OrderList />
+        <OrderList ref="orderList" />
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -25,6 +25,18 @@ export default {
     NaturalLanguageOrder,
     ProductList,
     OrderList
+  },
+  methods: {
+    refreshData() {
+      // 刷新商品列表
+      if (this.$refs.productList) {
+        this.$refs.productList.loadProducts()
+      }
+      // 刷新订单列表
+      if (this.$refs.orderList) {
+        this.$refs.orderList.loadOrders()
+      }
+    }
   }
 }
 </script>
