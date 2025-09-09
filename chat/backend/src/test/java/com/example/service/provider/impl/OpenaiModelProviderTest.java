@@ -1,19 +1,13 @@
 package com.example.service.provider.impl;
 
-import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
-import com.example.dto.request.ChatRequest;
-import com.example.dto.response.SseEventResponse;
-import com.example.service.MessageService;
-import com.example.service.provider.AbstractChatModelProvider;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.service.provider.AbstractModelRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -41,12 +35,8 @@ class OpenaiModelProviderTest {
 
     @BeforeEach
     void setUp() {
-        provider = new OpenaiModelProvider(
-                chatClientFactory,
-                objectMapper,
-                messageService,
-                multiModelProperties
-        );
+        // 修复构造函数调用，只传递所需的 MultiModelProperties 参数
+        provider = new OpenaiModelProvider(multiModelProperties);
     }
 
     @Test

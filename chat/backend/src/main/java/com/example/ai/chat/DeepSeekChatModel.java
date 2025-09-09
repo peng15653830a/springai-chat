@@ -1,30 +1,38 @@
 package com.example.ai.chat;
 
-import com.example.service.api.impl.DeepSeekApiClient;
+import com.example.ai.api.ChatApi;
+import com.example.ai.api.ChatCompletionRequest;
+import com.example.ai.api.ChatCompletionResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * DeepSeek推理模型ChatModel实现
- * 集成Spring AI框架，支持推理内容提取
+ * 使用标准化的ChatApi接口，符合Spring AI设计理念
  *
  * @author xupeng
  */
 @Slf4j
 public class DeepSeekChatModel implements ChatModel {
 
-    private final DeepSeekApiClient apiClient;
+    private final ChatApi chatApi;
     private final DeepSeekChatOptions defaultOptions;
 
-    public DeepSeekChatModel(DeepSeekApiClient apiClient, DeepSeekChatOptions defaultOptions) {
-        this.apiClient = apiClient;
+    public DeepSeekChatModel(ChatApi chatApi, DeepSeekChatOptions defaultOptions) {
+        this.chatApi = chatApi;
         this.defaultOptions = defaultOptions;
     }
 
@@ -39,28 +47,13 @@ public class DeepSeekChatModel implements ChatModel {
         log.info("🚀 DeepSeek推理模型开始流式聊天");
 
         try {
-            // 提取消息和选项
-            List<Message> messages = prompt.getInstructions();
+            // 构建统一的API请求
+            ChatCompletionRequest request = buildChatCompletionRequest(prompt);
             
-            // 处理null消息的情况
-            if (messages == null) {
-                log.warn("DeepSeek推理模型收到null消息列表，返回空流");
-                return Flux.empty();
-            }
-            
-            ChatOptions promptOptions = prompt.getOptions();
-            
-            // 合并选项
-            DeepSeekChatOptions mergedOptions = mergeOptions(promptOptions);
-            
-            // 调用API客户端
-            return apiClient.chatCompletionStream(
-                messages,
-                mergedOptions.getModel(),
-                mergedOptions.getTemperature(),
-                mergedOptions.getMaxTokens(),
-                mergedOptions.getEnableThinking()
-            ).doOnComplete(() -> log.info("✅ DeepSeek推理模型流式聊天完成"));
+            // 调用统一API并转换为Spring AI ChatResponse
+            return chatApi.chatCompletionStream(request)
+                .map(this::toChatResponse)
+                .doOnComplete(() -> log.info("✅ DeepSeek推理模型流式聊天完成"));
 
         } catch (Exception e) {
             log.error("❌ DeepSeek推理模型调用失败", e);
@@ -73,6 +66,94 @@ public class DeepSeekChatModel implements ChatModel {
         return defaultOptions;
     }
 
+    /**
+     * 构建ChatCompletionRequest
+     */
+    private ChatCompletionRequest buildChatCompletionRequest(Prompt prompt) {
+        List<Message> messages = prompt.getInstructions();
+        
+        // 处理null消息的情况
+        if (messages == null || messages.isEmpty()) {
+            throw new IllegalArgumentException("消息列表不能为空");
+        }
+        
+        ChatOptions promptOptions = prompt.getOptions();
+        DeepSeekChatOptions mergedOptions = mergeOptions(promptOptions);
+        
+        // 转换消息格式
+        List<ChatCompletionRequest.ChatMessage> apiMessages = messages.stream()
+            .map(this::toApiMessage)
+            .collect(Collectors.toList());
+        
+        // 构建扩展参数
+        Map<String, Object> extra = new HashMap<>();
+        if (mergedOptions.getEnableThinking() != null && mergedOptions.getEnableThinking()) {
+            extra.put("enable_thinking", true);
+            if (mergedOptions.getThinkingBudget() != null) {
+                extra.put("thinking_budget", mergedOptions.getThinkingBudget());
+            }
+        }
+        
+        return ChatCompletionRequest.builder()
+            .model(mergedOptions.getModel())
+            .messages(apiMessages)
+            .temperature(mergedOptions.getTemperature())
+            .maxTokens(mergedOptions.getMaxTokens())
+            .stream(true)
+            .extra(extra.isEmpty() ? null : extra)
+            .build();
+    }
+    
+    /**
+     * 转换Spring AI Message为API Message
+     */
+    private ChatCompletionRequest.ChatMessage toApiMessage(Message message) {
+        String role = mapMessageRole(message);
+        return ChatCompletionRequest.ChatMessage.builder()
+            .role(role)
+            .content(message.getText())
+            .build();
+    }
+    
+    /**
+     * 映射消息角色
+     */
+    private String mapMessageRole(Message message) {
+        String messageType = message.getClass().getSimpleName().toLowerCase();
+        switch (messageType) {
+            case "usermessage":
+                return "user";
+            case "assistantmessage":
+                return "assistant";
+            case "systemmessage":
+                return "system";
+            default:
+                return "user";
+        }
+    }
+    
+    /**
+     * 转换API响应为Spring AI ChatResponse
+     */
+    private ChatResponse toChatResponse(ChatCompletionResponse apiResponse) {
+        if (apiResponse.getChoices() == null || apiResponse.getChoices().isEmpty()) {
+            return new ChatResponse(Collections.emptyList());
+        }
+        
+        ChatCompletionResponse.Choice choice = apiResponse.getChoices().get(0);
+        ChatCompletionResponse.Delta delta = choice.getDelta();
+        
+        if (delta == null || delta.getContent() == null) {
+            return new ChatResponse(Collections.emptyList());
+        }
+        
+        // 创建AssistantMessage
+        AssistantMessage assistantMessage = new AssistantMessage(delta.getContent());
+        Generation generation = new Generation(assistantMessage);
+        
+        return new ChatResponse(Collections.singletonList(generation));
+    }
+    
     /**
      * 合并聊天选项
      */

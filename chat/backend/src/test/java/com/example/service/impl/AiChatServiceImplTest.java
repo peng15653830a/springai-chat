@@ -104,8 +104,6 @@ class AiChatServiceImplTest {
     modelInfo.setDisplayName("Test Model");
     when(mockModelProvider.getAvailableModels()).thenReturn(Arrays.asList(modelInfo));
     
-    when(mockModelProvider.streamChat(any(com.example.dto.request.ChatRequest.class)))
-        .thenReturn(Flux.just(SseEventResponse.chunk("Test response")));
   }
 
   @Test

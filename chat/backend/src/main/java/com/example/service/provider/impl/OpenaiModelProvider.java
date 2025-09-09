@@ -1,31 +1,25 @@
 package com.example.service.provider.impl;
 
-import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
-import com.example.service.MessageService;
-import com.example.service.provider.AbstractChatModelProvider;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.service.provider.AbstractModelRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * OpenAI模型提供者实现
- * 重构为使用ChatClient，继承通用基类
+ * OpenAI模型注册表实现
+ * 只负责提供OpenAI模型信息和元数据，不处理具体聊天
  * 
  * @author xupeng
  */
 @Slf4j
 @Component
-public class OpenaiModelProvider extends AbstractChatModelProvider {
+public class OpenaiModelProvider extends AbstractModelRegistry {
 
     private static final String PROVIDER_NAME = "openai";
     private static final String DISPLAY_NAME = "OpenAI";
 
-    public OpenaiModelProvider(EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory,
-                              ObjectMapper objectMapper,
-                              MessageService messageService,
-                              MultiModelProperties multiModelProperties) {
-        super(chatClientFactory, objectMapper, messageService, multiModelProperties);
+    public OpenaiModelProvider(MultiModelProperties multiModelProperties) {
+        super(multiModelProperties);
     }
 
     @Override

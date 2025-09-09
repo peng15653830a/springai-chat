@@ -1,19 +1,13 @@
 package com.example.service.provider.impl;
 
-import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
-import com.example.dto.request.ChatRequest;
-import com.example.dto.response.SseEventResponse;
-import com.example.service.MessageService;
-import com.example.service.provider.AbstractChatModelProvider;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.service.provider.AbstractModelRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -26,27 +20,14 @@ import static org.mockito.Mockito.when;
 class DeepSeekModelProviderTest {
 
     @Mock
-    private EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory;
-
-    @Mock
-    private ObjectMapper objectMapper;
-
-    @Mock
-    private MessageService messageService;
-
-    @Mock
     private MultiModelProperties multiModelProperties;
 
     private DeepSeekModelProvider provider;
 
     @BeforeEach
     void setUp() {
-        provider = new DeepSeekModelProvider(
-                chatClientFactory,
-                objectMapper,
-                messageService,
-                multiModelProperties
-        );
+        // 修复构造函数调用，只传递所需的 MultiModelProperties 参数
+        provider = new DeepSeekModelProvider(multiModelProperties);
     }
 
     @Test
@@ -425,58 +406,6 @@ class DeepSeekModelProviderTest {
     }
 
     @Test
-    void testStreamChat_Success() {
-        // Given
-        ChatRequest request = ChatRequest.builder()
-                .conversationId(1L)
-                .modelName("deepseek-chat")
-                .userMessage("Hello")
-                .fullPrompt("Hello")
-                .build();
-
-        // When - We cannot easily test the full streamChat method without complex mocking
-        // Instead, we test the individual methods that make up streamChat
-        // This is a limitation of testing abstract classes with complex dependencies
-        assertDoesNotThrow(() -> {
-            // Just verify it doesn't throw an exception
-            // A more complete test would require integration testing
-        });
-    }
-
-    @Test
-    void testStreamChat_WithError() {
-        // Given
-        ChatRequest request = ChatRequest.builder()
-                .conversationId(1L)
-                .modelName("deepseek-chat")
-                .userMessage("Hello")
-                .fullPrompt("Hello")
-                .build();
-
-        // When - We cannot easily test the full streamChat method without complex mocking
-        // Instead, we test the individual methods that make up streamChat
-        assertDoesNotThrow(() -> {
-            // Just verify it doesn't throw an exception
-        });
-    }
-
-    @Test
-    void testStreamChat_WithEmptyContent() {
-        // Given
-        ChatRequest request = ChatRequest.builder()
-                .conversationId(1L)
-                .modelName("deepseek-chat")
-                .userMessage("Hello")
-                .fullPrompt("Hello")
-                .build();
-
-        // When - We cannot easily test the full streamChat method without complex mocking
-        assertDoesNotThrow(() -> {
-            // Just verify it doesn't throw an exception
-        });
-    }
-
-    @Test
     void testConvertToModelInfo() throws Exception {
         // Given
         MultiModelProperties.ModelConfig config = new MultiModelProperties.ModelConfig();
@@ -493,7 +422,7 @@ class DeepSeekModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("convertToModelInfo", MultiModelProperties.ModelConfig.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("convertToModelInfo", MultiModelProperties.ModelConfig.class);
         method.setAccessible(true);
         ModelInfo result = (ModelInfo) method.invoke(provider, config);
 
@@ -528,7 +457,7 @@ class DeepSeekModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getModelConfig", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getModelConfig", String.class);
         method.setAccessible(true);
         Optional<MultiModelProperties.ModelConfig> result = (Optional<MultiModelProperties.ModelConfig>) method.invoke(provider, modelName);
 
@@ -556,7 +485,7 @@ class DeepSeekModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getModelConfig", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getModelConfig", String.class);
         method.setAccessible(true);
         Optional<MultiModelProperties.ModelConfig> result = (Optional<MultiModelProperties.ModelConfig>) method.invoke(provider, modelName);
 
@@ -587,7 +516,7 @@ class DeepSeekModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultTemperature", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultTemperature", String.class);
         method.setAccessible(true);
         double result = (double) method.invoke(provider, modelName);
 
@@ -614,7 +543,7 @@ class DeepSeekModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultTemperature", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultTemperature", String.class);
         method.setAccessible(true);
         double result = (double) method.invoke(provider, modelName);
 
@@ -645,7 +574,7 @@ class DeepSeekModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
         method.setAccessible(true);
         int result = (int) method.invoke(provider, modelName);
 
@@ -672,7 +601,7 @@ class DeepSeekModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
         method.setAccessible(true);
         int result = (int) method.invoke(provider, modelName);
 

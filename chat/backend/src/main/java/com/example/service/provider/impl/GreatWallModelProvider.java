@@ -1,15 +1,9 @@
 package com.example.service.provider.impl;
 
-import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
-import com.example.dto.request.ChatRequest;
-import com.example.dto.response.SseEventResponse;
-import com.example.service.MessageService;
-import com.example.service.provider.AbstractChatModelProvider;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.service.provider.AbstractModelRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
 
 /**
  * 长城大模型提供者实现
@@ -19,16 +13,13 @@ import reactor.core.publisher.Flux;
  */
 @Slf4j
 @Component
-public class GreatWallModelProvider extends AbstractChatModelProvider {
+public class GreatWallModelProvider extends AbstractModelRegistry {
 
     private static final String PROVIDER_NAME = "greatwall";
     private static final String DISPLAY_NAME = "长城大模型";
     
-    public GreatWallModelProvider(EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory,
-                                  ObjectMapper objectMapper,
-                                  MessageService messageService,
-                                  MultiModelProperties multiModelProperties) {
-        super(chatClientFactory, objectMapper, messageService, multiModelProperties);
+    public GreatWallModelProvider(MultiModelProperties multiModelProperties) {
+        super(multiModelProperties);
     }
 
     @Override

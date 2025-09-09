@@ -7,6 +7,7 @@ import com.example.dto.request.ChatExecutionParams;
 import com.example.dto.response.SseEventResponse;
 import com.example.entity.Message;
 import com.example.service.AiChatService;
+import com.example.service.ChatModelService;
 import com.example.service.ConversationService;
 import com.example.service.MessageService;
 import com.example.service.SearchService;
@@ -35,6 +36,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final SearchService searchService;
     private final ConversationService conversationService;
     private final MessageService messageService;
+    private final ChatModelService chatModelService;
     private final ModelSelector modelSelector;
     private final PromptBuilder promptBuilder;
     private final ChatErrorHandler errorHandler;
@@ -113,6 +115,7 @@ public class AiChatServiceImpl implements AiChatService {
             // 构建聊天请求
             ChatRequest request = ChatRequest.builder()
                     .conversationId(params.getConversationId())
+                    .providerName(params.getProviderName())
                     .modelName(actualModelName)
                     .fullPrompt(params.getPrompt())
                     .deepThinking(params.isDeepThinking())
@@ -120,7 +123,7 @@ public class AiChatServiceImpl implements AiChatService {
 
             log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", provider.getDisplayName(), actualModelName, params.isDeepThinking());
             
-            return provider.streamChat(request)
+            return chatModelService.streamChat(request)
                     .timeout(streamingProperties.getResponseTimeout())
                     .onErrorResume(errorHandler::handleChatError);
                     

@@ -1,31 +1,25 @@
 package com.example.service.provider.impl;
 
-import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
-import com.example.service.MessageService;
-import com.example.service.provider.AbstractChatModelProvider;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.service.provider.AbstractModelRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * DeepSeek模型提供者实现
- * 重构为使用ChatClient，继承通用基类
+ * DeepSeek模型注册表实现
+ * 只负责提供模型信息和元数据
  * 
  * @author xupeng
  */
 @Slf4j
 @Component
-public class DeepSeekModelProvider extends AbstractChatModelProvider {
+public class DeepSeekModelProvider extends AbstractModelRegistry {
 
     private static final String PROVIDER_NAME = "DeepSeek";
     private static final String DISPLAY_NAME = "DeepSeek";
 
-    public DeepSeekModelProvider(EnhancedAiConfig.EnhancedChatClientFactory chatClientFactory,
-                                ObjectMapper objectMapper,
-                                MessageService messageService,
-                                MultiModelProperties multiModelProperties) {
-        super(chatClientFactory, objectMapper, messageService, multiModelProperties);
+    public DeepSeekModelProvider(MultiModelProperties multiModelProperties) {
+        super(multiModelProperties);
     }
 
     @Override

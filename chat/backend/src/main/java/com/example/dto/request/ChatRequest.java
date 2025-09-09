@@ -17,6 +17,11 @@ public class ChatRequest {
     private Long conversationId;
 
     /**
+     * 提供者名称
+     */
+    private String providerName;
+
+    /**
      * 模型名称
      */
     private String modelName;
@@ -78,6 +83,11 @@ public class ChatRequest {
 
         public ChatRequestBuilder conversationId(Long conversationId) {
             request.conversationId = conversationId;
+            return this;
+        }
+
+        public ChatRequestBuilder providerName(String providerName) {
+            request.providerName = providerName;
             return this;
         }
 

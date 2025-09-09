@@ -1,29 +1,20 @@
 package com.example.service.provider.impl;
 
-import com.example.config.EnhancedAiConfig;
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
-import com.example.dto.request.ChatRequest;
-import com.example.dto.response.SseEventResponse;
-import com.example.service.MessageService;
-import com.example.service.provider.AbstractChatModelProvider;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.service.provider.AbstractModelRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.ai.chat.client.ChatClient;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class QwenModelProviderTest {
@@ -44,12 +35,8 @@ class QwenModelProviderTest {
 
     @BeforeEach
     void setUp() {
-        provider = new QwenModelProvider(
-                chatClientFactory,
-                objectMapper,
-                messageService,
-                multiModelProperties
-        );
+        // 修复构造函数调用，只传递所需的 MultiModelProperties 参数
+        provider = new QwenModelProvider(multiModelProperties);
     }
 
     @Test
@@ -496,7 +483,7 @@ class QwenModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("convertToModelInfo", MultiModelProperties.ModelConfig.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("convertToModelInfo", MultiModelProperties.ModelConfig.class);
         method.setAccessible(true);
         ModelInfo result = (ModelInfo) method.invoke(provider, config);
 
@@ -531,7 +518,7 @@ class QwenModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getModelConfig", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getModelConfig", String.class);
         method.setAccessible(true);
         Optional<MultiModelProperties.ModelConfig> result = (Optional<MultiModelProperties.ModelConfig>) method.invoke(provider, modelName);
 
@@ -559,7 +546,7 @@ class QwenModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getModelConfig", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getModelConfig", String.class);
         method.setAccessible(true);
         Optional<MultiModelProperties.ModelConfig> result = (Optional<MultiModelProperties.ModelConfig>) method.invoke(provider, modelName);
 
@@ -590,7 +577,7 @@ class QwenModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultTemperature", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultTemperature", String.class);
         method.setAccessible(true);
         double result = (double) method.invoke(provider, modelName);
 
@@ -617,7 +604,7 @@ class QwenModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultTemperature", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultTemperature", String.class);
         method.setAccessible(true);
         double result = (double) method.invoke(provider, modelName);
 
@@ -648,7 +635,7 @@ class QwenModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
         method.setAccessible(true);
         int result = (int) method.invoke(provider, modelName);
 
@@ -675,7 +662,7 @@ class QwenModelProviderTest {
 
         // When
         // Use reflection to access the protected method
-        java.lang.reflect.Method method = AbstractChatModelProvider.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
+        java.lang.reflect.Method method = AbstractModelRegistry.class.getDeclaredMethod("getDefaultMaxTokens", String.class);
         method.setAccessible(true);
         int result = (int) method.invoke(provider, modelName);
 

@@ -1,15 +1,13 @@
 package com.example.service.provider;
 
 import com.example.dto.common.ModelInfo;
-import com.example.dto.request.ChatRequest;
-import com.example.dto.response.SseEventResponse;
-import reactor.core.publisher.Flux;
 
 import java.util.List;
 
 /**
- * AI模型提供者接口
- * 定义了所有AI模型提供者必须实现的统一接口
+ * AI模型注册表接口
+ * 负责提供模型信息和元数据，不负责具体的聊天执行
+ * 聊天功能由对应的ChatModel实现处理
  * 
  * @author xupeng
  */
@@ -36,13 +34,6 @@ public interface ModelProvider {
      */
     List<ModelInfo> getAvailableModels();
 
-    /**
-     * 执行流式聊天
-     * 
-     * @param request 聊天请求
-     * @return 响应式SSE事件流
-     */
-    Flux<SseEventResponse> streamChat(ChatRequest request);
 
     /**
      * 检查提供者是否可用
