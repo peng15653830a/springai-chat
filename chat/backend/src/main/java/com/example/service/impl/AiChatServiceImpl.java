@@ -1,8 +1,6 @@
 package com.example.service.impl;
 
 import com.example.config.ChatStreamingProperties;
-import com.example.dto.request.ChatExecutionParams;
-import com.example.dto.request.ChatRequest;
 import com.example.dto.request.StreamChatRequest;
 import com.example.dto.response.SseEventResponse;
 import com.example.service.*;
@@ -11,13 +9,14 @@ import com.example.service.chat.ModelSelector;
 import com.example.service.chat.PromptBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
  * 重构后的AI聊天服务实现类
- * 职责简化为流程协调，具体功能委托给专门的组件
+ * 按照同一抽象层次原则重新组织：准备→执行→完成
  * 
  * @author xupeng
  */
@@ -30,14 +29,14 @@ public class AiChatServiceImpl implements AiChatService {
     private final SearchService searchService;
     private final ConversationService conversationService;
     private final MessageService messageService;
-    private final ChatModelService chatModelService;
+    private final ChatClientManager chatClientManager;
     private final ModelSelector modelSelector;
     private final PromptBuilder promptBuilder;
     private final ChatErrorHandler errorHandler;
 
     @Override
     public Flux<SseEventResponse> streamChat(StreamChatRequest request) {
-        log.info("开始响应式流式聊天（使用封装请求对象），会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}", 
+        log.info("开始流式聊天，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}", 
                 request.getConversationId(), 
                 request.getMessage() != null ? request.getMessage().length() : 0, 
                 request.isSearchEnabled(), 
@@ -47,130 +46,183 @@ public class AiChatServiceImpl implements AiChatService {
                 request.getModel());
 
         return Flux.concat(
-            // 1. 保存用户消息并生成标题
-            saveUserMessageAndGenerateTitle(request.getConversationId(), request.getMessage()),
-            
-            // 2. 执行搜索（如果启用）
-            performSearchStep(request.getMessage(), request.isSearchEnabled()),
-            
-            // 3. 构建提示并执行流式聊天
-            buildPromptAndStreamChatWithModel(ChatExecutionParams.from(request)
-                    .toBuilder()
-                    .searchEnabled(request.isSearchEnabled())
-                    .build())
+            prepareContext(request),  // 准备阶段：处理输入和上下文
+            processChat(request),     // 执行阶段：与AI模型交互
+            finishChat(request)       // 完成阶段：保存结果
         )
         .onErrorResume(errorHandler::handleChatError);
     }
 
+    // ========================= 第一层：主流程控制 =========================
 
-    @Override
-    public Flux<SseEventResponse> streamChatWithModel(com.example.dto.request.ChatExecutionParams params) {
-        log.info("开始响应式流式聊天，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}", 
-                params.getConversationId(), params.getUserMessage().length(), params.isSearchEnabled(), 
-                params.isDeepThinking(), params.getUserId(), params.getProviderName(), params.getModelName());
-
+    /**
+     * 准备阶段：处理输入和上下文
+     */
+    private Flux<SseEventResponse> prepareContext(StreamChatRequest request) {
+        log.debug("开始准备聊天上下文，会话ID: {}", request.getConversationId());
+        
         return Flux.concat(
-            // 1. 保存用户消息并生成标题
-            saveUserMessageAndGenerateTitle(params.getConversationId(), params.getUserMessage()),
-            
-            // 2. 执行搜索（如果启用）
-            performSearchStep(params.getUserMessage(), params.isSearchEnabled()),
-            
-            // 3. 构建提示并执行流式聊天
-            buildPromptAndStreamChatWithModel(params)
-        )
-        .onErrorResume(errorHandler::handleChatError);
-    }
-
-    @Override
-    public Flux<SseEventResponse> executeStreamingChat(String prompt, Long conversationId, boolean deepThinking) {
-        return executeStreamingChatWithModel(ChatExecutionParams.forExecution(
-                prompt, conversationId, deepThinking, null, null));
-    }
-
-    @Override
-    public Flux<SseEventResponse> handleChatError(Throwable error) {
-        return errorHandler.handleChatError(error);
+            saveUserMessage(request),           // 保存用户消息
+            generateTitleAsync(request),        // 生成标题（异步）
+            enrichWithSearch(request)           // 搜索增强（可选）
+        );
     }
 
     /**
-     * 使用指定模型执行流式聊天
+     * 执行阶段：与AI模型交互
      */
-    private Flux<SseEventResponse> executeStreamingChatWithModel(ChatExecutionParams params) {
-        log.debug("开始执行流式AI聊天，提示长度: {}, 会话ID: {}, 深度思考: {}, 模型: {}-{}", 
-                 params.getPrompt().length(), params.getConversationId(), params.isDeepThinking(), 
-                 params.getProviderName(), params.getModelName());
+    private Flux<SseEventResponse> processChat(StreamChatRequest request) {
+        log.debug("开始处理AI聊天，会话ID: {}", request.getConversationId());
+        
+        return buildPrompt(request)
+            .flatMapMany(prompt -> {
+                // 选择模型并执行流式聊天
+                ModelSelector.ModelSelection modelSelection = selectModel(request);
+                return streamFromAI(prompt, modelSelection, request);
+            });
+    }
 
-        try {
-            // 选择模型提供者
-            String actualProviderName = modelSelector.getActualProviderName(params.getProviderName());
-            String actualModelName = modelSelector.getActualModelName(actualProviderName, params.getModelName());
-            
-            // 构建聊天请求
-            ChatRequest request = ChatRequest.builder()
-                    .conversationId(params.getConversationId())
-                    .providerName(actualProviderName)
-                    .modelName(actualModelName)
-                    .fullPrompt(params.getPrompt())
-                    .deepThinking(params.isDeepThinking())
-                    .build();
+    /**
+     * 完成阶段：保存结果
+     */
+    private Flux<SseEventResponse> finishChat(StreamChatRequest request) {
+        log.debug("完成聊天处理，会话ID: {}", request.getConversationId());
+        
+        // 在processChat阶段已经处理了响应保存，这里返回空流
+        return Flux.empty();
+    }
 
-            log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", actualProviderName, actualModelName, params.isDeepThinking());
-            
-            return chatModelService.streamChat(request)
-                    .timeout(streamingProperties.getResponseTimeout())
-                    .onErrorResume(errorHandler::handleChatError);
-                    
-        } catch (Exception e) {
-            log.error("获取模型提供者失败", e);
-            return errorHandler.handleChatError(e);
+    // ========================= 第二层：各阶段具体实现 =========================
+
+    /**
+     * 保存用户消息
+     */
+    private Flux<SseEventResponse> saveUserMessage(StreamChatRequest request) {
+        return messageService.saveUserMessageAsync(request.getConversationId(), request.getMessage())
+            .then(Mono.<SseEventResponse>empty())
+            .flux();
+    }
+
+    /**
+     * 生成标题（异步执行）
+     */
+    private Flux<SseEventResponse> generateTitleAsync(StreamChatRequest request) {
+        // 异步生成标题，不阻塞主流程
+        conversationService.generateTitleIfNeededAsync(request.getConversationId(), request.getMessage())
+            .subscribe();
+        return Flux.empty();
+    }
+
+    /**
+     * 搜索增强（可选）
+     */
+    private Flux<SseEventResponse> enrichWithSearch(StreamChatRequest request) {
+        return searchService.performSearchWithEvents(request.getMessage(), request.isSearchEnabled())
+            .flatMapMany(SearchService.SearchContextResult::getSearchEvents);
+    }
+
+    /**
+     * 构建提示词
+     */
+    private Mono<String> buildPrompt(StreamChatRequest request) {
+        return promptBuilder.buildPrompt(
+            request.getConversationId(), 
+            request.getMessage(), 
+            request.isSearchEnabled()
+        );
+    }
+
+    /**
+     * 选择模型
+     */
+    private ModelSelector.ModelSelection selectModel(StreamChatRequest request) {
+        if (request.getUserId() != null) {
+            // 使用用户偏好选择模型
+            return modelSelector.selectModelForUser(
+                request.getUserId(), 
+                request.getProvider(), 
+                request.getModel()
+            );
+        } else {
+            // 直接使用指定模型或默认模型
+            String actualProviderName = modelSelector.getActualProviderName(request.getProvider());
+            String actualModelName = modelSelector.getActualModelName(actualProviderName, request.getModel());
+            return new ModelSelector.ModelSelection(actualProviderName, actualModelName);
         }
     }
 
     /**
-     * 保存用户消息并生成标题
+     * 从AI模型流式获取响应
      */
-    private Flux<SseEventResponse> saveUserMessageAndGenerateTitle(Long conversationId, String userMessage) {
-        return messageService.saveUserMessageAsync(conversationId, userMessage)
-                .doOnNext(message -> {
-                    // 异步生成标题，不阻塞主流程
-                    conversationService.generateTitleIfNeededAsync(conversationId, userMessage)
-                            .subscribe();
-                })
-                .then(Mono.<SseEventResponse>empty())
-                .flux();
-    }
+    private Flux<SseEventResponse> streamFromAI(String prompt, ModelSelector.ModelSelection modelSelection, 
+                                               StreamChatRequest request) {
+        log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", 
+            modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking());
 
-    /**
-     * 执行搜索步骤
-     */
-    private Flux<SseEventResponse> performSearchStep(String userMessage, boolean searchEnabled) {
-        return searchService.performSearchWithEvents(userMessage, searchEnabled)
-                .flatMapMany(SearchService.SearchContextResult::getSearchEvents);
-    }
+        StringBuilder contentBuilder = new StringBuilder();
 
-    /**
-     * 构建提示并执行流式聊天
-     */
-    private Flux<SseEventResponse> buildPromptAndStreamChatWithModel(ChatExecutionParams params) {
-        return promptBuilder.buildPrompt(params.getConversationId(), params.getUserMessage(), params.isSearchEnabled())
-                .flatMapMany(prompt -> {
-                    // 更新参数中prompt字段
-                    ChatExecutionParams executionParams = params.toBuilder()
-                            .prompt(prompt)
-                            .build();
-                            
-                    // 如果有用户ID，使用用户偏好选择模型
-                    if (params.getUserId() != null) {
-                        ModelSelector.ModelSelection selection = modelSelector.selectModelForUser(
-                                params.getUserId(), params.getProviderName(), params.getModelName());
-                        executionParams = executionParams.toBuilder()
-                                .providerName(selection.providerName())
-                                .modelName(selection.modelName())
-                                .build();
+        return Flux.concat(
+            // 1. 发送开始事件
+            Mono.just(SseEventResponse.start("AI正在思考中...")),
+            
+            // 2. 调用AI模型并处理响应
+            callAiModel(prompt, modelSelection, request)
+                .doOnNext(event -> {
+                    // 收集内容用于保存
+                    if ("chunk".equals(event.getType()) && event.getData() != null) {
+                        contentBuilder.append(event.getData().toString());
                     }
-                    
-                    return executeStreamingChatWithModel(executionParams);
+                }),
+            
+            // 3. 保存消息并发送结束事件
+            saveAiResponse(request.getConversationId(), contentBuilder.toString())
+        )
+        .timeout(streamingProperties.getResponseTimeout())
+        .onErrorResume(errorHandler::handleChatError);
+    }
+
+    // ========================= 第三层：具体实现细节 =========================
+
+    /**
+     * 调用AI模型
+     */
+    private Flux<SseEventResponse> callAiModel(String prompt, ModelSelector.ModelSelection modelSelection, 
+                                              StreamChatRequest request) {
+        try {
+            ChatClient chatClient = chatClientManager.getChatClient(modelSelection.providerName());
+            
+            return chatClient.prompt()
+                .user(prompt)
+                .stream()
+                .content()
+                .map(content -> {
+                    log.debug("💬 收到内容片段，长度: {}", content.length());
+                    return SseEventResponse.chunk(content);
+                })
+                .onErrorResume(error -> {
+                    log.error("❌ {} API调用失败", modelSelection.providerName(), error);
+                    return Flux.just(SseEventResponse.error("AI服务暂时不可用：" + error.getMessage()));
                 });
+                
+        } catch (Exception e) {
+            log.error("❌ 创建ChatClient失败", e);
+            return Flux.just(SseEventResponse.error("初始化AI服务失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 保存AI响应
+     */
+    private Mono<SseEventResponse> saveAiResponse(Long conversationId, String content) {
+        log.info("💾 准备保存AI响应，会话ID: {}, 内容长度: {}", 
+            conversationId, content != null ? content.length() : 0);
+        
+        if (content == null || content.trim().isEmpty()) {
+            log.warn("⚠️ AI响应内容为空，会话ID: {}", conversationId);
+            return Mono.just(SseEventResponse.end(null));
+        }
+        
+        return messageService.saveAiMessageAsync(conversationId, content.trim(), null)
+            .onErrorReturn(SseEventResponse.error("保存AI响应失败"));
     }
 }
