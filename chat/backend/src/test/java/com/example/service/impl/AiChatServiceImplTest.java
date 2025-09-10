@@ -18,8 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.ChatClient.ChatClientRequest.CallPromptRequest;
-import org.springframework.ai.chat.client.ChatClient.ChatClientRequest.CallPromptRequestSpec;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -55,7 +53,10 @@ class AiChatServiceImplTest {
     private ChatClient chatClient;
 
     @Mock
-    private CallPromptRequestSpec promptRequestSpec;
+    private ChatClient.ChatClientRequestSpec promptRequestSpec;
+    
+    @Mock
+    private ChatClient.StreamResponseSpec streamResponseSpec;
 
     @Mock
     private ModelSelector modelSelector;
@@ -92,18 +93,78 @@ class AiChatServiceImplTest {
         lenient().when(streamingProperties.getResponseTimeout()).thenReturn(Duration.ofSeconds(30));
         lenient().when(conversationService.generateTitleIfNeededAsync(any(), any())).thenReturn(Mono.empty());
         
+        // 移除全局ModelSelector mock设置，改为在具体测试中设置
+    }
+
+    @Test
+    void shouldHandleErrorInChatClientCall() {
+        // Given
+        StreamChatRequest request = new StreamChatRequest();
+        request.setConversationId(conversationId);
+        request.setMessage(userMessage);
+        request.setSearchEnabled(false);
+        request.setDeepThinking(false);
+
+        when(messageService.saveUserMessageAsync(conversationId, userMessage))
+            .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
+        
+        when(searchService.performSearchWithEvents(userMessage, false))
+            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
+        
+        when(promptBuilder.buildPrompt(conversationId, userMessage, false))
+            .thenReturn(Mono.just("提示词"));
+
+        when(modelSelector.getActualProviderName(null)).thenReturn("test-provider");
+        when(modelSelector.getActualModelName("test-provider", null)).thenReturn("test-model");
+        
+        when(chatClientManager.getChatClient("test-provider"))
+            .thenThrow(new RuntimeException("ChatClient creation failed"));
+        
+        // 不再mock errorHandler，因为错误在callAiModel方法中被捕获并处理
+
+        // When & Then
+        StepVerifier.create(aiChatService.streamChat(request))
+            .expectNext(SseEventResponse.start("AI正在思考中..."))  // 开始事件
+            .expectNext(SseEventResponse.error("初始化AI服务失败：ChatClient creation failed"))  // 错误事件
+            .expectNext(SseEventResponse.end(null))  // 结束事件
+            .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleEmptyAiResponse() {
+        // Given
+        StreamChatRequest request = new StreamChatRequest();
+        request.setConversationId(conversationId);
+        request.setMessage(userMessage);
+        request.setSearchEnabled(false);
+        request.setDeepThinking(false);
+
+        when(messageService.saveUserMessageAsync(conversationId, userMessage))
+            .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
+        
+        when(searchService.performSearchWithEvents(userMessage, false))
+            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
+        
+        when(promptBuilder.buildPrompt(conversationId, userMessage, false))
+            .thenReturn(Mono.just("提示词"));
+        
         // Mock ModelSelector
-        lenient().when(modelSelector.getActualProviderName(anyString())).thenReturn("test-provider");
-        lenient().when(modelSelector.getActualModelName(anyString(), anyString())).thenReturn("test-model");
-        lenient().when(modelSelector.selectModelForUser(any(), any(), any()))
-            .thenReturn(new ModelSelector.ModelSelection("test-provider", "test-model"));
+        when(modelSelector.getActualProviderName(null)).thenReturn("test-provider");
+        when(modelSelector.getActualModelName("test-provider", null)).thenReturn("test-model");
         
         // Mock ChatClient chain
-        lenient().when(chatClientManager.getChatClient(anyString())).thenReturn(chatClient);
-        lenient().when(chatClient.prompt()).thenReturn(promptRequestSpec);
-        lenient().when(promptRequestSpec.user(anyString())).thenReturn(promptRequestSpec);
-        lenient().when(promptRequestSpec.stream()).thenReturn(promptRequestSpec);
-        lenient().when(promptRequestSpec.content()).thenReturn(Flux.just("AI response chunk"));
+        when(chatClientManager.getChatClient("test-provider")).thenReturn(chatClient);
+        when(chatClient.prompt()).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.user(anyString())).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.stream()).thenReturn(streamResponseSpec);
+        // Mock empty response from AI
+        when(streamResponseSpec.content()).thenReturn(Flux.empty());
+
+        // When & Then
+        StepVerifier.create(aiChatService.streamChat(request))
+            .expectNext(SseEventResponse.start("AI正在思考中..."))
+            .expectNext(SseEventResponse.end(null))
+            .verifyComplete();
     }
 
     @Test
@@ -127,8 +188,16 @@ class AiChatServiceImplTest {
         when(promptBuilder.buildPrompt(conversationId, userMessage, false))
             .thenReturn(Mono.just("构建的完整提示词"));
         
-        when(messageService.saveAiMessageAsync(eq(conversationId), anyString(), isNull()))
-            .thenReturn(Mono.just(SseEventResponse.end(null)));
+        // Mock ModelSelector - 只保留测试中实际使用的
+        when(modelSelector.selectModelForUser(any(), any(), any()))
+            .thenReturn(new ModelSelector.ModelSelection("test-provider", "test-model"));
+            
+        // Mock ChatClient chain
+        when(chatClientManager.getChatClient("test-provider")).thenReturn(chatClient);
+        when(chatClient.prompt()).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.user(anyString())).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.stream()).thenReturn(streamResponseSpec);
+        when(streamResponseSpec.content()).thenReturn(Flux.just("AI response chunk"));
 
         // When & Then
         StepVerifier.create(aiChatService.streamChat(request))
@@ -151,6 +220,7 @@ class AiChatServiceImplTest {
         request.setMessage(userMessage);
         request.setSearchEnabled(true);
         request.setDeepThinking(false);
+        request.setUserId(userId);  // 添加用户ID，使用用户偏好选择模型
         request.setProvider("test-provider");
         request.setModel("test-model");
 
@@ -170,9 +240,17 @@ class AiChatServiceImplTest {
         
         when(promptBuilder.buildPrompt(conversationId, userMessage, true))
             .thenReturn(Mono.just("包含搜索结果的提示词"));
-        
-        when(messageService.saveAiMessageAsync(eq(conversationId), anyString(), isNull()))
-            .thenReturn(Mono.just(SseEventResponse.end(null)));
+            
+        // Mock ModelSelector - 只保留测试中实际使用的
+        when(modelSelector.selectModelForUser(any(), any(), any()))
+            .thenReturn(new ModelSelector.ModelSelection("test-provider", "test-model"));
+            
+        // Mock ChatClient chain
+        when(chatClientManager.getChatClient("test-provider")).thenReturn(chatClient);
+        when(chatClient.prompt()).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.user(anyString())).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.stream()).thenReturn(streamResponseSpec);
+        when(streamResponseSpec.content()).thenReturn(Flux.just("AI response chunk"));
 
         // When & Then
         StepVerifier.create(aiChatService.streamChat(request))
@@ -207,11 +285,16 @@ class AiChatServiceImplTest {
         when(promptBuilder.buildPrompt(conversationId, userMessage, false))
             .thenReturn(Mono.just("用户偏好模型的提示词"));
         
+        // 这个mock在测试中被使用了
         when(modelSelector.selectModelForUser(userId, "openai", "gpt-4"))
             .thenReturn(new ModelSelector.ModelSelection("openai", "gpt-4-turbo"));
-        
-        when(messageService.saveAiMessageAsync(eq(conversationId), anyString(), isNull()))
-            .thenReturn(Mono.just(SseEventResponse.end(null)));
+            
+        // Mock ChatClient chain
+        when(chatClientManager.getChatClient("openai")).thenReturn(chatClient);
+        when(chatClient.prompt()).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.user(anyString())).thenReturn(promptRequestSpec);
+        when(promptRequestSpec.stream()).thenReturn(streamResponseSpec);
+        when(streamResponseSpec.content()).thenReturn(Flux.just("AI response chunk"));
 
         // When & Then
         StepVerifier.create(aiChatService.streamChat(request))
@@ -236,6 +319,13 @@ class AiChatServiceImplTest {
         when(messageService.saveUserMessageAsync(conversationId, userMessage))
             .thenReturn(Mono.error(new RuntimeException("Database error")));
         
+        // 添加缺失的mock设置
+        when(searchService.performSearchWithEvents(userMessage, false))
+            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
+        
+        when(promptBuilder.buildPrompt(conversationId, userMessage, false))
+            .thenReturn(Mono.just("提示词"));
+            
         when(errorHandler.handleChatError(any()))
             .thenReturn(Flux.just(SseEventResponse.error("AI服务暂时不可用，请稍后重试")));
 
@@ -245,63 +335,5 @@ class AiChatServiceImplTest {
             .verifyComplete();
 
         verify(errorHandler).handleChatError(any());
-    }
-
-    @Test
-    void shouldHandleErrorInChatClientCall() {
-        // Given
-        StreamChatRequest request = new StreamChatRequest();
-        request.setConversationId(conversationId);
-        request.setMessage(userMessage);
-        request.setSearchEnabled(false);
-        request.setDeepThinking(false);
-
-        when(messageService.saveUserMessageAsync(conversationId, userMessage))
-            .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
-        
-        when(searchService.performSearchWithEvents(userMessage, false))
-            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
-        
-        when(promptBuilder.buildPrompt(conversationId, userMessage, false))
-            .thenReturn(Mono.just("提示词"));
-
-        when(chatClientManager.getChatClient(anyString()))
-            .thenThrow(new RuntimeException("ChatClient creation failed"));
-        
-        when(errorHandler.handleChatError(any()))
-            .thenReturn(Flux.just(SseEventResponse.error("AI服务暂时不可用，请稍后重试")));
-
-        // When & Then
-        StepVerifier.create(aiChatService.streamChat(request))
-            .expectNext(SseEventResponse.error("AI服务暂时不可用，请稍后重试"))
-            .verifyComplete();
-    }
-
-    @Test
-    void shouldHandleEmptyAiResponse() {
-        // Given
-        StreamChatRequest request = new StreamChatRequest();
-        request.setConversationId(conversationId);
-        request.setMessage(userMessage);
-        request.setSearchEnabled(false);
-        request.setDeepThinking(false);
-
-        when(messageService.saveUserMessageAsync(conversationId, userMessage))
-            .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
-        
-        when(searchService.performSearchWithEvents(userMessage, false))
-            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
-        
-        when(promptBuilder.buildPrompt(conversationId, userMessage, false))
-            .thenReturn(Mono.just("提示词"));
-        
-        // Mock empty response from AI
-        when(promptRequestSpec.content()).thenReturn(Flux.empty());
-
-        // When & Then
-        StepVerifier.create(aiChatService.streamChat(request))
-            .expectNext(SseEventResponse.start("AI正在思考中..."))
-            .expectNext(SseEventResponse.end(null))
-            .verifyComplete();
     }
 }

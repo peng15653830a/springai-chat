@@ -44,13 +44,144 @@ spring:
   # AI配置 - 测试环境使用模拟配置
   ai:
     openai:
-      api-key: test-openai-key
+      api-key: ${OPENAI_API_KEY:test-openai-key}
       base-url: https://api.test.com/v1
       chat:
         options:
           model: test-model
           temperature: 0.7
           max-tokens: 1000
+
+# 多模型配置 - 测试环境配置
+ai:
+  models:
+    # 是否启用多模型功能
+    enabled: true
+    
+    # 默认模型配置
+    default-provider: ${DEFAULT_PROVIDER:test}
+    default-model: ${DEFAULT_MODEL:test-model}
+    
+    # 全局默认参数
+    defaults:
+      temperature: 0.7
+      max-tokens: 1000
+      timeout-ms: 5000
+      thinking-budget: 10000
+      stream-enabled: true
+    
+    # 模型提供者配置 - 在测试环境中启用一个测试提供者
+    providers:
+      # 测试提供者配置
+      test:
+        enabled: true
+        display-name: "测试提供者"
+        api-key-env: "TEST_API_KEY"
+        base-url: https://api.test.com/v1
+        connect-timeout-ms: 1000
+        read-timeout-ms: 2000
+        models:
+          - name: "test-model"
+            display-name: "测试模型"
+            max-tokens: 1000
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            enabled: true
+            sort-order: 1
+      
+      # 通义千问配置
+      qwen:
+        enabled: ${QWEN_ENABLED:false}
+        display-name: "通义千问(测试)"
+        api-key-env: "QWEN_API_KEY"
+        base-url: https://api.test.com/v1
+        connect-timeout-ms: 1000
+        read-timeout-ms: 2000
+        models:
+          - name: "test-model"
+            display-name: "测试模型"
+            max-tokens: 1000
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            enabled: true
+            sort-order: 1
+      
+      # OpenAI配置  
+      openai:
+        enabled: ${OPENAI_ENABLED:false}
+        display-name: "OpenAI(测试)"
+        api-key-env: "OPENAI_API_KEY"
+        base-url: https://api.test.com/v1
+        connect-timeout-ms: 1000
+        read-timeout-ms: 2000
+        models:
+          - name: "test-model"
+            display-name: "测试模型"
+            max-tokens: 1000
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            enabled: true
+            sort-order: 1
+      
+      # Kimi2配置
+      kimi2:
+        enabled: ${KIMI2_ENABLED:false}
+        display-name: "Kimi2(测试)"
+        api-key-env: "KIMI2_API_KEY"
+        base-url: https://api.test.com/v1
+        connect-timeout-ms: 1000
+        read-timeout-ms: 2000
+        models:
+          - name: "test-model"
+            display-name: "测试模型"
+            max-tokens: 1000
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            enabled: true
+            sort-order: 1
+      
+      # DeepSeek配置
+      DeepSeek:
+        enabled: ${DEEPSEEK_ENABLED:false}
+        display-name: "DeepSeek(测试)"
+        api-key-env: "DEEPSEEK_API_KEY"
+        base-url: https://api.test.com/v1
+        connect-timeout-ms: 1000
+        read-timeout-ms: 2000
+        models:
+          - name: "test-model"
+            display-name: "测试模型"
+            max-tokens: 1000
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            enabled: true
+            sort-order: 1
+      
+      # 长城大模型配置
+      greatwall:
+        enabled: ${GREATWALL_ENABLED:false}
+        display-name: "长城大模型(测试)"
+        api-key-env: "GREATWALL_API_KEY"
+        base-url: https://api.test.com/v1
+        connect-timeout-ms: 1000
+        read-timeout-ms: 2000
+        models:
+          - name: "test-model"
+            display-name: "测试模型"
+            max-tokens: 1000
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            enabled: true
+            sort-order: 1
+            non-standard-api: false
+            api-run-id: "test-api-run-id"
+            tpuid-prefix: "test"
 
 # MyBatis配置 - 测试环境
 mybatis:
@@ -76,7 +207,7 @@ logging:
 # 测试环境配置
 search:
   tavily:
-    api-key: test-search-key
+    api-key: ${TAVILY_API_KEY:test-search-key}
     base-url: https://api.test.com/search
   enabled: false
   keywords:
