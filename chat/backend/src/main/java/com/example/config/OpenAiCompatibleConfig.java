@@ -1,10 +1,12 @@
 package com.example.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -21,16 +23,30 @@ import org.springframework.context.annotation.Configuration;
 public class OpenAiCompatibleConfig {
 
     /**
-     * 创建OpenAI ChatModel Bean
+     * 创建自定义OpenAI ChatModel Bean（避免与Spring AI自动配置冲突）
      */
     @Bean
     @ConditionalOnProperty(name = "ai.models.providers.openai.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(name = "openAiChatModel")
-    public ChatModel openAiChatModel(MultiModelProperties multiModelProperties) {
-        log.info("🏗️ 创建OpenAI ChatModel Bean");
+    @ConditionalOnMissingBean(name = "customOpenAiChatModel")
+    public ChatModel customOpenAiChatModel(MultiModelProperties multiModelProperties) {
+        log.info("🏗️ 创建自定义OpenAI ChatModel Bean");
         return createOpenAiCompatibleModel("openai", multiModelProperties);
     }
     
+    /**
+     * 创建自定义OpenAI ChatClient Bean
+     */
+    @Bean
+    @ConditionalOnProperty(name = "ai.models.providers.openai.enabled", havingValue = "true")
+    @ConditionalOnMissingBean(name = "customOpenAiChatClient")
+    public ChatClient customOpenAiChatClient(@Qualifier("customOpenAiChatModel") ChatModel customOpenAiChatModel) {
+        log.info("🏗️ 创建自定义OpenAI ChatClient Bean");
+        
+        return ChatClient.builder(customOpenAiChatModel)
+                .defaultSystem("你是一个有用的AI助手。")
+                .build();
+    }
+
     /**
      * 创建通义千问 ChatModel Bean
      */
@@ -43,6 +59,20 @@ public class OpenAiCompatibleConfig {
     }
     
     /**
+     * 创建通义千问 ChatClient Bean
+     */
+    @Bean
+    @ConditionalOnProperty(name = "ai.models.providers.qwen.enabled", havingValue = "true")
+    @ConditionalOnMissingBean(name = "qwenChatClient")
+    public ChatClient qwenChatClient(@Qualifier("qwenChatModel") ChatModel qwenChatModel) {
+        log.info("🏗️ 创建通义千问 ChatClient Bean");
+        
+        return ChatClient.builder(qwenChatModel)
+                .defaultSystem("你是一个有用的AI助手。")
+                .build();
+    }
+    
+    /**
      * 创建Kimi2 ChatModel Bean
      */
     @Bean
@@ -51,6 +81,20 @@ public class OpenAiCompatibleConfig {
     public ChatModel kimi2ChatModel(MultiModelProperties multiModelProperties) {
         log.info("🏗️ 创建Kimi2 ChatModel Bean");
         return createOpenAiCompatibleModel("kimi2", multiModelProperties);
+    }
+    
+    /**
+     * 创建Kimi2 ChatClient Bean
+     */
+    @Bean
+    @ConditionalOnProperty(name = "ai.models.providers.kimi2.enabled", havingValue = "true")
+    @ConditionalOnMissingBean(name = "kimi2ChatClient")
+    public ChatClient kimi2ChatClient(@Qualifier("kimi2ChatModel") ChatModel kimi2ChatModel) {
+        log.info("🏗️ 创建Kimi2 ChatClient Bean");
+        
+        return ChatClient.builder(kimi2ChatModel)
+                .defaultSystem("你是一个有用的AI助手。")
+                .build();
     }
     
     /**

@@ -4,7 +4,8 @@ import com.example.dto.response.ApiResponse;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.common.ProviderInfo;
 import com.example.dto.common.UserModelPreferenceDto;
-import com.example.service.ModelManagementService;
+import com.example.service.ChatClientManager;
+import com.example.service.UserModelPreferenceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import java.util.List;
 
 /**
  * 模型管理控制器
+ * 职责分离：模型查询使用ChatClientManager，用户偏好使用UserModelPreferenceService
  * 
  * @author xupeng
  */
@@ -23,7 +25,10 @@ import java.util.List;
 public class ModelController {
 
     @Autowired
-    private ModelManagementService modelManagementService;
+    private ChatClientManager chatClientManager;
+    
+    @Autowired
+    private UserModelPreferenceService userModelPreferenceService;
 
     /**
      * 获取所有可用的模型提供者
@@ -35,7 +40,17 @@ public class ModelController {
         log.info("获取可用提供者列表");
         
         try {
-            List<ProviderInfo> providers = modelManagementService.getAvailableProviders();
+            List<String> availableProviders = chatClientManager.getAvailableProviders();
+            List<ProviderInfo> providers = availableProviders.stream()
+                .map(providerName -> {
+                    ProviderInfo info = new ProviderInfo();
+                    info.setName(providerName);
+                    info.setDisplayName(providerName);
+                    info.setAvailable(true);
+                    return info;
+                })
+                .collect(java.util.stream.Collectors.toList());
+                
             log.info("成功获取 {} 个可用提供者", providers.size());
             return ApiResponse.success(providers);
         } catch (Exception e) {
@@ -55,7 +70,7 @@ public class ModelController {
         log.info("获取提供者 {} 的模型列表", providerName);
         
         try {
-            List<ModelInfo> models = modelManagementService.getProviderModels(providerName);
+            List<ModelInfo> models = chatClientManager.getModels(providerName);
             log.info("成功获取提供者 {} 的 {} 个模型", providerName, models.size());
             return ApiResponse.success(models);
         } catch (Exception e) {
@@ -74,7 +89,18 @@ public class ModelController {
         log.info("获取所有可用模型列表");
         
         try {
-            List<ProviderInfo> providersWithModels = modelManagementService.getAllAvailableModels();
+            List<String> availableProviders = chatClientManager.getAvailableProviders();
+            List<ProviderInfo> providersWithModels = availableProviders.stream()
+                .map(providerName -> {
+                    ProviderInfo info = new ProviderInfo();
+                    info.setName(providerName);
+                    info.setDisplayName(providerName);
+                    info.setAvailable(true);
+                    info.setModels(chatClientManager.getModels(providerName));
+                    return info;
+                })
+                .collect(java.util.stream.Collectors.toList());
+                
             int totalModels = providersWithModels.stream()
                     .mapToInt(provider -> provider.getModels() != null ? provider.getModels().size() : 0)
                     .sum();
@@ -99,7 +125,7 @@ public class ModelController {
         log.info("获取模型详细信息: {}-{}", providerName, modelName);
         
         try {
-            ModelInfo modelInfo = modelManagementService.getModelInfo(providerName, modelName);
+            ModelInfo modelInfo = chatClientManager.getModelInfo(providerName, modelName);
             if (modelInfo != null) {
                 log.info("成功获取模型信息: {}", modelInfo.getDisplayName());
                 return ApiResponse.success(modelInfo);
@@ -126,7 +152,7 @@ public class ModelController {
         log.debug("检查模型是否可用: {}-{}", providerName, modelName);
         
         try {
-            boolean available = modelManagementService.isModelAvailable(providerName, modelName);
+            boolean available = chatClientManager.supportsStreaming(providerName, modelName);
             log.debug("模型 {}-{} 可用性: {}", providerName, modelName, available);
             return ApiResponse.success(available);
         } catch (Exception e) {
@@ -146,7 +172,7 @@ public class ModelController {
         log.info("获取用户 {} 的默认模型偏好", userId);
         
         try {
-            UserModelPreferenceDto preference = modelManagementService.getUserDefaultModel(userId);
+            UserModelPreferenceDto preference = userModelPreferenceService.getUserDefaultModel(userId);
             if (preference != null) {
                 log.info("用户 {} 的默认模型: {}-{}", userId, preference.getProviderName(), preference.getModelName());
                 return ApiResponse.success(preference);
@@ -171,7 +197,7 @@ public class ModelController {
         log.info("获取用户 {} 的所有模型偏好", userId);
         
         try {
-            List<UserModelPreferenceDto> preferences = modelManagementService.getUserModelPreferences(userId);
+            List<UserModelPreferenceDto> preferences = userModelPreferenceService.getUserModelPreferences(userId);
             log.info("用户 {} 共有 {} 个模型偏好", userId, preferences.size());
             return ApiResponse.success(preferences);
         } catch (Exception e) {
@@ -192,7 +218,7 @@ public class ModelController {
                 request.getUserId(), request.getProviderName(), request.getModelName(), request.isDefault());
         
         try {
-            boolean success = modelManagementService.saveUserModelPreference(request);
+            boolean success = userModelPreferenceService.saveUserModelPreference(request);
             
             if (success) {
                 log.info("用户模型偏好保存成功");
@@ -218,7 +244,7 @@ public class ModelController {
         log.info("删除用户模型偏好，用户ID: {}, 模型: {}-{}", request.getUserId(), request.getProviderName(), request.getModelName());
         
         try {
-            boolean success = modelManagementService.deleteUserModelPreference(request);
+            boolean success = userModelPreferenceService.deleteUserModelPreference(request);
             
             if (success) {
                 log.info("用户模型偏好删除成功");

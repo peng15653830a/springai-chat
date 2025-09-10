@@ -1,8 +1,8 @@
 package com.example.ai.api.impl;
 
 import com.example.ai.api.ChatApi;
-import com.example.ai.api.ChatCompletionRequest;
-import com.example.ai.api.ChatCompletionResponse;
+import com.example.dto.request.ChatCompletionRequest;
+import com.example.dto.response.ChatCompletionResponse;
 import com.example.config.MultiModelProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -46,11 +46,14 @@ public class DeepSeekChatApi implements ChatApi {
         this.objectMapper = objectMapper;
         this.multiModelProperties = multiModelProperties;
         
-        // 创建WebClient
-        this.webClient = webClientBuilder
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
-                .build();
-        // 初始化完成
+        // 创建WebClient，添加空值检查
+        if (webClientBuilder != null) {
+            this.webClient = webClientBuilder
+                    .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+                    .build();
+        } else {
+            this.webClient = null;
+        }
         
         log.info("🏗️ 初始化DeepSeek Chat API完成");
     }
@@ -58,6 +61,12 @@ public class DeepSeekChatApi implements ChatApi {
     @Override
     public Flux<ChatCompletionResponse> chatCompletionStream(ChatCompletionRequest request) {
         log.info("🚀 DeepSeek API流式聊天开始，模型: {}", request.getModel());
+
+        // 检查webClient是否已初始化
+        if (webClient == null) {
+            log.error("❌ DeepSeek API未正确初始化");
+            return Flux.error(new IllegalStateException("WebClient not initialized"));
+        }
 
         try {
             String requestBody = buildRequestBody(request);
@@ -75,7 +84,7 @@ public class DeepSeekChatApi implements ChatApi {
                     .accept(MediaType.TEXT_EVENT_STREAM)
                     .retrieve()
                     .bodyToFlux(String.class)
-                    .timeout(Duration.ofMillis(providerConfig.getReadTimeoutMs()))
+                    .timeout(Duration.ofMillis(providerConfig != null ? providerConfig.getReadTimeoutMs() : 30000))
                     .filter(this::isValidSseLine)
                     .filter(line -> !DONE_MARKER.equals(line.trim())) // 过滤[DONE]标记
                     .map(this::extractJsonData)
@@ -94,13 +103,18 @@ public class DeepSeekChatApi implements ChatApi {
 
     @Override
     public boolean isAvailable() {
-        MultiModelProperties.ProviderConfig providerConfig = getProviderConfig();
-        if (providerConfig == null) {
-            throw new NullPointerException("Provider config not found");
+        try {
+            MultiModelProperties.ProviderConfig providerConfig = getProviderConfig();
+            if (providerConfig == null) {
+                return false; // 返回false而不是抛出异常
+            }
+            String apiKey = multiModelProperties.getApiKey(PROVIDER_NAME);
+            return providerConfig.isEnabled() &&
+                   apiKey != null && !apiKey.trim().isEmpty();
+        } catch (Exception e) {
+            log.warn("检查DeepSeek可用性时出错: {}", e.getMessage());
+            return false;
         }
-        String apiKey = multiModelProperties.getApiKey(PROVIDER_NAME);
-        return providerConfig.isEnabled() &&
-               apiKey != null && !apiKey.trim().isEmpty();
     }
 
     @Override
@@ -200,75 +214,65 @@ public class DeepSeekChatApi implements ChatApi {
             JsonNode chunk = objectMapper.readTree(json);
             JsonNode choices = chunk.path("choices");
             
+            // 即使没有choices，也要返回一个响应以确保流继续
             if (!choices.isArray() || choices.size() == 0) {
-                return Flux.empty();
+                ChatCompletionResponse emptyResponse = ChatCompletionResponse.builder()
+                        .id(chunk.path("id").asText("deepseek-" + java.util.UUID.randomUUID()))
+                        .object("chat.completion.chunk")
+                        .created(chunk.path("created").asLong(System.currentTimeMillis() / 1000))
+                        .model(chunk.path("model").asText("deepseek"))
+                        .choices(java.util.Collections.emptyList())
+                        .build();
+                return Flux.just(emptyResponse);
             }
 
             JsonNode delta = choices.get(0).path("delta");
             
             // 提取推理内容
-            String reasoningContent = delta.path("reasoning_content").asText("");
+            String reasoningContent = "";
+            if (delta.has("reasoning_content")) {
+                reasoningContent = delta.path("reasoning_content").asText("");
+            }
             
             // 提取普通内容
-            String content = delta.path("content").asText("");
-            
-            // 创建响应列表
-            Flux<ChatCompletionResponse> responses = Flux.empty();
-            
-            // 处理推理内容
-            if (!reasoningContent.isEmpty()) {
-                log.debug("🧠 提取到DeepSeek推理内容，长度: {}", reasoningContent.length());
-                
-                ChatCompletionResponse.Delta reasoningDelta = ChatCompletionResponse.Delta.builder()
-                        .reasoning(reasoningContent)
-                        .build();
-                
-                ChatCompletionResponse.Choice reasoningChoice = ChatCompletionResponse.Choice.builder()
-                        .index(0)
-                        .delta(reasoningDelta)
-                        .build();
-
-                ChatCompletionResponse reasoningResponse = ChatCompletionResponse.builder()
-                        .id(chunk.path("id").asText("deepseek-" + java.util.UUID.randomUUID()))
-                        .object("chat.completion.chunk")
-                        .created(chunk.path("created").asLong(System.currentTimeMillis() / 1000))
-                        .model(chunk.path("model").asText("deepseek"))
-                        .choices(java.util.Collections.singletonList(reasoningChoice))
-                        .build();
-                        
-                responses = responses.concatWith(Flux.just(reasoningResponse));
+            String content = "";
+            if (delta.has("content")) {
+                content = delta.path("content").asText("");
             }
             
-            // 处理普通内容
-            if (!content.isEmpty()) {
-                log.debug("💬 提取到DeepSeek内容，长度: {}", content.length());
-                
-                ChatCompletionResponse.Delta contentDelta = ChatCompletionResponse.Delta.builder()
-                        .content(content)
-                        .build();
-                
-                ChatCompletionResponse.Choice contentChoice = ChatCompletionResponse.Choice.builder()
-                        .index(0)
-                        .delta(contentDelta)
-                        .finishReason(choices.get(0).path("finish_reason").asText(null))
-                        .build();
-
-                ChatCompletionResponse contentResponse = ChatCompletionResponse.builder()
-                        .id(chunk.path("id").asText("deepseek-" + java.util.UUID.randomUUID()))
-                        .object("chat.completion.chunk")
-                        .created(chunk.path("created").asLong(System.currentTimeMillis() / 1000))
-                        .model(chunk.path("model").asText("deepseek"))
-                        .choices(java.util.Collections.singletonList(contentChoice))
-                        .build();
-                        
-                responses = responses.concatWith(Flux.just(contentResponse));
-            }
+            // 创建响应
+            ChatCompletionResponse.Delta responseDelta = ChatCompletionResponse.Delta.builder()
+                    .content(content)
+                    .reasoning(reasoningContent)
+                    .build();
             
-            return responses.filter(response -> response != null);
+            ChatCompletionResponse.Choice choice = ChatCompletionResponse.Choice.builder()
+                    .index(0)
+                    .delta(responseDelta)
+                    .finishReason(choices.get(0).path("finish_reason").asText(null))
+                    .build();
+
+            ChatCompletionResponse response = ChatCompletionResponse.builder()
+                    .id(chunk.path("id").asText("deepseek-" + java.util.UUID.randomUUID()))
+                    .object("chat.completion.chunk")
+                    .created(chunk.path("created").asLong(System.currentTimeMillis() / 1000))
+                    .model(chunk.path("model").asText("deepseek"))
+                    .choices(java.util.Collections.singletonList(choice))
+                    .build();
+            
+            return Flux.just(response);
             
         } catch (Exception e) {
             log.error("❌ 解析DeepSeek JSON chunk失败: {}", json, e);
-            return Flux.empty();
+            // 即使解析失败，也要返回一个空响应以确保流继续
+            ChatCompletionResponse errorResponse = ChatCompletionResponse.builder()
+                    .id("deepseek-error-" + java.util.UUID.randomUUID())
+                    .object("chat.completion.chunk")
+                    .created(System.currentTimeMillis() / 1000)
+                    .model("deepseek")
+                    .choices(java.util.Collections.emptyList())
+                    .build();
+            return Flux.just(errorResponse);
         }
     }
 
@@ -276,6 +280,10 @@ public class DeepSeekChatApi implements ChatApi {
      * 获取提供者配置
      */
     private MultiModelProperties.ProviderConfig getProviderConfig() {
-        return multiModelProperties.getProviders().get(PROVIDER_NAME);
+        Map<String, MultiModelProperties.ProviderConfig> providers = multiModelProperties.getProviders();
+        if (providers == null) {
+            return null;
+        }
+        return providers.get(PROVIDER_NAME);
     }
 }

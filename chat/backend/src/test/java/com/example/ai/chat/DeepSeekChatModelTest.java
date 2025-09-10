@@ -1,6 +1,8 @@
 package com.example.ai.chat;
 
 import com.example.ai.api.impl.DeepSeekChatApi;
+import com.example.dto.request.ChatCompletionRequest;
+import com.example.dto.response.ChatCompletionResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,7 +18,6 @@ import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,28 +53,28 @@ class DeepSeekChatModelTest {
         Prompt prompt = new Prompt(messages);
         
         // 使用正确的ChatCompletionResponse类型
-        com.example.ai.api.ChatCompletionResponse response = com.example.ai.api.ChatCompletionResponse.builder()
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
             .id("test-id")
             .object("chat.completion")
             .created(System.currentTimeMillis() / 1000)
             .model("deepseek-test")
-            .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+            .choices(List.of(ChatCompletionResponse.Choice.builder()
                 .index(0)
-                .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                .delta(ChatCompletionResponse.Delta.builder()
                     .content("Hi there!")
                     .build())
                 .build()))
             .build();
         
-        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
-            .thenReturn(Flux.just(com.example.ai.api.ChatCompletionResponse.builder()
+        when(apiClient.chatCompletionStream(any(ChatCompletionRequest.class)))
+            .thenReturn(Flux.just(ChatCompletionResponse.builder()
                 .id("test-id")
                 .object("chat.completion")
                 .created(System.currentTimeMillis() / 1000)
                 .model("deepseek-test")
-                .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                .choices(List.of(ChatCompletionResponse.Choice.builder()
                     .index(0)
-                    .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                    .delta(ChatCompletionResponse.Delta.builder()
                         .content("Hi there!")
                         .build())
                     .build()))
@@ -87,7 +88,7 @@ class DeepSeekChatModelTest {
         assertEquals(1, chatResponse.getResults().size());
         assertEquals("Hi there!", chatResponse.getResults().get(0).getOutput().getText());
         
-        verify(apiClient).chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class));
+        verify(apiClient).chatCompletionStream(any(ChatCompletionRequest.class));
     }
 
     @Test
@@ -97,54 +98,54 @@ class DeepSeekChatModelTest {
         Prompt prompt = new Prompt(messages);
         
         // 使用正确的ChatCompletionResponse类型
-        com.example.ai.api.ChatCompletionResponse response1 = com.example.ai.api.ChatCompletionResponse.builder()
+        ChatCompletionResponse response1 = ChatCompletionResponse.builder()
             .id("test-id-1")
             .object("chat.completion.chunk")
             .created(System.currentTimeMillis() / 1000)
             .model("deepseek-test")
-            .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+            .choices(List.of(ChatCompletionResponse.Choice.builder()
                 .index(0)
-                .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                .delta(ChatCompletionResponse.Delta.builder()
                     .content("Hi")
                     .build())
                 .build()))
             .build();
             
-        com.example.ai.api.ChatCompletionResponse response2 = com.example.ai.api.ChatCompletionResponse.builder()
+        ChatCompletionResponse response2 = ChatCompletionResponse.builder()
             .id("test-id-2")
             .object("chat.completion.chunk")
             .created(System.currentTimeMillis() / 1000)
             .model("deepseek-test")
-            .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+            .choices(List.of(ChatCompletionResponse.Choice.builder()
                 .index(0)
-                .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                .delta(ChatCompletionResponse.Delta.builder()
                     .content(" there!")
                     .build())
                 .build()))
             .build();
         
-        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
+        when(apiClient.chatCompletionStream(any(ChatCompletionRequest.class)))
             .thenReturn(Flux.just(
-                com.example.ai.api.ChatCompletionResponse.builder()
+                ChatCompletionResponse.builder()
                     .id("test-id-1")
                     .object("chat.completion.chunk")
                     .created(System.currentTimeMillis() / 1000)
                     .model("deepseek-test")
-                    .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                    .choices(List.of(ChatCompletionResponse.Choice.builder()
                         .index(0)
-                        .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                        .delta(ChatCompletionResponse.Delta.builder()
                             .content("Hi")
                             .build())
                         .build()))
                     .build(),
-                com.example.ai.api.ChatCompletionResponse.builder()
+                ChatCompletionResponse.builder()
                     .id("test-id-2")
                     .object("chat.completion.chunk")
                     .created(System.currentTimeMillis() / 1000)
                     .model("deepseek-test")
-                    .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                    .choices(List.of(ChatCompletionResponse.Choice.builder()
                         .index(0)
-                        .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                        .delta(ChatCompletionResponse.Delta.builder()
                             .content(" there!")
                             .build())
                         .build()))
@@ -156,7 +157,7 @@ class DeepSeekChatModelTest {
             .expectNextCount(2)
             .verifyComplete();
             
-        verify(apiClient).chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class));
+        verify(apiClient).chatCompletionStream(any(ChatCompletionRequest.class));
     }
 
     @Test
@@ -165,7 +166,7 @@ class DeepSeekChatModelTest {
         List<Message> messages = List.of(new UserMessage("Hello"));
         Prompt prompt = new Prompt(messages);
         
-        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
+        when(apiClient.chatCompletionStream(any(ChatCompletionRequest.class)))
             .thenReturn(Flux.error(new RuntimeException("API Error")));
 
         // When & Then
@@ -173,7 +174,7 @@ class DeepSeekChatModelTest {
             .expectError(RuntimeException.class)
             .verify();
             
-        verify(apiClient).chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class));
+        verify(apiClient).chatCompletionStream(any(ChatCompletionRequest.class));
     }
 
     @Test
@@ -289,15 +290,15 @@ class DeepSeekChatModelTest {
         Generation generation = new Generation(new AssistantMessage("I'm thinking..."));
         ChatResponse expectedResponse = new ChatResponse(List.of(generation));
         
-        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
-            .thenReturn(Flux.just(com.example.ai.api.ChatCompletionResponse.builder()
+        when(apiClient.chatCompletionStream(any(ChatCompletionRequest.class)))
+            .thenReturn(Flux.just(ChatCompletionResponse.builder()
                 .id("test-id")
                 .object("chat.completion")
                 .created(System.currentTimeMillis() / 1000)
                 .model("deepseek-test")
-                .choices(List.of(com.example.ai.api.ChatCompletionResponse.Choice.builder()
+                .choices(List.of(ChatCompletionResponse.Choice.builder()
                     .index(0)
-                    .delta(com.example.ai.api.ChatCompletionResponse.Delta.builder()
+                    .delta(ChatCompletionResponse.Delta.builder()
                         .content("I'm thinking...")
                         .build())
                     .build()))
@@ -326,11 +327,16 @@ class DeepSeekChatModelTest {
 
     @Test
     void testStream_WithNullMessages() {
-        // Given - 创建一个带有null消息列表的Prompt
-        Prompt prompt = new Prompt((List<Message>) null);
+        // Given - 直接测试null消息的情况，而不是通过Prompt构造函数
+        // 由于Spring的Prompt构造函数不允许null消息，我们直接测试模型内部的处理逻辑
+        List<Message> nullMessages = null;
+        
+        // 创建一个mock的Prompt来绕过构造函数限制
+        Prompt mockPrompt = mock(Prompt.class);
+        when(mockPrompt.getInstructions()).thenReturn(nullMessages);
 
         // When & Then - 期望抛出IllegalArgumentException
-        StepVerifier.create(chatModel.stream(prompt))
+        StepVerifier.create(chatModel.stream(mockPrompt))
             .expectError(IllegalArgumentException.class)
             .verify();
     }
@@ -341,7 +347,7 @@ class DeepSeekChatModelTest {
         List<Message> messages = List.of(new UserMessage("Hello"));
         Prompt prompt = new Prompt(messages);
         
-        when(apiClient.chatCompletionStream(any(com.example.ai.api.ChatCompletionRequest.class)))
+        when(apiClient.chatCompletionStream(any(ChatCompletionRequest.class)))
             .thenReturn(Flux.error(new RuntimeException("API client error")));
 
         // When & Then

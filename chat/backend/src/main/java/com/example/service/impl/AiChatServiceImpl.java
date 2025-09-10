@@ -14,7 +14,6 @@ import com.example.service.SearchService;
 import com.example.service.chat.ChatErrorHandler;
 import com.example.service.chat.ModelSelector;
 import com.example.service.chat.PromptBuilder;
-import com.example.service.provider.ModelProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -109,19 +108,19 @@ public class AiChatServiceImpl implements AiChatService {
 
         try {
             // 选择模型提供者
-            ModelProvider provider = modelSelector.getModelProvider(params.getProviderName());
-            String actualModelName = modelSelector.getActualModelName(provider, params.getModelName());
+            String actualProviderName = modelSelector.getActualProviderName(params.getProviderName());
+            String actualModelName = modelSelector.getActualModelName(actualProviderName, params.getModelName());
             
             // 构建聊天请求
             ChatRequest request = ChatRequest.builder()
                     .conversationId(params.getConversationId())
-                    .providerName(params.getProviderName())
+                    .providerName(actualProviderName)
                     .modelName(actualModelName)
                     .fullPrompt(params.getPrompt())
                     .deepThinking(params.isDeepThinking())
                     .build();
 
-            log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", provider.getDisplayName(), actualModelName, params.isDeepThinking());
+            log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", actualProviderName, actualModelName, params.isDeepThinking());
             
             return chatModelService.streamChat(request)
                     .timeout(streamingProperties.getResponseTimeout())
@@ -171,7 +170,7 @@ public class AiChatServiceImpl implements AiChatService {
                         ModelSelector.ModelSelection selection = modelSelector.selectModelForUser(
                                 params.getUserId(), params.getProviderName(), params.getModelName());
                         executionParams = executionParams.toBuilder()
-                                .providerName(selection.provider().getProviderName())
+                                .providerName(selection.providerName())
                                 .modelName(selection.modelName())
                                 .build();
                     }

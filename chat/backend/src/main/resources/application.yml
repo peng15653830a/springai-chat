@@ -142,7 +142,7 @@ ai:
         enabled: ${GREATWALL_ENABLED:true}
         display-name: "长城大模型"
         api-key-env: "GREATWALL_API_KEY"
-        base-url: ${GREATWALL_BASE_URL:https://agent.ai.sinopec.com}
+        base-url: ${GREATWALL_BASE_URL:https://agent.ai.sinopec.com/aicoapi/gateway/v2/chatbot/api_run/1745897196_38b0ccad-62d4-49d2-a44a-8da43d8ab344}
         connect-timeout-ms: 15000
         read-timeout-ms: 60000
         models:

@@ -1,5 +1,6 @@
-package com.example.ai.api;
+package com.example.dto.response;
 
+import com.example.dto.request.ChatCompletionRequest;
 import lombok.Builder;
 import lombok.Data;
 

@@ -4,7 +4,9 @@ import com.example.ai.api.impl.GreatWallChatApi;
 import com.example.ai.chat.GreatWallChatModel;
 import com.example.ai.chat.GreatWallChatOptions;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -40,6 +42,19 @@ public class GreatWallConfig {
             .build();
             
         return new GreatWallChatModel(greatWallChatApi, defaultOptions);
+    }
+    
+    /**
+     * 创建长城大模型 ChatClient Bean
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "greatWallChatClient")
+    public ChatClient greatWallChatClient(@Qualifier("greatWallChatModel") ChatModel greatWallChatModel) {
+        log.info("🏗️ 创建长城大模型 ChatClient Bean");
+        
+        return ChatClient.builder(greatWallChatModel)
+                .defaultSystem("你是一个有用的AI助手。")
+                .build();
     }
     
     /**

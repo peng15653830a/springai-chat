@@ -1,10 +1,10 @@
 package com.example.service.chat;
 
+import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.common.UserModelPreferenceDto;
-import com.example.service.ModelManagementService;
-import com.example.service.provider.ModelProvider;
-import com.example.service.provider.ModelProviderManager;
+import com.example.service.ChatClientManager;
+import com.example.service.UserModelPreferenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,25 +21,29 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DefaultModelSelector implements ModelSelector {
 
-    private final ModelProviderManager providerManager;
-    private final ModelManagementService modelManagementService;
+    private final ChatClientManager chatClientManager;
+    private final UserModelPreferenceService userModelPreferenceService;
+    private final MultiModelProperties properties;
 
     @Override
-    public ModelProvider getModelProvider(String providerName) {
+    public String getActualProviderName(String providerName) {
         if (providerName != null && !providerName.trim().isEmpty()) {
-            // 使用指定的提供者
-            return providerManager.getProvider(providerName);
-        } else {
-            // 使用默认提供者
-            return providerManager.getDefaultProvider();
+            // 检查指定的提供者是否可用
+            if (chatClientManager.isAvailable(providerName)) {
+                return providerName;
+            } else {
+                log.warn("指定的提供者 {} 不可用，使用默认提供者", providerName);
+            }
         }
+        // 使用默认提供者
+        return properties.getDefaultProvider();
     }
 
     @Override
-    public String getActualModelName(ModelProvider provider, String modelName) {
+    public String getActualModelName(String providerName, String modelName) {
         if (modelName != null && !modelName.trim().isEmpty()) {
             // 验证指定的模型是否可用
-            List<ModelInfo> availableModels = provider.getAvailableModels();
+            List<ModelInfo> availableModels = chatClientManager.getModels(providerName);
             boolean modelExists = availableModels.stream()
                     .anyMatch(model -> modelName.equals(model.getName()));
             
@@ -52,14 +56,15 @@ public class DefaultModelSelector implements ModelSelector {
         }
         
         // 使用该提供者的第一个可用模型
-        List<ModelInfo> availableModels = provider.getAvailableModels();
+        List<ModelInfo> availableModels = chatClientManager.getModels(providerName);
         if (!availableModels.isEmpty()) {
             String defaultModel = availableModels.get(0).getName();
             log.debug("使用默认模型: {}", defaultModel);
             return defaultModel;
         }
         
-        throw new IllegalStateException("提供者 " + provider.getProviderName() + " 没有可用的模型");
+        // 如果都没有，使用全局默认模型
+        return properties.getDefaultModel();
     }
 
     @Override
@@ -68,24 +73,24 @@ public class DefaultModelSelector implements ModelSelector {
 
         // 如果明确指定了提供者和模型，直接使用
         if (providerName != null && modelName != null) {
-            ModelProvider provider = getModelProvider(providerName);
-            String actualModelName = getActualModelName(provider, modelName);
-            return new ModelSelection(provider, actualModelName);
+            String actualProviderName = getActualProviderName(providerName);
+            String actualModelName = getActualModelName(actualProviderName, modelName);
+            return new ModelSelection(actualProviderName, actualModelName);
         }
 
         // 尝试获取用户偏好
         if (userId != null) {
             try {
-                UserModelPreferenceDto userPreference = modelManagementService.getUserDefaultModel(userId);
+                UserModelPreferenceDto userPreference = userModelPreferenceService.getUserDefaultModel(userId);
                 if (userPreference != null) {
                     String preferredProvider = userPreference.getProviderName();
                     String preferredModel = userPreference.getModelName();
                     
                     log.debug("使用用户偏好模型: {} - {}", preferredProvider, preferredModel);
                     
-                    ModelProvider provider = getModelProvider(preferredProvider);
-                    String actualModelName = getActualModelName(provider, preferredModel);
-                    return new ModelSelection(provider, actualModelName);
+                    String actualProviderName = getActualProviderName(preferredProvider);
+                    String actualModelName = getActualModelName(actualProviderName, preferredModel);
+                    return new ModelSelection(actualProviderName, actualModelName);
                 }
             } catch (Exception e) {
                 log.warn("获取用户模型偏好失败，使用默认模型", e);
@@ -93,8 +98,8 @@ public class DefaultModelSelector implements ModelSelector {
         }
 
         // 使用系统默认选择
-        ModelProvider provider = getModelProvider(providerName);
-        String actualModelName = getActualModelName(provider, modelName);
-        return new ModelSelection(provider, actualModelName);
+        String actualProviderName = getActualProviderName(providerName);
+        String actualModelName = getActualModelName(actualProviderName, modelName);
+        return new ModelSelection(actualProviderName, actualModelName);
     }
 }

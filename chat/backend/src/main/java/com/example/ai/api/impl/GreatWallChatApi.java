@@ -1,8 +1,8 @@
 package com.example.ai.api.impl;
 
 import com.example.ai.api.ChatApi;
-import com.example.ai.api.ChatCompletionRequest;
-import com.example.ai.api.ChatCompletionResponse;
+import com.example.dto.request.ChatCompletionRequest;
+import com.example.dto.response.ChatCompletionResponse;
 import com.example.config.GreatWallProperties;
 import com.example.config.MultiModelProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,6 +20,7 @@ import reactor.netty.http.client.HttpClient;
 
 import javax.net.ssl.SSLException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -61,9 +62,9 @@ public class GreatWallChatApi implements ChatApi {
 
         try {
             String requestBody = buildRequestBody(request);
-            String apiUrl = buildApiUrl(request.getModel());
-            
+
             MultiModelProperties.ProviderConfig providerConfig = getProviderConfig();
+            String apiUrl = providerConfig.getBaseUrl();
             String apiKey = multiModelProperties.getApiKey(PROVIDER_NAME);
             
             return webClient.post()
@@ -107,7 +108,10 @@ public class GreatWallChatApi implements ChatApi {
      */
     private WebClient createWebClient(WebClient.Builder webClientBuilder) {
         try {
-            boolean skipSslVerification = greatWallProperties != null && greatWallProperties.getSsl().isSkipVerification();
+            // 添加空值检查
+            boolean skipSslVerification = greatWallProperties != null && 
+                greatWallProperties.getSsl() != null && 
+                greatWallProperties.getSsl().isSkipVerification();
             
             if (skipSslVerification) {
                 log.warn("⚠️ 长城大模型跳过SSL证书验证（仅用于开发环境）");
@@ -172,10 +176,7 @@ public class GreatWallChatApi implements ChatApi {
      * 构建API URL
      */
     private String buildApiUrl(String modelName) {
-        MultiModelProperties.ModelConfig modelConfig = getModelConfig(modelName);
-        String baseUrl = getApiEndpoint();
-        String apiRunId = modelConfig != null ? modelConfig.getApiRunId() : "default";
-        return baseUrl + "/v1/ai_serve/run/" + apiRunId + "/stream_call";
+        return getApiEndpoint();
     }
 
     /**
@@ -236,14 +237,66 @@ public class GreatWallChatApi implements ChatApi {
                     return Flux.empty();
 
                 default:
+                    // 如果没有event字段，尝试直接解析内容
+                    if (dataNode.has("choices")) {
+                        return parseChunkContentDirect(dataNode);
+                    }
                     log.debug("🔄 未处理的长城大模型事件: {}", event);
                     return Flux.empty();
             }
             
         } catch (Exception e) {
             log.error("❌ 解析长城大模型JSON行失败: {}", line, e);
+            // 即使解析失败，也要返回一个空响应以确保流继续
+            ChatCompletionResponse errorResponse = ChatCompletionResponse.builder()
+                    .id("greatwall-error-" + UUID.randomUUID())
+                    .object("chat.completion.chunk")
+                    .created(System.currentTimeMillis() / 1000)
+                    .model("greatwall")
+                    .choices(new ArrayList<>())
+                    .build();
+            return Flux.just(errorResponse);
+        }
+    }
+
+    /**
+     * 直接解析chunk内容（没有event字段的情况）
+     */
+    private Flux<ChatCompletionResponse> parseChunkContentDirect(JsonNode dataNode) {
+        JsonNode choices = dataNode.path("choices");
+        
+        if (!choices.isArray() || choices.size() == 0) {
             return Flux.empty();
         }
+
+        JsonNode delta = choices.get(0).path("delta");
+        String content = delta.path("content").asText("");
+
+        if (content.isEmpty()) {
+            return Flux.empty();
+        }
+
+        log.debug("💬 长城大模型内容片段: {}", content);
+
+        // 转换为标准化响应
+        ChatCompletionResponse.Delta deltaObj = ChatCompletionResponse.Delta.builder()
+                .content(content)
+                .build();
+        
+        ChatCompletionResponse.Choice choice = ChatCompletionResponse.Choice.builder()
+                .index(0)
+                .delta(deltaObj)
+                .build();
+
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .id("greatwall-" + UUID.randomUUID())
+                .object("chat.completion.chunk")
+                .created(System.currentTimeMillis() / 1000)
+                .model(dataNode.path("model").asText("greatwall"))
+                .choices(java.util.Collections.singletonList(choice))
+                .build();
+        
+        return Flux.just(response);
     }
 
     /**

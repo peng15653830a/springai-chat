@@ -2,7 +2,7 @@ package com.example.service.impl;
 
 import com.example.dto.request.ChatRequest;
 import com.example.dto.response.SseEventResponse;
-import com.example.service.ChatModelRegistry;
+import com.example.service.ChatClientManager;
 import com.example.service.ChatModelService;
 import com.example.service.MessageService;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 
 /**
  * 聊天模型服务实现
- * 使用ChatModelRegistry管理的ChatClient进行统一的聊天调用
+ * 使用ChatClientManager获取ChatClient进行聊天调用
  * 
  * @author xupeng
  */
@@ -21,12 +21,12 @@ import reactor.core.publisher.Mono;
 @Service
 public class ChatModelServiceImpl implements ChatModelService {
 
-    private final ChatModelRegistry chatModelRegistry;
+    private final ChatClientManager chatClientManager;
     private final MessageService messageService;
 
-    public ChatModelServiceImpl(ChatModelRegistry chatModelRegistry,
+    public ChatModelServiceImpl(ChatClientManager chatClientManager,
                                MessageService messageService) {
-        this.chatModelRegistry = chatModelRegistry;
+        this.chatClientManager = chatClientManager;
         this.messageService = messageService;
     }
 
@@ -59,7 +59,7 @@ public class ChatModelServiceImpl implements ChatModelService {
 
     @Override
     public boolean isModelAvailable(String providerName, String modelName) {
-        return chatModelRegistry.isModelAvailable(providerName, modelName);
+        return chatClientManager.isAvailable(providerName);
     }
 
     /**
@@ -68,8 +68,7 @@ public class ChatModelServiceImpl implements ChatModelService {
     private Flux<SseEventResponse> callChatModel(ChatRequest request) {
         try {
             // 获取对应的ChatClient
-            ChatClient chatClient = chatModelRegistry.getChatClient(
-                request.getProviderName(), request.getModelName());
+            ChatClient chatClient = chatClientManager.getChatClient(request.getProviderName());
             
             // 构建聊天请求并流式执行
             return chatClient.prompt()

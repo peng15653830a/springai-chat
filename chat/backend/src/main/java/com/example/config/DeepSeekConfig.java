@@ -4,7 +4,9 @@ import com.example.ai.api.impl.DeepSeekChatApi;
 import com.example.ai.chat.DeepSeekChatModel;
 import com.example.ai.chat.DeepSeekChatOptions;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -41,6 +43,19 @@ public class DeepSeekConfig {
             .build();
             
         return new DeepSeekChatModel(deepSeekChatApi, defaultOptions);
+    }
+    
+    /**
+     * 创建DeepSeek ChatClient Bean
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "deepSeekChatClient")
+    public ChatClient deepSeekChatClient(@Qualifier("deepSeekChatModel") ChatModel deepSeekChatModel) {
+        log.info("🏗️ 创建DeepSeek ChatClient Bean");
+        
+        return ChatClient.builder(deepSeekChatModel)
+                .defaultSystem("你是一个有用的AI助手。")
+                .build();
     }
     
     /**

@@ -1,4 +1,4 @@
-package com.example.ai.api;
+package com.example.dto.request;
 
 import lombok.Builder;
 import lombok.Data;

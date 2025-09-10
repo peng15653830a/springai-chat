@@ -3,7 +3,7 @@ package com.example.service.api.impl;
 import com.example.config.GreatWallProperties;
 import com.example.config.MultiModelProperties;
 import com.example.ai.api.impl.GreatWallChatApi;
-import com.example.ai.api.ChatCompletionRequest;
+import com.example.dto.request.ChatCompletionRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.lenient;
 
@@ -50,6 +49,12 @@ class GreatWallApiClientTest {
 
     @BeforeEach
     void setUp() {
+        // 不在全局setUp中进行过度mocking，避免UnnecessaryStubbing
+        // 各个测试方法有需要时单独mock
+    }
+
+    @Test
+    void testConstructor() {
         // 模拟配置
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
@@ -70,19 +75,19 @@ class GreatWallApiClientTest {
         lenient().when(multiModelProperties.getProviders()).thenReturn(providers);
         lenient().when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
         
         // 模拟WebClient.Builder
         WebClient mockWebClient = mock(WebClient.class);
-        when(webClientBuilder.codecs(any())).thenReturn(webClientBuilder);
+        when(webClientBuilder.codecs(any())).thenAnswer(invocation -> {
+            // 返回this以支持链式调用
+            return webClientBuilder;
+        });
         when(webClientBuilder.build()).thenReturn(mockWebClient);
-    }
 
-    @Test
-    void testConstructor() {
         // 执行测试
         apiClient = new GreatWallChatApi(
                 webClientBuilder,
@@ -97,24 +102,100 @@ class GreatWallApiClientTest {
 
     @Test
     void testConstructorWithMissingProviderConfig() {
-        // 重新设置mock，避免不必要的stubbing
-        reset(multiModelProperties, greatWallProperties, webClientBuilder);
-        
-        // 准备测试数据 - 移除提供者配�?
+        // 准备测试数据 - 移除提供者配置
         when(multiModelProperties.getProviders()).thenReturn(new HashMap<>());
+        
+        // 模拟长城大模型属性
+        GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
+        ssl.setSkipVerification(false);
+        when(greatWallProperties.getSsl()).thenReturn(ssl);
+        
+        // 模拟WebClient.Builder
+        WebClient mockWebClient = mock(WebClient.class);
+        when(webClientBuilder.codecs(any())).thenAnswer(invocation -> {
+            // 返回this以支持链式调用
+            return webClientBuilder;
+        });
+        when(webClientBuilder.build()).thenReturn(mockWebClient);
 
-        // 验证异常
-        assertThatThrownBy(() -> new GreatWallChatApi(
+        // 执行测试
+        GreatWallChatApi apiClient = new GreatWallChatApi(
                 webClientBuilder,
                 objectMapper,
                 multiModelProperties,
                 greatWallProperties
-        )).isNotNull(); // 只验证对象能正常创建
+        );
+
+        // 验证结果
+        assertThat(apiClient).isNotNull();
+    }
+
+    @Test
+    void testConstructorWithNullProviderConfig() {
+        // 准备测试数据 - null提供者配置
+        when(multiModelProperties.getProviders()).thenReturn(null);
+        
+        // 模拟长城大模型属性
+        GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
+        ssl.setSkipVerification(false);
+        when(greatWallProperties.getSsl()).thenReturn(ssl);
+        
+        // 模拟WebClient.Builder
+        WebClient mockWebClient = mock(WebClient.class);
+        when(webClientBuilder.codecs(any())).thenAnswer(invocation -> {
+            // 返回this以支持链式调用
+            return webClientBuilder;
+        });
+        when(webClientBuilder.build()).thenReturn(mockWebClient);
+
+        // 执行测试
+        GreatWallChatApi apiClient = new GreatWallChatApi(
+                webClientBuilder,
+                objectMapper,
+                multiModelProperties,
+                greatWallProperties
+        );
+
+        // 验证结果
+        assertThat(apiClient).isNotNull();
     }
 
     @Test
     void testIsAvailableWithValidConfig() {
-        // 准备测试数据
+        // 模拟配置
+        Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
+        MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
+        providerConfig.setEnabled(true);
+        providerConfig.setBaseUrl("https://api.greatwall.com");
+        providerConfig.setConnectTimeoutMs(5000);
+        providerConfig.setReadTimeoutMs(30000);
+        
+        // 模拟模型配置
+        MultiModelProperties.ModelConfig modelConfig = new MultiModelProperties.ModelConfig();
+        modelConfig.setName("greatwall-large");
+        modelConfig.setApiRunId("test-api-run-id");
+        modelConfig.setTpuidPrefix("test-user");
+        providerConfig.setModels(List.of(modelConfig));
+        
+        providers.put("greatwall", providerConfig);
+        
+        lenient().when(multiModelProperties.getProviders()).thenReturn(providers);
+        lenient().when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
+        
+        // 模拟长城大模型属性
+        GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
+        ssl.setSkipVerification(false);
+        when(greatWallProperties.getSsl()).thenReturn(ssl);
+        
+        // 模拟WebClient.Builder
+        WebClient mockWebClient = mock(WebClient.class);
+        when(webClientBuilder.codecs(any())).thenAnswer(invocation -> {
+            // 返回this以支持链式调用
+            return webClientBuilder;
+        });
+        when(webClientBuilder.build()).thenReturn(mockWebClient);
+
+        // 执行测试
         apiClient = new GreatWallChatApi(
                 webClientBuilder,
                 objectMapper,
@@ -134,7 +215,7 @@ class GreatWallApiClientTest {
         // 重新设置mock，避免不必要的stubbing
         reset(multiModelProperties, greatWallProperties, webClientBuilder);
         
-        // 准备测试数据 - 禁用提供�?
+        // 准备测试数据 - 禁用提供者
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
         providerConfig.setEnabled(false);
@@ -142,7 +223,7 @@ class GreatWallApiClientTest {
         providers.put("greatwall", providerConfig);
         when(multiModelProperties.getProviders()).thenReturn(providers);
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -190,7 +271,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -211,49 +292,6 @@ class GreatWallApiClientTest {
 
         // 验证结果
         assertThat(available).isFalse();
-    }
-
-    @Test
-    void testGetApiEndpoint() {
-        // 准备测试数据
-        apiClient = new GreatWallChatApi(
-                webClientBuilder,
-                objectMapper,
-                multiModelProperties,
-                greatWallProperties
-        );
-
-        // 执行测试
-        String endpoint = apiClient.getApiEndpoint();
-
-        // 验证结果
-        assertThat(endpoint).isEqualTo("https://api.greatwall.com");
-    }
-
-    // ========================= 新增的测试用�?=========================
-
-    @Test
-    void testConstructorWithNullProviderConfig() {
-        // 重新设置mock，避免不必要的stubbing
-        reset(multiModelProperties, greatWallProperties, webClientBuilder);
-        
-        // 准备测试数据 - null提供者配�?
-        when(multiModelProperties.getProviders()).thenReturn(null);
-        
-        // Mock WebClient.Builder properly to avoid NullPointerException
-        WebClient mockWebClient = mock(WebClient.class);
-        when(webClientBuilder.codecs(any())).thenReturn(webClientBuilder);
-        when(webClientBuilder.build()).thenReturn(mockWebClient);
-
-        // GreatWallChatApi构造函数不会抛出IllegalStateException，而是正常初始�?
-        // 所以这个测试需要修�?
-        GreatWallChatApi apiClient = new GreatWallChatApi(
-                webClientBuilder,
-                objectMapper,
-                multiModelProperties,
-                greatWallProperties
-        );
-        assertThat(apiClient).isNotNull();
     }
 
     @Test
@@ -281,7 +319,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn(null);
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -329,7 +367,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key🌟🔍🚀");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -382,7 +420,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn(longApiKey.toString());
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -403,6 +441,56 @@ class GreatWallApiClientTest {
 
         // 验证结果
         assertThat(available).isTrue();
+    }
+
+    @Test
+    void testGetApiEndpoint() {
+        // 模拟配置
+        Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
+        MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
+        providerConfig.setEnabled(true);
+        providerConfig.setBaseUrl("https://api.greatwall.com");
+        providerConfig.setConnectTimeoutMs(5000);
+        providerConfig.setReadTimeoutMs(30000);
+        
+        // 模拟模型配置
+        MultiModelProperties.ModelConfig modelConfig = new MultiModelProperties.ModelConfig();
+        modelConfig.setName("greatwall-large");
+        modelConfig.setApiRunId("test-api-run-id");
+        modelConfig.setTpuidPrefix("test-user");
+        providerConfig.setModels(List.of(modelConfig));
+        
+        providers.put("greatwall", providerConfig);
+        
+        lenient().when(multiModelProperties.getProviders()).thenReturn(providers);
+        lenient().when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
+        
+        // 模拟长城大模型属性
+        GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
+        ssl.setSkipVerification(false);
+        when(greatWallProperties.getSsl()).thenReturn(ssl);
+        
+        // 模拟WebClient.Builder
+        WebClient mockWebClient = mock(WebClient.class);
+        when(webClientBuilder.codecs(any())).thenAnswer(invocation -> {
+            // 返回this以支持链式调用
+            return webClientBuilder;
+        });
+        when(webClientBuilder.build()).thenReturn(mockWebClient);
+
+        // 执行测试
+        apiClient = new GreatWallChatApi(
+                webClientBuilder,
+                objectMapper,
+                multiModelProperties,
+                greatWallProperties
+        );
+
+        // 执行测试
+        String apiEndpoint = apiClient.getApiEndpoint();
+
+        // 验证结果
+        assertThat(apiEndpoint).isEqualTo("https://api.greatwall.com");
     }
 
     @Test
@@ -429,7 +517,7 @@ class GreatWallApiClientTest {
         lenient().when(multiModelProperties.getProviders()).thenReturn(providers);
         lenient().when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -482,7 +570,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -529,7 +617,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -576,7 +664,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -604,7 +692,7 @@ class GreatWallApiClientTest {
         // 重新设置mock，避免不必要的stubbing
         reset(multiModelProperties, greatWallProperties, webClientBuilder);
         
-        // 准备测试数据 - Unicode字符提供者名�?
+        // 准备测试数据 - Unicode字符提供者名称
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
         providerConfig.setEnabled(true);
@@ -619,13 +707,13 @@ class GreatWallApiClientTest {
         modelConfig.setTpuidPrefix("test-user");
         providerConfig.setModels(List.of(modelConfig));
         
-        // 使用正确的提供者名�?greatwall"
+        // 使用正确的提供者名称"greatwall"
         providers.put("greatwall", providerConfig);
         
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -679,7 +767,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -706,7 +794,7 @@ class GreatWallApiClientTest {
         // 重新设置mock，避免不必要的stubbing
         reset(multiModelProperties, greatWallProperties, webClientBuilder);
         
-        // 准备测试数据 - 零超时设�?
+        // 准备测试数据 - 零超时设置
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
         providerConfig.setEnabled(true);
@@ -726,7 +814,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -755,7 +843,7 @@ class GreatWallApiClientTest {
         // 重新设置mock，避免不必要的stubbing
         reset(multiModelProperties, greatWallProperties, webClientBuilder);
         
-        // 准备测试数据 - 负超时设�?
+        // 准备测试数据 - 负超时设置
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
         providerConfig.setEnabled(true);
@@ -775,7 +863,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -819,7 +907,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -846,14 +934,14 @@ class GreatWallApiClientTest {
         // 重新设置mock，避免不必要的stubbing
         reset(multiModelProperties, greatWallProperties, webClientBuilder);
         
-        // 准备测试数据 - 空模型配�?
+        // 准备测试数据 - 空模型配置
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
         providerConfig.setBaseUrl("https://api.greatwall.com");
         providerConfig.setConnectTimeoutMs(5000);
         providerConfig.setReadTimeoutMs(30000);
         
-        // 模拟空模型配�?
+        // 模拟空模型配置
         providerConfig.setModels(new ArrayList<>());
         
         providers.put("greatwall", providerConfig);
@@ -861,7 +949,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?
+        // 模拟长城大模型属性
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(false);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -908,7 +996,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?- SSL跳过验证为true
+        // 模拟长城大模型属性- SSL跳过验证为true
         GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
         ssl.setSkipVerification(true);
         when(greatWallProperties.getSsl()).thenReturn(ssl);
@@ -957,7 +1045,7 @@ class GreatWallApiClientTest {
         when(multiModelProperties.getProviders()).thenReturn(providers);
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟长城大模型属�?- null SSL配置
+        // 模拟长城大模型属性- null SSL配置
         when(greatWallProperties.getSsl()).thenReturn(null);
         
         // 模拟WebClient.Builder
@@ -999,16 +1087,23 @@ class GreatWallApiClientTest {
             java.util.Map.of("greatwall", providerConfig));
         when(multiModelProperties.getApiKey("greatwall")).thenReturn("test-api-key");
         
-        // 模拟WebClient.Builder的链式调�?
-        when(webClientBuilder.clientConnector(any())).thenReturn(webClientBuilder);
-        when(webClientBuilder.codecs(any())).thenReturn(webClientBuilder);
+        // 模拟长城大模型属性
+        GreatWallProperties.Ssl ssl = new GreatWallProperties.Ssl();
+        ssl.setSkipVerification(false);
+        when(greatWallProperties.getSsl()).thenReturn(ssl);
+        
+        // 模拟WebClient.Builder的链式调用
+        when(webClientBuilder.codecs(any())).thenAnswer(invocation -> {
+            // 返回this以支持链式调用
+            return webClientBuilder;
+        });
         when(webClientBuilder.build()).thenReturn(webClient);
         
         GreatWallChatApi apiClient = new GreatWallChatApi(webClientBuilder, objectMapper, multiModelProperties, greatWallProperties);
         
-        // 使用新的ChatCompletionRequest构建�?
-        List<com.example.ai.api.ChatCompletionRequest.ChatMessage> messages = List.of(
-            com.example.ai.api.ChatCompletionRequest.ChatMessage.builder()
+        // 使用新的ChatCompletionRequest构建器
+        List<ChatCompletionRequest.ChatMessage> messages = List.of(
+            ChatCompletionRequest.ChatMessage.builder()
                 .role("user")
                 .content("Hello")
                 .build()
@@ -1035,7 +1130,7 @@ class GreatWallApiClientTest {
         when(requestHeadersSpec.accept(any())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToFlux(String.class)).thenReturn(Flux.just(
-            "{\"event\":\"llm_chunk\",\"data\":{\"choices\":[{\"delta\":{\"content\":\"test\"}}]}}",
+            "{\"event\":\"llm_chunk\",\"data\":{\"choices\":[{\"delta\":{\"content\":\"test response\"}}]}}",
             "[DONE]"
         ));
 

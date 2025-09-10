@@ -1,5 +1,7 @@
 package com.example.ai.api;
 
+import com.example.dto.request.ChatCompletionRequest;
+import com.example.dto.response.ChatCompletionResponse;
 import reactor.core.publisher.Flux;
 
 /**

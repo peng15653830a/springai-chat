@@ -1,8 +1,8 @@
 package com.example.ai.chat;
 
 import com.example.ai.api.ChatApi;
-import com.example.ai.api.ChatCompletionRequest;
-import com.example.ai.api.ChatCompletionResponse;
+import com.example.dto.request.ChatCompletionRequest;
+import com.example.dto.response.ChatCompletionResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
