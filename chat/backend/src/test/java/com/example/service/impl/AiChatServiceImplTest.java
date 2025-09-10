@@ -1,11 +1,14 @@
 package com.example.service.impl;
 
 import com.example.config.ChatStreamingProperties;
-import com.example.dto.request.StreamChatRequest;
 import com.example.dto.request.ChatExecutionParams;
-import com.example.entity.Message;
-import com.example.service.*;
+import com.example.dto.request.StreamChatRequest;
 import com.example.dto.response.SseEventResponse;
+import com.example.entity.Message;
+import com.example.service.ChatModelService;
+import com.example.service.ConversationService;
+import com.example.service.MessageService;
+import com.example.service.SearchService;
 import com.example.service.chat.ChatErrorHandler;
 import com.example.service.chat.ModelSelector;
 import com.example.service.chat.PromptBuilder;
@@ -21,14 +24,10 @@ import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
 
-import static com.example.service.constants.AiChatConstants.ROLE_ASSISTANT;
 import static com.example.service.constants.AiChatConstants.ROLE_USER;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 /**
  * AiChatServiceImpl测试类
@@ -65,8 +64,8 @@ class AiChatServiceImplTest {
     @InjectMocks
     private AiChatServiceImpl aiChatService;
 
-    private Long conversationId = 1L;
-    private String userMessage = "Hello, AI!";
+    private final Long conversationId = 1L;
+    private final String userMessage = "Hello, AI!";
 
     // Helper method to create Message objects
     private Message createMessage(Long id, Long conversationId, String role, String content) {
@@ -79,16 +78,8 @@ class AiChatServiceImplTest {
         return message;
     }
 
-    private com.example.service.provider.ModelProvider mockProvider;
-
     @BeforeEach
     void setUp() {
-        // Create mock provider first
-        mockProvider = mock(com.example.service.provider.ModelProvider.class);
-        lenient().when(mockProvider.getDisplayName()).thenReturn("Test Provider");
-        
-        // Use lenient() to avoid UnnecessaryStubbingException
-        lenient().when(modelSelector.getModelProvider(any())).thenReturn(mockProvider);
         lenient().when(modelSelector.getActualModelName(any(), any())).thenReturn("default-model");
         lenient().when(chatModelService.streamChat(any())).thenReturn(Flux.just(SseEventResponse.chunk("Test response")));
         lenient().when(conversationService.generateTitleIfNeededAsync(any(), any())).thenReturn(Mono.empty());
@@ -163,13 +154,6 @@ class AiChatServiceImplTest {
             new SearchService.SearchContextResult("", null, Flux.just(SseEventResponse.search("Searching for AI...")));
         when(searchService.performSearchWithEvents(userMessage, true))
             .thenReturn(Mono.just(searchResult));
-
-        // Setup model selector mocks
-        com.example.service.provider.ModelProvider mockProvider = mock(com.example.service.provider.ModelProvider.class);
-        com.example.service.chat.ModelSelector.ModelSelection modelSelection =
-            new com.example.service.chat.ModelSelector.ModelSelection(mockProvider, "test-model");
-        when(modelSelector.selectModelForUser(123L, "test-provider", "test-model"))
-            .thenReturn(modelSelection);
 
         when(messageService.saveUserMessageAsync(anyLong(), anyString()))
             .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
