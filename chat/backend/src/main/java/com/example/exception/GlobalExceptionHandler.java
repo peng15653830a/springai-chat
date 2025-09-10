@@ -1,8 +1,6 @@
 package com.example.exception;
 
 import com.example.dto.response.ApiResponse;
-import java.util.HashMap;
-import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,6 +11,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 全局异常处理器，统一处理系统中抛出的异常

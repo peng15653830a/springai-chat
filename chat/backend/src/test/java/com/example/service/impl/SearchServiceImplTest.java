@@ -1,8 +1,8 @@
 package com.example.service.impl;
 
 import com.example.config.SearchProperties;
-import com.example.dto.response.SearchResult;
 import com.example.dto.request.TavilyRequest;
+import com.example.dto.response.SearchResult;
 import com.example.dto.response.TavilyResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpEntity;
@@ -19,6 +19,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,9 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import reactor.core.publisher.Flux;
-import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

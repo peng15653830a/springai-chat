@@ -1,7 +1,8 @@
 package com.example.entity;
 
-import java.time.LocalDateTime;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 /**
  * 用户实体类，表示系统的用户信息

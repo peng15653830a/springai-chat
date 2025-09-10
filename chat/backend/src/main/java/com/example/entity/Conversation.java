@@ -1,7 +1,8 @@
 package com.example.entity;
 
-import java.time.LocalDateTime;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 /**
  * 对话实体类，表示用户与AI的一次对话会话

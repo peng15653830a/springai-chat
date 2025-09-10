@@ -1,9 +1,9 @@
 package com.example.service.api.impl;
 
-import com.example.config.MultiModelProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.ai.api.impl.DeepSeekChatApi;
+import com.example.config.MultiModelProperties;
 import com.example.dto.request.ChatCompletionRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,9 +18,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**

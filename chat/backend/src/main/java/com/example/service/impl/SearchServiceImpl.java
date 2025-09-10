@@ -1,18 +1,14 @@
 package com.example.service.impl;
 
-import static com.example.service.constants.AiChatConstants.HTTP_STATUS_OK;
-
 import com.example.config.SearchProperties;
-import com.example.service.SearchService;
+import com.example.dto.request.TavilyRequest;
 import com.example.dto.response.SearchResult;
 import com.example.dto.response.SseEventResponse;
-import com.example.dto.request.TavilyRequest;
 import com.example.dto.response.TavilyResponse;
+import com.example.service.SearchService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -22,6 +18,12 @@ import org.apache.http.util.EntityUtils;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.example.service.constants.AiChatConstants.HTTP_STATUS_OK;
 
 /**
  * 搜索服务实现类

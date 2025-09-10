@@ -1,16 +1,17 @@
 package com.example.controller;
 
-import com.example.dto.response.ApiResponse;
 import com.example.dto.request.ConversationRequest;
 import com.example.dto.request.MessageRequest;
+import com.example.dto.response.ApiResponse;
 import com.example.entity.Conversation;
 import com.example.entity.Message;
 import com.example.service.ConversationService;
 import com.example.service.MessageService;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 对话控制器，处理对话相关的HTTP请求

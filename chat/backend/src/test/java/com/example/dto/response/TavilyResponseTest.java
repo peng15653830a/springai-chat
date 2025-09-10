@@ -1,8 +1,6 @@
 package com.example.dto.response;
 
-import com.example.dto.response.TavilyResponse;
 import com.example.dto.response.TavilyResponse.TavilySearchResult;
-import com.example.dto.response.SearchResult;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;

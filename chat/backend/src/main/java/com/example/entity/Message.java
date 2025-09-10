@@ -1,7 +1,8 @@
 package com.example.entity;
 
-import java.time.LocalDateTime;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 /**
  * 消息实体类，表示一次对话中的消息

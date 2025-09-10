@@ -1,9 +1,9 @@
 package com.example.dto;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import com.example.dto.request.ConversationRequest;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class ConversationRequestTest {
 

@@ -1,8 +1,8 @@
 package com.example.service.api.impl;
 
+import com.example.ai.api.impl.GreatWallChatApi;
 import com.example.config.GreatWallProperties;
 import com.example.config.MultiModelProperties;
-import com.example.ai.api.impl.GreatWallChatApi;
 import com.example.dto.request.ChatCompletionRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,15 +14,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 /**
  * 长城大模型API客户端单元测试

@@ -1,6 +1,5 @@
 package com.example.dto.response;
 
-import com.example.dto.response.SearchResult;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

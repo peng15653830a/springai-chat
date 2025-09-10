@@ -5,12 +5,13 @@ import com.example.entity.Message;
 import com.example.mapper.ConversationMapper;
 import com.example.mapper.MessageMapper;
 import com.example.service.ConversationService;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
-import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /**
  * 会话服务实现类（整合了ConversationManagementService的标题生成功能）

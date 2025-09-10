@@ -1,22 +1,22 @@
 package com.example.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
 import com.example.config.SearchProperties;
 import com.example.dto.response.SearchResult;
-import com.example.dto.response.SseEventResponse;
 import com.example.service.impl.SearchServiceImpl;
-import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 import reactor.test.StepVerifier;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 // 移除SpringBootTest相关注解，改为纯Mockito测试
 @ExtendWith(MockitoExtension.class)

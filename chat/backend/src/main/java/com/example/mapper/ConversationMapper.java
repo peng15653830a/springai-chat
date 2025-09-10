@@ -1,9 +1,10 @@
 package com.example.mapper;
 
 import com.example.entity.Conversation;
-import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * 对话Mapper接口，用于操作对话相关的数据库操作

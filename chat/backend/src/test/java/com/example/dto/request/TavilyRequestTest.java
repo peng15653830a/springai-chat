@@ -1,6 +1,5 @@
 package com.example.dto.request;
 
-import com.example.dto.request.TavilyRequest;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;

@@ -1,10 +1,11 @@
 package com.example.entity;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class UserTest {
 
