@@ -13,8 +13,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-import static com.example.service.constants.AiChatConstants.ROLE_ASSISTANT;
-import static com.example.service.constants.AiChatConstants.ROLE_USER;
+import static com.example.constant.AiChatConstants.ROLE_ASSISTANT;
+import static com.example.constant.AiChatConstants.ROLE_USER;
 
 /**
  * 消息服务实现类（整合了MessagePersistenceService的响应式功能）

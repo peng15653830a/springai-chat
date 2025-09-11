@@ -1,4 +1,4 @@
-package com.example.ai.api;
+package com.example.integration.ai.api;
 
 import com.example.dto.request.ChatCompletionRequest;
 import com.example.dto.response.ChatCompletionResponse;

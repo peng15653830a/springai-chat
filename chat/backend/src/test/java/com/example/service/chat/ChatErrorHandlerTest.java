@@ -1,5 +1,7 @@
 package com.example.service.chat;
 
+import com.example.handler.ChatErrorHandler;
+import com.example.handler.DefaultChatErrorHandler;
 import com.example.dto.response.SseEventResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,5 +1,6 @@
 package com.example.service.chat;
 
+import com.example.strategy.prompt.DefaultPromptBuilder;
 import com.example.entity.Message;
 import com.example.service.MessageService;
 import com.example.service.SearchService;

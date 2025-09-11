@@ -1,6 +1,6 @@
-package com.example.ai.chat;
+package com.example.integration.ai.greatwall;
 
-import com.example.ai.api.ChatApi;
+import com.example.integration.ai.api.ChatApi;
 import com.example.dto.request.ChatCompletionRequest;
 import com.example.dto.response.ChatCompletionResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -14,24 +14,22 @@ import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * DeepSeek推理模型ChatModel实现
+ * 长城大模型ChatModel实现
  * 使用标准化的ChatApi接口，符合Spring AI设计理念
  *
  * @author xupeng
  */
 @Slf4j
-public class DeepSeekChatModel implements ChatModel {
+public class GreatWallChatModel implements ChatModel {
 
     private final ChatApi chatApi;
-    private final DeepSeekChatOptions defaultOptions;
+    private final GreatWallChatOptions defaultOptions;
 
-    public DeepSeekChatModel(ChatApi chatApi, DeepSeekChatOptions defaultOptions) {
+    public GreatWallChatModel(ChatApi chatApi, GreatWallChatOptions defaultOptions) {
         this.chatApi = chatApi;
         this.defaultOptions = defaultOptions;
     }
@@ -44,7 +42,7 @@ public class DeepSeekChatModel implements ChatModel {
 
     @Override
     public Flux<ChatResponse> stream(Prompt prompt) {
-        log.info("🚀 DeepSeek推理模型开始流式聊天");
+        log.info("🚀 长城大模型开始流式聊天");
 
         try {
             // 构建统一的API请求
@@ -53,10 +51,10 @@ public class DeepSeekChatModel implements ChatModel {
             // 调用统一API并转换为Spring AI ChatResponse
             return chatApi.chatCompletionStream(request)
                 .map(this::toChatResponse)
-                .doOnComplete(() -> log.info("✅ DeepSeek推理模型流式聊天完成"));
+                .doOnComplete(() -> log.info("✅ 长城大模型流式聊天完成"));
 
         } catch (Exception e) {
-            log.error("❌ DeepSeek推理模型调用失败", e);
+            log.error("❌ 长城大模型调用失败", e);
             return Flux.error(e);
         }
     }
@@ -78,21 +76,12 @@ public class DeepSeekChatModel implements ChatModel {
         }
         
         ChatOptions promptOptions = prompt.getOptions();
-        DeepSeekChatOptions mergedOptions = mergeOptions(promptOptions);
+        GreatWallChatOptions mergedOptions = mergeOptions(promptOptions);
         
         // 转换消息格式
         List<ChatCompletionRequest.ChatMessage> apiMessages = messages.stream()
             .map(this::toApiMessage)
             .collect(Collectors.toList());
-        
-        // 构建扩展参数
-        Map<String, Object> extra = new HashMap<>();
-        if (mergedOptions.getEnableThinking() != null && mergedOptions.getEnableThinking()) {
-            extra.put("enable_thinking", true);
-            if (mergedOptions.getThinkingBudget() != null) {
-                extra.put("thinking_budget", mergedOptions.getThinkingBudget());
-            }
-        }
         
         return ChatCompletionRequest.builder()
             .model(mergedOptions.getModel())
@@ -100,7 +89,6 @@ public class DeepSeekChatModel implements ChatModel {
             .temperature(mergedOptions.getTemperature())
             .maxTokens(mergedOptions.getMaxTokens())
             .stream(true)
-            .extra(extra.isEmpty() ? null : extra)
             .build();
     }
     
@@ -157,18 +145,18 @@ public class DeepSeekChatModel implements ChatModel {
     /**
      * 合并聊天选项
      */
-    private DeepSeekChatOptions mergeOptions(ChatOptions promptOptions) {
+    private GreatWallChatOptions mergeOptions(ChatOptions promptOptions) {
         if (promptOptions == null) {
             return defaultOptions;
         }
 
-        // 如果传入的就是DeepSeekChatOptions，直接返回
-        if (promptOptions instanceof DeepSeekChatOptions) {
-            return (DeepSeekChatOptions) promptOptions;
+        // 如果传入的就是GreatWallChatOptions，直接返回
+        if (promptOptions instanceof GreatWallChatOptions) {
+            return (GreatWallChatOptions) promptOptions;
         }
 
         // 否则使用默认选项并应用通用设置
-        DeepSeekChatOptions mergedOptions = defaultOptions.copy();
+        GreatWallChatOptions mergedOptions = defaultOptions.copy();
         if (promptOptions.getModel() != null) {
             mergedOptions.setModel(promptOptions.getModel());
         }

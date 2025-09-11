@@ -1,4 +1,4 @@
-package com.example.service;
+package com.example.manager;
 
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;

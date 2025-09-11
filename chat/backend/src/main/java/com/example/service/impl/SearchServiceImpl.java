@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.example.service.constants.AiChatConstants.HTTP_STATUS_OK;
+import static com.example.constant.AiChatConstants.HTTP_STATUS_OK;
 
 /**
  * 搜索服务实现类

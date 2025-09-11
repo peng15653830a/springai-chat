@@ -1,4 +1,4 @@
-package com.example.service.constants;
+package com.example.constant;
 
 /**
  * AI聊天服务相关常量

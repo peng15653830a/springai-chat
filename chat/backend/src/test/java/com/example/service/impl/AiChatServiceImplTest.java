@@ -4,13 +4,13 @@ import com.example.config.ChatStreamingProperties;
 import com.example.dto.request.StreamChatRequest;
 import com.example.dto.response.SseEventResponse;
 import com.example.entity.Message;
-import com.example.service.ChatClientManager;
+import com.example.manager.ChatClientManager;
 import com.example.service.ConversationService;
 import com.example.service.MessageService;
 import com.example.service.SearchService;
-import com.example.service.chat.ChatErrorHandler;
-import com.example.service.chat.ModelSelector;
-import com.example.service.chat.PromptBuilder;
+import com.example.handler.ChatErrorHandler;
+import com.example.strategy.model.ModelSelector;
+import com.example.strategy.prompt.PromptBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +25,7 @@ import reactor.test.StepVerifier;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import static com.example.service.constants.AiChatConstants.ROLE_USER;
+import static com.example.constant.AiChatConstants.ROLE_USER;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 

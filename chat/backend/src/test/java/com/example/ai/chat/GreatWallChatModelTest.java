@@ -1,8 +1,10 @@
 package com.example.ai.chat;
 
-import com.example.ai.api.impl.GreatWallChatApi;
+import com.example.integration.ai.greatwall.GreatWallChatApi;
 import com.example.dto.request.ChatCompletionRequest;
 import com.example.dto.response.ChatCompletionResponse;
+import com.example.integration.ai.greatwall.GreatWallChatModel;
+import com.example.integration.ai.greatwall.GreatWallChatOptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

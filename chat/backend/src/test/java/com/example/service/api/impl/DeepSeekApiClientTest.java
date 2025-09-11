@@ -1,6 +1,6 @@
 package com.example.service.api.impl;
 
-import com.example.ai.api.impl.DeepSeekChatApi;
+import com.example.integration.ai.deepseek.DeepSeekChatApi;
 import com.example.config.MultiModelProperties;
 import com.example.dto.request.ChatCompletionRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;

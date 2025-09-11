@@ -1,8 +1,8 @@
 package com.example.config;
 
-import com.example.ai.api.impl.DeepSeekChatApi;
-import com.example.ai.chat.DeepSeekChatModel;
-import com.example.ai.chat.DeepSeekChatOptions;
+import com.example.integration.ai.deepseek.DeepSeekChatApi;
+import com.example.integration.ai.deepseek.DeepSeekChatModel;
+import com.example.integration.ai.deepseek.DeepSeekChatOptions;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;

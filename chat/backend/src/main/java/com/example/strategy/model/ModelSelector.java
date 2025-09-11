@@ -1,4 +1,4 @@
-package com.example.service.chat;
+package com.example.strategy.model;
 
 /**
  * 模型选择器接口

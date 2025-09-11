@@ -1,5 +1,6 @@
 package com.example.ai.chat;
 
+import com.example.integration.ai.greatwall.GreatWallChatOptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.prompt.ChatOptions;
 

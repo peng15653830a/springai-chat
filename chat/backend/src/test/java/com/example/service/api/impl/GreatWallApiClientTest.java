@@ -1,6 +1,6 @@
 package com.example.service.api.impl;
 
-import com.example.ai.api.impl.GreatWallChatApi;
+import com.example.integration.ai.greatwall.GreatWallChatApi;
 import com.example.config.GreatWallProperties;
 import com.example.config.MultiModelProperties;
 import com.example.dto.request.ChatCompletionRequest;

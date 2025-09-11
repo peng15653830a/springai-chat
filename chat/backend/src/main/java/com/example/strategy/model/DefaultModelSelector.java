@@ -1,9 +1,9 @@
-package com.example.service.chat;
+package com.example.strategy.model;
 
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.common.UserModelPreferenceDto;
-import com.example.service.ChatClientManager;
+import com.example.manager.ChatClientManager;
 import com.example.service.UserModelPreferenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

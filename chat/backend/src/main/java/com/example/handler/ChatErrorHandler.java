@@ -1,4 +1,4 @@
-package com.example.service.chat;
+package com.example.handler;
 
 import com.example.dto.response.SseEventResponse;
 import reactor.core.publisher.Flux;

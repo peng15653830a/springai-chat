@@ -1,4 +1,4 @@
-package com.example.ai.chat;
+package com.example.integration.ai.deepseek;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.ai.chat.prompt.ChatOptions;
 
 /**
- * 长城大模型聊天选项配置
- * 支持长城大模型特有的参数配置
+ * DeepSeek推理模型聊天选项配置
+ * 支持推理模式和推理预算配置
  *
  * @author xupeng
  */
@@ -16,7 +16,7 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GreatWallChatOptions implements ChatOptions {
+public class DeepSeekChatOptions implements ChatOptions {
 
     /**
      * 模型名称
@@ -34,19 +34,20 @@ public class GreatWallChatOptions implements ChatOptions {
     private Integer maxTokens;
 
     /**
-     * 是否启用推理模式（长城大模型特有）
+     * 是否启用推理模式
      */
     private Boolean enableThinking;
 
     /**
-     * API运行ID（长城大模型特有）
+     * 推理预算（推理模式下的token限制）
      */
-    private String apiRunId;
+    private Integer thinkingBudget;
 
     /**
-     * 用户ID前缀（长城大模型特有）
+     * 是否流式输出
      */
-    private String tpuidPrefix;
+    @Builder.Default
+    private Boolean stream = true;
 
     /**
      * Top-P采样参数 (Spring AI ChatOptions必需)
@@ -77,24 +78,37 @@ public class GreatWallChatOptions implements ChatOptions {
     /**
      * 创建默认选项
      */
-    public static GreatWallChatOptions create() {
+    public static DeepSeekChatOptions create() {
         return builder()
                 .temperature(0.7)
-                .maxTokens(4096)
+                .maxTokens(4192)
                 .enableThinking(false)
-                .tpuidPrefix("guest")
+                .stream(true)
+                .build();
+    }
+
+    /**
+     * 创建推理模式选项
+     */
+    public static DeepSeekChatOptions createWithThinking(Integer thinkingBudget) {
+        return builder()
+                .temperature(0.7)
+                .maxTokens(4192)
+                .enableThinking(true)
+                .thinkingBudget(thinkingBudget != null ? thinkingBudget : 50000)
+                .stream(true)
                 .build();
     }
 
     /**
      * 从通用ChatOptions转换
      */
-    public static GreatWallChatOptions from(ChatOptions options) {
-        if (options instanceof GreatWallChatOptions) {
-            return (GreatWallChatOptions) options;
+    public static DeepSeekChatOptions from(ChatOptions options) {
+        if (options instanceof DeepSeekChatOptions) {
+            return (DeepSeekChatOptions) options;
         }
 
-        GreatWallChatOptions newOptions = new GreatWallChatOptions();
+        DeepSeekChatOptions newOptions = new DeepSeekChatOptions();
         if (options != null) {
             newOptions.setModel(options.getModel());
             newOptions.setTemperature(options.getTemperature());
@@ -110,8 +124,8 @@ public class GreatWallChatOptions implements ChatOptions {
         if (newOptions.enableThinking == null) {
             newOptions.enableThinking = false;
         }
-        if (newOptions.tpuidPrefix == null) {
-            newOptions.tpuidPrefix = "guest";
+        if (newOptions.stream == null) {
+            newOptions.stream = true;
         }
         if (newOptions.topP == null) {
             newOptions.topP = 1.0;
@@ -123,19 +137,39 @@ public class GreatWallChatOptions implements ChatOptions {
     /**
      * 复制并修改选项
      */
-    public GreatWallChatOptions copy() {
+    public DeepSeekChatOptions copy() {
         return builder()
                 .model(this.model)
                 .temperature(this.temperature)
                 .maxTokens(this.maxTokens)
                 .enableThinking(this.enableThinking)
-                .apiRunId(this.apiRunId)
-                .tpuidPrefix(this.tpuidPrefix)
+                .thinkingBudget(this.thinkingBudget)
+                .stream(this.stream)
                 .topP(this.topP)
                 .topK(this.topK)
                 .stopSequences(this.stopSequences)
                 .presencePenalty(this.presencePenalty)
                 .frequencyPenalty(this.frequencyPenalty)
                 .build();
+    }
+
+    /**
+     * 启用推理模式
+     */
+    public DeepSeekChatOptions withThinking(Integer budget) {
+        DeepSeekChatOptions newOptions = copy();
+        newOptions.enableThinking = true;
+        newOptions.thinkingBudget = budget;
+        return newOptions;
+    }
+
+    /**
+     * 禁用推理模式
+     */
+    public DeepSeekChatOptions withoutThinking() {
+        DeepSeekChatOptions newOptions = copy();
+        newOptions.enableThinking = false;
+        newOptions.thinkingBudget = null;
+        return newOptions;
     }
 }

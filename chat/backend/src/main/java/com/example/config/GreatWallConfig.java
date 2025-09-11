@@ -1,8 +1,8 @@
 package com.example.config;
 
-import com.example.ai.api.impl.GreatWallChatApi;
-import com.example.ai.chat.GreatWallChatModel;
-import com.example.ai.chat.GreatWallChatOptions;
+import com.example.integration.ai.greatwall.GreatWallChatApi;
+import com.example.integration.ai.greatwall.GreatWallChatModel;
+import com.example.integration.ai.greatwall.GreatWallChatOptions;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;

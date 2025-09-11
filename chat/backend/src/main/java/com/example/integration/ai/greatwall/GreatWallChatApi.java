@@ -1,10 +1,10 @@
-package com.example.ai.api.impl;
+package com.example.integration.ai.greatwall;
 
-import com.example.ai.api.ChatApi;
 import com.example.config.GreatWallProperties;
 import com.example.config.MultiModelProperties;
 import com.example.dto.request.ChatCompletionRequest;
 import com.example.dto.response.ChatCompletionResponse;
+import com.example.integration.ai.api.ChatApi;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

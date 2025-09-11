@@ -1,4 +1,4 @@
-package com.example.service.chat;
+package com.example.strategy.prompt;
 
 import com.example.entity.Message;
 import reactor.core.publisher.Mono;
