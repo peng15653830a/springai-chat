@@ -18,6 +18,7 @@ public class UserTest {
 
   @Test
   void testUserCreation() {
+    // 测试用户创建功能
     // When
     User newUser = new User();
 
