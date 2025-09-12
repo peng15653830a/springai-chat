@@ -46,10 +46,13 @@ public class AiChatServiceImpl implements AiChatService {
                 request.getProvider(), 
                 request.getModel());
 
+        // 准备阶段：处理输入和上下文
+        // 执行阶段：与AI模型交互
+        // 完成阶段：保存结果
         return Flux.concat(
-            prepareContext(request),  // 准备阶段：处理输入和上下文
-            processChat(request),     // 执行阶段：与AI模型交互
-            finishChat(request)       // 完成阶段：保存结果
+            prepareContext(request),
+            processChat(request),
+            finishChat(request)
         )
         .onErrorResume(errorHandler::handleChatError);
     }
@@ -62,10 +65,13 @@ public class AiChatServiceImpl implements AiChatService {
     private Flux<SseEventResponse> prepareContext(StreamChatRequest request) {
         log.debug("开始准备聊天上下文，会话ID: {}", request.getConversationId());
         
+        // 保存用户消息
+        // 生成标题（异步）
+        // 搜索增强（可选）
         return Flux.concat(
-            saveUserMessage(request),           // 保存用户消息
-            generateTitleAsync(request),        // 生成标题（异步）
-            enrichWithSearch(request)           // 搜索增强（可选）
+            saveUserMessage(request),
+            generateTitleAsync(request),
+            enrichWithSearch(request)
         );
     }
 
@@ -79,7 +85,7 @@ public class AiChatServiceImpl implements AiChatService {
             .flatMapMany(prompt -> {
                 // 选择模型并执行流式聊天
                 ModelSelector.ModelSelection modelSelection = selectModel(request);
-                return streamFromAI(prompt, modelSelection, request);
+                return streamFromAi(prompt, modelSelection, request);
             });
     }
 
@@ -155,7 +161,7 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 从AI模型流式获取响应
      */
-    private Flux<SseEventResponse> streamFromAI(String prompt, ModelSelector.ModelSelection modelSelection, 
+    private Flux<SseEventResponse> streamFromAi(String prompt, ModelSelector.ModelSelection modelSelection, 
                                                StreamChatRequest request) {
         log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", 
             modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking());
@@ -170,7 +176,7 @@ public class AiChatServiceImpl implements AiChatService {
             callAiModel(prompt, modelSelection, request)
                 .doOnNext(event -> {
                     // 收集内容用于保存
-                    if ("chunk".equals(event.getType()) && event.getData() != null) {
+                    if (SseEventResponse.CHUNK_TYPE.equals(event.getType()) && event.getData() != null) {
                         contentBuilder.append(event.getData().toString());
                     }
                 }),

@@ -34,11 +34,12 @@ public class GreatWallConfig {
         // 获取默认长城模型配置
         MultiModelProperties.ModelConfig modelConfig = getDefaultModelConfig(multiModelProperties, "greatwall");
         
+        // 长城大模型默认不启用推理
         GreatWallChatOptions defaultOptions = GreatWallChatOptions.builder()
             .model(modelConfig != null ? modelConfig.getName() : "greatwall-chat")
             .temperature(getTemperature(modelConfig, multiModelProperties))
             .maxTokens(getMaxTokens(modelConfig, multiModelProperties))
-            .enableThinking(false) // 长城大模型默认不启用推理
+            .enableThinking(false)
             .build();
             
         return new GreatWallChatModel(greatWallChatApi, defaultOptions);

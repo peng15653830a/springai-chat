@@ -103,9 +103,10 @@ public class DefaultPromptBuilder implements PromptBuilder {
         }
         
         // 简单格式化搜索结果
+        // 过滤空行
         return searchResults.lines()
                 .map(line -> "- " + line.trim())
-                .filter(line -> line.length() > 2) // 过滤空行
+                .filter(line -> line.length() > 2)
                 .collect(Collectors.joining("\n"));
     }
 }

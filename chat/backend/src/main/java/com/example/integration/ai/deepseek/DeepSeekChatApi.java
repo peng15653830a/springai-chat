@@ -29,12 +29,42 @@ public class DeepSeekChatApi implements ChatApi {
 
     private static final String PROVIDER_NAME = "DeepSeek";
 
-    // 魔法常量定义
+    /**
+     * JSON开始标记
+     */
     private static final String JSON_START = "{";
+    /**
+     * JSON结束标记
+     */
     private static final String JSON_END = "}";
+    /**
+     * 完成标记
+     */
     private static final String DONE_MARKER = "[DONE]";
+    /**
+     * 聊天完成块类型
+     */
     private static final String CHAT_COMPLETION_CHUNK = "chat.completion.chunk";
+    /**
+     * DeepSeek模型名称
+     */
     private static final String DEEPSEEK_MODEL = "deepseek";
+    /**
+     * 开括号标记
+     */
+    private static final String OPEN_BRACE = "{";
+    /**
+     * 完成标记
+     */
+    private static final String DONE = "[DONE]";
+    /**
+     * 推理内容字段名
+     */
+    private static final String REASONING_CONTENT = "reasoning_content";
+    /**
+     * 内容字段名
+     */
+    private static final String CONTENT = "content";
     
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -86,7 +116,8 @@ public class DeepSeekChatApi implements ChatApi {
                     .bodyToFlux(String.class)
                     .timeout(Duration.ofMillis(providerConfig != null ? providerConfig.getReadTimeoutMs() : 30000))
                     .filter(this::isValidSseLine)
-                    .filter(line -> !DONE_MARKER.equals(line.trim())) // 过滤[DONE]标记
+                    // 过滤[DONE]标记
+                    .filter(line -> !DONE_MARKER.equals(line.trim()))
                     .map(this::extractJsonData)
                     .filter(json -> json != null && !json.trim().isEmpty())
                     .concatMap(this::parseJsonChunk)
@@ -105,8 +136,9 @@ public class DeepSeekChatApi implements ChatApi {
     public boolean isAvailable() {
         try {
             MultiModelProperties.ProviderConfig providerConfig = getProviderConfig();
+            // 返回false而不是抛出异常
             if (providerConfig == null) {
-                return false; // 返回false而不是抛出异常
+                return false;
             }
             String apiKey = multiModelProperties.getApiKey(PROVIDER_NAME);
             return providerConfig.isEnabled() &&
@@ -191,12 +223,12 @@ public class DeepSeekChatApi implements ChatApi {
         String trimmed = line.trim();
         
         // 完整JSON格式
-        if (trimmed.startsWith("{")) {
+        if (trimmed.startsWith(OPEN_BRACE)) {
             return trimmed;
         }
         
         // 结束标记
-        if (trimmed.equals("[DONE]")) {
+        if (trimmed.equals(DONE)) {
             log.debug("🏁 收到DeepSeek结束标记");
             return null;
         }
@@ -230,14 +262,14 @@ public class DeepSeekChatApi implements ChatApi {
             
             // 提取推理内容
             String reasoningContent = "";
-            if (delta.has("reasoning_content")) {
-                reasoningContent = delta.path("reasoning_content").asText("");
+            if (delta.has(REASONING_CONTENT)) {
+                reasoningContent = delta.path(REASONING_CONTENT).asText("");
             }
             
             // 提取普通内容
             String content = "";
-            if (delta.has("content")) {
-                content = delta.path("content").asText("");
+            if (delta.has(CONTENT)) {
+                content = delta.path(CONTENT).asText("");
             }
             
             // 创建响应

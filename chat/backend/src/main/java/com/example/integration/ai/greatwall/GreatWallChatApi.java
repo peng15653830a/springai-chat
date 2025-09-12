@@ -37,6 +37,23 @@ public class GreatWallChatApi implements ChatApi {
 
     private static final String PROVIDER_NAME = "greatwall";
     
+    /**
+     * 开括号标记
+     */
+    private static final String OPEN_BRACE = "{";
+    /**
+     * 闭括号标记
+     */
+    private static final String CLOSE_BRACE = "}";
+    /**
+     * 数据前缀
+     */
+    private static final String DATA_PREFIX = "data:";
+    /**
+     * 选择字段名
+     */
+    private static final String CHOICES = "choices";
+    
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final MultiModelProperties multiModelProperties;
@@ -150,7 +167,7 @@ public class GreatWallChatApi implements ChatApi {
     private String buildRequestBody(ChatCompletionRequest request) throws JsonProcessingException {
         MultiModelProperties.ModelConfig modelConfig = getModelConfig(request.getModel());
         
-        Map<String, Object> requestBody = new HashMap<>();
+        Map<String, Object> requestBody = new HashMap<>(8);
         
         // 基本参数
         requestBody.put("model", request.getModel());
@@ -198,12 +215,12 @@ public class GreatWallChatApi implements ChatApi {
         String trimmed = line.trim();
         
         // 长城大模型使用完整的JSON格式
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        if (trimmed.startsWith(OPEN_BRACE) && trimmed.endsWith(CLOSE_BRACE)) {
             return true;
         }
         
         // 也支持标准的data:格式
-        return trimmed.startsWith("data:");
+        return trimmed.startsWith(DATA_PREFIX);
     }
 
     /**
@@ -224,7 +241,8 @@ public class GreatWallChatApi implements ChatApi {
             switch (event) {
                 case "message_start":
                     log.debug("🚀 长城大模型开始响应");
-                    return Flux.empty(); // start事件不产生内容
+                    // start事件不产生内容
+                    return Flux.empty();
 
                 case "llm_chunk":
                     return parseChunkContent(dataNode);
@@ -238,7 +256,7 @@ public class GreatWallChatApi implements ChatApi {
 
                 default:
                     // 如果没有event字段，尝试直接解析内容
-                    if (dataNode.has("choices")) {
+                    if (dataNode.has(CHOICES)) {
                         return parseChunkContentDirect(dataNode);
                     }
                     log.debug("🔄 未处理的长城大模型事件: {}", event);
@@ -306,12 +324,12 @@ public class GreatWallChatApi implements ChatApi {
         String trimmed = line.trim();
         
         // 完整JSON格式
-        if (trimmed.startsWith("{")) {
+        if (trimmed.startsWith(OPEN_BRACE)) {
             return trimmed;
         }
         
         // data:格式
-        if (trimmed.startsWith("data:")) {
+        if (trimmed.startsWith(DATA_PREFIX)) {
             return trimmed.substring(5).trim();
         }
         

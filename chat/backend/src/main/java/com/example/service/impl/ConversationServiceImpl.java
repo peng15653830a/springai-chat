@@ -23,6 +23,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ConversationServiceImpl implements ConversationService {
 
+  // 标题生成常量
+  private static final int SHORT_MESSAGE_LENGTH = 20;
+  private static final int FIRST_SENTENCE_MAX_LENGTH = 25;
+  private static final int TRUNCATED_LENGTH = 20;
+  private static final int MIN_TRUNCATE_POSITION = 10;
+  private static final int MAX_TRUNCATE_POSITION = 18;
+  private static final String SENTENCE_SPLIT_REGEX = "[。！？
+]";
+  private static final String DEFAULT_CONVERSATION_TITLE = "新对话";
+
   private final ConversationMapper conversationMapper;
   private final MessageMapper messageMapper;
 
@@ -37,7 +47,7 @@ public class ConversationServiceImpl implements ConversationService {
     
     // 处理标题：如果为null或空则使用默认标题
     if (title == null || title.trim().isEmpty()) {
-      conversation.setTitle("新对话");
+      conversation.setTitle(DEFAULT_CONVERSATION_TITLE);
     } else {
       conversation.setTitle(title.trim());
     }
@@ -126,31 +136,31 @@ public class ConversationServiceImpl implements ConversationService {
   @Override
   public String generateTitleFromMessage(String message) {
     if (message == null || message.trim().isEmpty()) {
-      return "新对话";
+      return DEFAULT_CONVERSATION_TITLE;
     }
     
     String cleanMessage = message.trim();
     
     // 如果消息很短（20字以内），直接使用
-    if (cleanMessage.length() <= 20) {
+    if (cleanMessage.length() <= SHORT_MESSAGE_LENGTH) {
       return cleanMessage;
     }
     
     // 尝试找到第一句话
-    String[] sentences = cleanMessage.split("[。！？\n]");
+    String[] sentences = cleanMessage.split(SENTENCE_SPLIT_REGEX);
     if (sentences.length > 0 && !sentences[0].trim().isEmpty()) {
       String firstSentence = sentences[0].trim();
-      if (firstSentence.length() <= 25) {
+      if (firstSentence.length() <= FIRST_SENTENCE_MAX_LENGTH) {
         return firstSentence;
       }
     }
     
     // 智能截取
-    if (cleanMessage.length() > 20) {
-      String truncated = cleanMessage.substring(0, Math.min(20, cleanMessage.length()));
+    if (cleanMessage.length() > TRUNCATED_LENGTH) {
+      String truncated = cleanMessage.substring(0, Math.min(TRUNCATED_LENGTH, cleanMessage.length()));
       // 如果截断位置不是标点，尝试找到合适的截断点
-      if (cleanMessage.length() > 20 && !truncated.matches(".*[。！？，、；：]$")) {
-        for (int i = Math.min(18, truncated.length() - 1); i >= 10; i--) {
+      if (cleanMessage.length() > TRUNCATED_LENGTH && !truncated.matches(".*[。！？，、；：]$")) {
+        for (int i = Math.min(MAX_TRUNCATE_POSITION, truncated.length() - 1); i >= MIN_TRUNCATE_POSITION; i--) {
           char c = truncated.charAt(i);
           if (c == '，' || c == '、' || c == '；' || c == '：') {
             return truncated.substring(0, i + 1);
@@ -169,7 +179,7 @@ public class ConversationServiceImpl implements ConversationService {
   private boolean needsTitle(Conversation conversation) {
     return conversation.getTitle() == null || 
            conversation.getTitle().trim().isEmpty() || 
-           "新对话".equals(conversation.getTitle().trim());
+           DEFAULT_CONVERSATION_TITLE.equals(conversation.getTitle().trim());
   }
 
   /**

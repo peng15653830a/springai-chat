@@ -18,6 +18,27 @@ import java.util.concurrent.TimeoutException;
 @Service
 public class DefaultChatErrorHandler implements ChatErrorHandler {
 
+    /**
+     * API密钥错误消息
+     */
+    private static final String API_KEY_ERROR_MSG = "api key";
+    /**
+     * 配额错误消息
+     */
+    private static final String QUOTA_ERROR_MSG = "quota";
+    /**
+     * 模型错误消息
+     */
+    private static final String MODEL_ERROR_MSG = "model";
+    /**
+     * 无效请求错误消息
+     */
+    private static final String INVALID_ERROR_MSG = "invalid";
+    /**
+     * 非法状态错误
+     */
+    private static final String ILLEGAL_STATE_ERROR = "IllegalState";
+
     @Override
     public Flux<SseEventResponse> handleChatError(Throwable error) {
         log.error("聊天过程中发生错误", error);
@@ -54,10 +75,11 @@ public class DefaultChatErrorHandler implements ChatErrorHandler {
     public boolean isRetryableError(Throwable error) {
         ErrorType errorType = getErrorType(error);
         
+        // 未知错误默认不重试
         return switch (errorType) {
             case NETWORK_ERROR, TIMEOUT_ERROR, INTERNAL_ERROR -> true;
             case API_KEY_ERROR, QUOTA_EXCEEDED, MODEL_UNAVAILABLE, INVALID_REQUEST -> false;
-            case UNKNOWN_ERROR -> false; // 未知错误默认不重试
+            case UNKNOWN_ERROR -> false;
         };
     }
 
@@ -93,7 +115,7 @@ public class DefaultChatErrorHandler implements ChatErrorHandler {
         }
 
         // API密钥错误
-        if (errorMessage.contains("api key") ||
+        if (errorMessage.contains(API_KEY_ERROR_MSG) ||
             errorMessage.contains("authentication") ||
             errorMessage.contains("unauthorized") ||
             errorMessage.contains("invalid key")) {
@@ -101,23 +123,17 @@ public class DefaultChatErrorHandler implements ChatErrorHandler {
         }
 
         // 配额不足
-        if (errorMessage.contains("quota") ||
-            errorMessage.contains("rate limit") ||
-            errorMessage.contains("exceeded") ||
-            errorMessage.contains("too many requests")) {
+        if (isQuotaExceededError(errorMessage)) {
             return ErrorType.QUOTA_EXCEEDED;
         }
 
         // 模型不可用
-        if (errorMessage.contains("model") && 
-            (errorMessage.contains("not found") || 
-             errorMessage.contains("unavailable") ||
-             errorMessage.contains("not supported"))) {
+        if (isModelUnavailableError(errorMessage)) {
             return ErrorType.MODEL_UNAVAILABLE;
         }
 
         // 请求参数错误
-        if (errorMessage.contains("invalid") ||
+        if (errorMessage.contains(INVALID_ERROR_MSG) ||
             errorMessage.contains("bad request") ||
             errorMessage.contains("parameter") ||
             errorClass.contains("IllegalArgument")) {
@@ -125,14 +141,41 @@ public class DefaultChatErrorHandler implements ChatErrorHandler {
         }
 
         // 系统内部错误
-        if (errorClass.contains("IllegalState") ||
-            errorClass.contains("NullPointer") ||
-            errorClass.contains("Runtime") ||
-            errorMessage.contains("internal error")) {
+        if (isInternalError(errorClass, errorMessage)) {
             return ErrorType.INTERNAL_ERROR;
         }
 
         // 默认为未知错误
         return ErrorType.UNKNOWN_ERROR;
+    }
+    
+    /**
+     * 检查是否为系统内部错误
+     */
+    private boolean isInternalError(String errorClass, String errorMessage) {
+        return errorClass.contains(ILLEGAL_STATE_ERROR) ||
+               errorClass.contains("NullPointer") ||
+               errorClass.contains("Runtime") ||
+               errorMessage.contains("internal error");
+    }
+    
+    /**
+     * 检查是否为配额超出错误
+     */
+    private boolean isQuotaExceededError(String errorMessage) {
+        return errorMessage.contains(QUOTA_ERROR_MSG) ||
+               errorMessage.contains("rate limit") ||
+               errorMessage.contains("exceeded") ||
+               errorMessage.contains("too many requests");
+    }
+    
+    /**
+     * 检查是否为模型不可用错误
+     */
+    private boolean isModelUnavailableError(String errorMessage) {
+        return errorMessage.contains(MODEL_ERROR_MSG) && 
+               (errorMessage.contains("not found") || 
+                errorMessage.contains("unavailable") ||
+                errorMessage.contains("not supported"));
     }
 }

@@ -86,7 +86,7 @@ public class DeepSeekChatModel implements ChatModel {
             .collect(Collectors.toList());
         
         // 构建扩展参数
-        Map<String, Object> extra = new HashMap<>();
+        Map<String, Object> extra = new HashMap<>(4);
         if (mergedOptions.getEnableThinking() != null && mergedOptions.getEnableThinking()) {
             extra.put("enable_thinking", true);
             if (mergedOptions.getThinkingBudget() != null) {

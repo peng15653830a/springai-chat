@@ -217,7 +217,8 @@ public class MultiModelProperties {
         }
         
         // 检查是否为开发环境（根据Spring的默认profile判断）
-        String[] activeProfiles = {"default"}; // 简化处理，实际应该从Spring环境中获取
+        // 简化处理，实际应该从Spring环境中获取
+        String[] activeProfiles = {"default"};
         boolean isDevEnvironment = Arrays.asList(activeProfiles).contains("dev") || 
                                   Arrays.asList(activeProfiles).contains("development") ||
                                   Arrays.asList(activeProfiles).contains("default");

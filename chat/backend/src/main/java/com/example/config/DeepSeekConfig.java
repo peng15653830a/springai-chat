@@ -34,11 +34,12 @@ public class DeepSeekConfig {
         // 获取默认DeepSeek模型配置
         MultiModelProperties.ModelConfig modelConfig = getDefaultModelConfig(multiModelProperties, "DeepSeek");
         
+        // 默认不启用推理，由调用方决定
         DeepSeekChatOptions defaultOptions = DeepSeekChatOptions.builder()
             .model(modelConfig != null ? modelConfig.getName() : "deepseek-chat")
             .temperature(getTemperature(modelConfig, multiModelProperties))
             .maxTokens(getMaxTokens(modelConfig, multiModelProperties))
-            .enableThinking(false) // 默认不启用推理，由调用方决定
+            .enableThinking(false)
             .thinkingBudget(modelConfig != null ? modelConfig.getThinkingBudget() : null)
             .build();
             

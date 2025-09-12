@@ -23,8 +23,15 @@ import java.util.concurrent.ConcurrentMap;
 @RequiredArgsConstructor
 public class UserModelPreferenceServiceImpl implements UserModelPreferenceService {
 
-    // 简化的用户偏好缓存（生产环境可考虑使用Redis）
+    /**
+     * 简化的用户偏好缓存（生产环境可考虑使用Redis）
+     */
     private final ConcurrentMap<String, String> userDefaultModelCache = new ConcurrentHashMap<>();
+    
+    /**
+     * 期望的分隔部分数量
+     */
+    private static final int EXPECTED_PARTS_COUNT = 2;
 
     @Override
     public UserModelPreferenceDto getUserDefaultModel(Long userId) {
@@ -38,7 +45,7 @@ public class UserModelPreferenceServiceImpl implements UserModelPreferenceServic
         String defaultModel = userDefaultModelCache.get(String.valueOf(userId));
         if (defaultModel != null) {
             String[] parts = defaultModel.split(":");
-            if (parts.length == 2) {
+            if (parts.length == EXPECTED_PARTS_COUNT) {
                 UserModelPreferenceDto preference = new UserModelPreferenceDto();
                 preference.setUserId(userId);
                 preference.setProviderName(parts[0]);
