@@ -33,8 +33,11 @@ public class ChatClientManager {
     @Autowired
     private WebSearchTool webSearchTool;
 
-    @Autowired
+    @Autowired(required = false)
     private com.example.advisor.SimplifiedMessageHistoryAdvisor simplifiedMessageHistoryAdvisor;
+
+    @Autowired
+    private org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor messageChatMemoryAdvisor;
     
     private final Map<String, ChatClient> clientCache = new ConcurrentHashMap<>();
     
@@ -43,6 +46,7 @@ public class ChatClientManager {
         log.info("🚀 ChatClientManager初始化完成，发现ChatModel: {}", chatModels.keySet());
         log.info("🔧 WebSearchTool注入状态: {}", webSearchTool != null ? "成功" : "失败");
         log.info("🔧 SimplifiedMessageHistoryAdvisor注入状态: {}", simplifiedMessageHistoryAdvisor != null ? "成功" : "失败");
+        log.info("🔧 MessageChatMemoryAdvisor注入状态: {}", messageChatMemoryAdvisor != null ? "成功" : "失败");
         if (webSearchTool != null) {
             log.info("🔧 WebSearchTool类型: {}", webSearchTool.getClass().getName());
         }
@@ -101,7 +105,8 @@ public class ChatClientManager {
                     - 搜索工具：当用户询问需要实时数据、新闻、天气等信息时使用
                     """)
                 .defaultTools(webSearchTool)
-                .defaultAdvisors(simplifiedMessageHistoryAdvisor)
+                .defaultAdvisors(messageChatMemoryAdvisor,
+                        simplifiedMessageHistoryAdvisor)
                 .build();
                 
         log.info("✅ ChatClient创建完成，provider: {}", provider);

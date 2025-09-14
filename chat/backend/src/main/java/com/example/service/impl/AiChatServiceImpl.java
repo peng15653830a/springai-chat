@@ -87,7 +87,6 @@ public class AiChatServiceImpl implements AiChatService {
         log.debug("开始准备聊天上下文，会话ID: {}", request.getConversationId());
         
         return Flux.concat(
-            saveUserMessage(request),           // 保存用户消息
             generateTitleAsync(request),        // 生成标题（异步）
             enrichWithSearch(request)           // 搜索增强（可选）
         );
@@ -99,17 +98,12 @@ public class AiChatServiceImpl implements AiChatService {
     private Flux<SseEventResponse> processChat(StreamChatRequest request) {
         log.debug("开始处理AI聊天，会话ID: {}", request.getConversationId());
 
-        return buildPrompt(request)
-            .flatMapMany(prompt -> {
-                // 预创建助手消息以获取消息ID用于工具调用关联
-                return messageService.preCreateAssistantMessage(request.getConversationId())
-                    .flatMapMany(messageId -> {
-                        log.debug("预创建助手消息成功，消息ID: {}", messageId);
-                        // 选择模型并执行流式聊天
-                        ModelSelector.ModelSelection modelSelection = selectModel(request);
-                        return streamFromAI(prompt, modelSelection, request, messageId);
-                    });
-            });
+        // 使用原始用户消息，历史与保存交给 MemoryAdvisor
+        String userMessage = request.getMessage();
+        return Flux.defer(() -> {
+            ModelSelector.ModelSelection modelSelection = selectModel(request);
+            return streamFromAI(userMessage, modelSelection, request, null);
+        });
     }
 
     /**
@@ -184,7 +178,7 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 从AI模型流式获取响应 - 使用Spring AI原生方式与Advisor机制
      */
-    private Flux<SseEventResponse> streamFromAI(String prompt, ModelSelector.ModelSelection modelSelection,
+    private Flux<SseEventResponse> streamFromAI(String userMessage, ModelSelector.ModelSelection modelSelection,
                                                StreamChatRequest request, Long messageId) {
         log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}, 消息ID: {}",
             modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking(), messageId);
@@ -193,8 +187,7 @@ public class AiChatServiceImpl implements AiChatService {
 
         // 设置会话ID和消息ID到WebSearchTool的线程本地存储，解决线程上下文问题
         WebSearchTool.setToolConversationId(conversationId);
-        WebSearchTool.setToolMessageId(messageId);
-        log.debug("🔧 已设置会话ID {}和消息ID {}到WebSearchTool", conversationId, messageId);
+        log.debug("🔧 已设置会话ID {}到WebSearchTool", conversationId);
 
         return Flux.concat(
             // 1. 发送开始事件
@@ -203,10 +196,10 @@ public class AiChatServiceImpl implements AiChatService {
             // 2. 使用Spring AI ChatClient流式调用（自动处理Tool Calling和Advisor消息保存）
             getChatClientForModel(modelSelection)
                 .prompt()
-                .user(prompt)
+                .user(userMessage)
                 .advisors(advisorSpec -> advisorSpec
-                    .param(com.example.advisor.SimplifiedMessageHistoryAdvisor.CONVERSATION_ID_KEY, conversationId)
-                    .param(com.example.advisor.SimplifiedMessageHistoryAdvisor.MESSAGE_ID_KEY, messageId))
+                    // MemoryAdvisor 将使用该参数加载/保存历史
+                    .param("conversationId", conversationId))
                 .stream()
                 .chatResponse()
                 .mapNotNull(chatResponse -> {
