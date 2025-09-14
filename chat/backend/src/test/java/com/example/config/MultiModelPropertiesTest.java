@@ -50,7 +50,7 @@ class MultiModelPropertiesTest {
         // When & Then
         assertTrue(providerConfig.isEnabled());
         assertNull(providerConfig.getDisplayName());
-        assertNull(providerConfig.getApiKeyEnv());
+        assertNull(providerConfig.getApiKey());
         assertNull(providerConfig.getBaseUrl());
         assertEquals(Integer.valueOf(10000), providerConfig.getConnectTimeoutMs());
         assertEquals(Integer.valueOf(30000), providerConfig.getReadTimeoutMs());
@@ -82,7 +82,7 @@ class MultiModelPropertiesTest {
         // Given
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
-        providerConfig.setApiKeyEnv("TEST_API_KEY");
+        providerConfig.setApiKey("TEST_API_KEY");
         providers.put("testProvider", providerConfig);
         
         properties.getProviders().putAll(providers);
@@ -131,7 +131,7 @@ class MultiModelPropertiesTest {
         Map<String, MultiModelProperties.ProviderConfig> providers = new HashMap<>();
         MultiModelProperties.ProviderConfig providerConfig = new MultiModelProperties.ProviderConfig();
         providerConfig.setEnabled(true);
-        providerConfig.setApiKeyEnv("TEST_API_KEY");
+        providerConfig.setApiKey("TEST_API_KEY");
         providers.put("testProvider", providerConfig);
         
         properties.getProviders().putAll(providers);

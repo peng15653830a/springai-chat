@@ -166,9 +166,36 @@ public class MessageServiceImpl implements MessageService {
     if (conversationId == null || conversationId <= 0) {
       return Mono.error(new IllegalArgumentException("对话ID无效"));
     }
-    
+
     return Mono.fromCallable(() -> getMessagesByConversationId(conversationId))
-        .doOnNext(messages -> log.debug("加载会话历史，会话ID: {}, 消息数量: {}", 
+        .doOnNext(messages -> log.debug("加载会话历史，会话ID: {}, 消息数量: {}",
             conversationId, messages.size()));
+  }
+
+  @Override
+  public Mono<Long> preCreateAssistantMessage(Long conversationId) {
+    if (conversationId == null || conversationId <= 0) {
+      return Mono.error(new IllegalArgumentException("对话ID无效"));
+    }
+
+    return Mono.fromCallable(() -> {
+      log.debug("预创建助手消息，会话ID: {}", conversationId);
+
+      // 创建助手消息占位符
+      MessageSaveRequest request = MessageSaveRequest.builder()
+          .conversationId(conversationId)
+          .role(ROLE_ASSISTANT)
+          .content("") // 初始为空，稍后会由Advisor更新
+          .build();
+
+      Message message = saveMessage(request);
+
+      log.debug("助手消息预创建成功，消息ID: {}", message.getId());
+      return message.getId();
+    })
+    .onErrorMap(error -> {
+      log.error("预创建助手消息失败，会话ID: {}", conversationId, error);
+      return new RuntimeException("预创建助手消息失败: " + error.getMessage(), error);
+    });
   }
 }

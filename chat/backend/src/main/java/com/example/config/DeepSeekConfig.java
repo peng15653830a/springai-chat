@@ -1,11 +1,11 @@
 package com.example.config;
 
-import com.example.integration.ai.deepseek.DeepSeekChatApi;
-import com.example.integration.ai.deepseek.DeepSeekChatModel;
-import com.example.integration.ai.deepseek.DeepSeekChatOptions;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * DeepSeek模型自动配置类
+ * DeepSeek模型自动配置类 - 使用OpenAI兼容接口
  * 
  * @author xupeng
  */
@@ -23,26 +23,46 @@ import org.springframework.context.annotation.Configuration;
 public class DeepSeekConfig {
 
     /**
-     * 创建DeepSeek ChatModel Bean
+     * 创建DeepSeek ChatModel Bean - 使用OpenAI兼容实现
      */
     @Bean
     @ConditionalOnMissingBean(name = "deepSeekChatModel")
-    public ChatModel deepSeekChatModel(DeepSeekChatApi deepSeekChatApi,
-                                       MultiModelProperties multiModelProperties) {
-        log.info("🏗️ 创建DeepSeek ChatModel Bean");
+    public ChatModel deepSeekChatModel(MultiModelProperties multiModelProperties) {
+        log.info("🏗️ 创建DeepSeek ChatModel Bean（基于OpenAI兼容API）");
         
-        // 获取默认DeepSeek模型配置
+        // 获取DeepSeek配置
+        MultiModelProperties.ProviderConfig providerConfig = 
+            multiModelProperties.getProviders().get("DeepSeek");
+        String apiKey = multiModelProperties.getApiKey("DeepSeek");
         MultiModelProperties.ModelConfig modelConfig = getDefaultModelConfig(multiModelProperties, "DeepSeek");
         
-        DeepSeekChatOptions defaultOptions = DeepSeekChatOptions.builder()
-            .model(modelConfig != null ? modelConfig.getName() : "deepseek-chat")
-            .temperature(getTemperature(modelConfig, multiModelProperties))
-            .maxTokens(getMaxTokens(modelConfig, multiModelProperties))
-            .enableThinking(false) // 默认不启用推理，由调用方决定
-            .thinkingBudget(modelConfig != null ? modelConfig.getThinkingBudget() : null)
-            .build();
-            
-        return new DeepSeekChatModel(deepSeekChatApi, defaultOptions);
+        // 如果模型未找到，返回null而不是抛出异常
+        if (modelConfig == null) {
+            log.warn("未找到DeepSeek的模型配置");
+            return null;
+        }
+        
+        try {
+            // 使用Builder模式创建OpenAI API客户端，指向DeepSeek端点
+            OpenAiApi openAiApi = OpenAiApi.builder()
+                .baseUrl(providerConfig.getBaseUrl())
+                .apiKey(apiKey)
+                .build();
+
+            // 使用Builder模式创建ChatModel
+            return OpenAiChatModel.builder()
+                .openAiApi(openAiApi)
+                .defaultOptions(OpenAiChatOptions.builder()
+                    .model(modelConfig.getName())
+                    .temperature(getTemperature(modelConfig, multiModelProperties))
+                    .maxTokens(getMaxTokens(modelConfig, multiModelProperties))
+                    .build())
+                .build();
+                
+        } catch (Exception e) {
+            log.error("创建DeepSeek ChatModel失败: {}", e.getMessage());
+            throw new RuntimeException("Failed to create DeepSeek ChatModel", e);
+        }
     }
     
     /**

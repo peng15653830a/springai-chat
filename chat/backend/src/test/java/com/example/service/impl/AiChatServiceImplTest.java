@@ -11,6 +11,7 @@ import com.example.service.SearchService;
 import com.example.handler.ChatErrorHandler;
 import com.example.strategy.model.ModelSelector;
 import com.example.strategy.prompt.PromptBuilder;
+import com.example.service.impl.SseEventPublisherImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -70,6 +72,9 @@ class AiChatServiceImplTest {
     @Mock
     private ChatStreamingProperties streamingProperties;
 
+    @Mock
+    private SseEventPublisherImpl sseEventPublisher;
+
     @InjectMocks
     private AiChatServiceImpl aiChatService;
 
@@ -93,6 +98,16 @@ class AiChatServiceImplTest {
         lenient().when(streamingProperties.getResponseTimeout()).thenReturn(Duration.ofSeconds(30));
         lenient().when(conversationService.generateTitleIfNeededAsync(any(), any())).thenReturn(Mono.empty());
         
+        // 添加对SseEventPublisherImpl方法的mock
+        Sinks.Many<SseEventResponse> mockSink = mock(Sinks.Many.class);
+        when(sseEventPublisher.registerConversation(anyLong())).thenReturn(mockSink);
+        when(mockSink.asFlux()).thenReturn(Flux.empty());
+        
+        // 添加对其他SseEventPublisherImpl方法的mock
+        doNothing().when(sseEventPublisher).setCurrentConversationId(anyLong());
+        doNothing().when(sseEventPublisher).removeConversation(anyLong());
+        doNothing().when(sseEventPublisher).clearCurrentConversationId();
+        
         // 移除全局ModelSelector mock设置，改为在具体测试中设置
     }
 
@@ -107,10 +122,7 @@ class AiChatServiceImplTest {
 
         when(messageService.saveUserMessageAsync(conversationId, userMessage))
             .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
-        
-        when(searchService.performSearchWithEvents(userMessage, false))
-            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
-        
+
         when(promptBuilder.buildPrompt(conversationId, userMessage, false))
             .thenReturn(Mono.just("提示词"));
 
@@ -120,13 +132,13 @@ class AiChatServiceImplTest {
         when(chatClientManager.getChatClient("test-provider"))
             .thenThrow(new RuntimeException("ChatClient creation failed"));
         
-        // 不再mock errorHandler，因为错误在callAiModel方法中被捕获并处理
+        // Mock errorHandler to return a specific error response
+        when(errorHandler.handleChatError(any()))
+            .thenReturn(Flux.just(SseEventResponse.error("初始化AI服务失败：ChatClient creation failed")));
 
         // When & Then
         StepVerifier.create(aiChatService.streamChat(request))
-            .expectNext(SseEventResponse.start("AI正在思考中..."))  // 开始事件
             .expectNext(SseEventResponse.error("初始化AI服务失败：ChatClient creation failed"))  // 错误事件
-            .expectNext(SseEventResponse.end(null))  // 结束事件
             .verifyComplete();
     }
 
@@ -141,9 +153,6 @@ class AiChatServiceImplTest {
 
         when(messageService.saveUserMessageAsync(conversationId, userMessage))
             .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
-        
-        when(searchService.performSearchWithEvents(userMessage, false))
-            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
         
         when(promptBuilder.buildPrompt(conversationId, userMessage, false))
             .thenReturn(Mono.just("提示词"));
@@ -181,10 +190,7 @@ class AiChatServiceImplTest {
 
         when(messageService.saveUserMessageAsync(conversationId, userMessage))
             .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
-        
-        when(searchService.performSearchWithEvents(userMessage, false))
-            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
-        
+
         when(promptBuilder.buildPrompt(conversationId, userMessage, false))
             .thenReturn(Mono.just("构建的完整提示词"));
         
@@ -207,7 +213,6 @@ class AiChatServiceImplTest {
             .verifyComplete();
 
         verify(messageService).saveUserMessageAsync(conversationId, userMessage);
-        verify(searchService).performSearchWithEvents(userMessage, false);
         verify(promptBuilder).buildPrompt(conversationId, userMessage, false);
         verify(chatClientManager).getChatClient("test-provider");
     }
@@ -226,18 +231,7 @@ class AiChatServiceImplTest {
 
         when(messageService.saveUserMessageAsync(conversationId, userMessage))
             .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
-        
-        SearchService.SearchContextResult searchResult = new SearchService.SearchContextResult(
-            "search context", null, 
-            Flux.just(
-                SseEventResponse.search("正在搜索..."),
-                SseEventResponse.search("找到相关信息")
-            )
-        );
-        
-        when(searchService.performSearchWithEvents(userMessage, true))
-            .thenReturn(Mono.just(searchResult));
-        
+
         when(promptBuilder.buildPrompt(conversationId, userMessage, true))
             .thenReturn(Mono.just("包含搜索结果的提示词"));
             
@@ -260,8 +254,6 @@ class AiChatServiceImplTest {
             .expectNext(SseEventResponse.chunk("AI response chunk"))
             .expectNext(SseEventResponse.end(null))
             .verifyComplete();
-
-        verify(searchService).performSearchWithEvents(userMessage, true);
     }
 
     @Test
@@ -278,10 +270,7 @@ class AiChatServiceImplTest {
 
         when(messageService.saveUserMessageAsync(conversationId, userMessage))
             .thenReturn(Mono.just(createMessage(1L, conversationId, ROLE_USER, userMessage)));
-        
-        when(searchService.performSearchWithEvents(userMessage, false))
-            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
-        
+
         when(promptBuilder.buildPrompt(conversationId, userMessage, false))
             .thenReturn(Mono.just("用户偏好模型的提示词"));
         
@@ -318,10 +307,6 @@ class AiChatServiceImplTest {
 
         when(messageService.saveUserMessageAsync(conversationId, userMessage))
             .thenReturn(Mono.error(new RuntimeException("Database error")));
-        
-        // 添加缺失的mock设置
-        when(searchService.performSearchWithEvents(userMessage, false))
-            .thenReturn(Mono.just(new SearchService.SearchContextResult("", null, Flux.empty())));
         
         when(promptBuilder.buildPrompt(conversationId, userMessage, false))
             .thenReturn(Mono.just("提示词"));

@@ -40,7 +40,7 @@ class DefaultPromptBuilderTest {
 
     @BeforeEach
     void setUp() {
-        promptBuilder = new DefaultPromptBuilder(messageService, searchService);
+        promptBuilder = new DefaultPromptBuilder(messageService);
     }
 
     @Test
@@ -116,15 +116,6 @@ class DefaultPromptBuilderTest {
         searchResult.setTitle("Test Result");
         searchResult.setUrl("http://test.com");
         searchResult.setSnippet("Test snippet");
-        
-        when(searchService.performSearchWithEvents(eq(userMessage), eq(true)))
-                .thenReturn(Mono.just(new SearchService.SearchContextResult(
-                        "Search result 1\nSearch result 2", // 搜索上下文
-                        Arrays.asList(searchResult), // 搜索结果列表
-                        reactor.core.publisher.Flux.empty() // 搜索事件流
-                )));
-        
-        when(searchService.formatSearchResults(anyList())).thenReturn("Search result 1\nSearch result 2");
 
         // When & Then
         StepVerifier.create(promptBuilder.buildPrompt(conversationId, userMessage, searchEnabled))
@@ -787,16 +778,6 @@ class DefaultPromptBuilderTest {
       // Mock message service
       when(messageService.getConversationHistoryAsync(conversationId))
               .thenReturn(Mono.just(Collections.emptyList()));
-      
-      // Mock search service with special characters
-      when(searchService.performSearchWithEvents(eq(userMessage), eq(true)))
-              .thenReturn(Mono.just(new SearchService.SearchContextResult(
-                      "特殊字符搜索结果🌟🔍🚀", // 搜索上下文
-                      Arrays.asList(), // 搜索结果列表
-                      reactor.core.publisher.Flux.empty() // 搜索事件流
-              )));
-      
-      when(searchService.formatSearchResults(anyList())).thenReturn("特殊字符搜索结果🌟🔍🚀");
 
       // When & Then
       StepVerifier.create(promptBuilder.buildPrompt(conversationId, userMessage, searchEnabled))

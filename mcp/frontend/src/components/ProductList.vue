@@ -29,7 +29,7 @@ export default {
   methods: {
     async loadProducts() {
       try {
-        const response = await axios.get('http://localhost:8080/api/products')
+        const response = await axios.get('http://localhost:8082/api/products')
         this.products = response.data
       } catch (error) {
         console.error('加载商品失败:', error)

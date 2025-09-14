@@ -36,7 +36,7 @@ export default {
   methods: {
     async loadOrders() {
       try {
-        const response = await axios.get('http://localhost:8080/api/orders')
+        const response = await axios.get('http://localhost:8082/api/orders')
         this.orders = response.data
       } catch (error) {
         console.error('加载订单失败:', error)

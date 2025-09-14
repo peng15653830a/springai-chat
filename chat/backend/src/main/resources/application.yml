@@ -15,8 +15,8 @@ spring:
     # PostgreSQL数据库配置
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/ai_chat
-    username: ${DB_USERNAME:your_db_name}
-    password: ${DB_PASSWORD:your_db_password}
+    username: postgres
+    password: xupeng2016
   
   # JPA配置
   jpa:
@@ -35,14 +35,12 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:your_api_key}
-      base-url: ${OPENAI_BASE_URL:https://api-inference.modelscope.cn}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
       chat:
         options:
-          model: ${OPENAI_MODEL:Qwen/Qwen3-235B-A22B-Thinking-2507}
+          model: ${OPENAI_MODEL:gpt-3.5-turbo}
           temperature: 0.7
           max-tokens: 4192
-          enable_thinking: true
-          thinking_budget: 50000
 
 # 多模型配置
 ai:
@@ -68,7 +66,7 @@ ai:
       qwen:
         enabled: ${QWEN_ENABLED:true}
         display-name: "通义千问"
-        api-key-env: "QWEN_API_KEY"
+        api-key: ${QWEN_API_KEY:your_api_key}
         base-url: ${QWEN_BASE_URL:https://api-inference.modelscope.cn}
         connect-timeout-ms: 10000
         read-timeout-ms: 30000
@@ -87,7 +85,7 @@ ai:
       openai:
         enabled: ${OPENAI_ENABLED:true}
         display-name: "OpenAI"
-        api-key-env: "OPENAI_API_KEY"
+        api-key: ${OPENAI_API_KEY:your_api_key}
         base-url: ${OPENAI_API_BASE_URL:https://api-inference.modelscope.cn}
         connect-timeout-ms: 10000
         read-timeout-ms: 30000
@@ -105,7 +103,7 @@ ai:
       kimi2:
         enabled: ${KIMI2_ENABLED:true}
         display-name: "Kimi2"
-        api-key-env: "KIMI2_API_KEY"
+        api-key: ${KIMI2_API_KEY:your_api_key}
         base-url: ${KIMI2_BASE_URL:https://api-inference.modelscope.cn}
         connect-timeout-ms: 10000
         read-timeout-ms: 30000
@@ -123,12 +121,12 @@ ai:
       DeepSeek:
         enabled: ${DEEPSEEK_ENABLED:true}
         display-name: "DeepSeek"
-        api-key-env: "DEEPSEEK_API_KEY"
-        base-url: ${DEEPSEEK_BASE_URL:https://api-inference.modelscope.cn}
+        api-key: ${DEEPSEEK_API_KEY:your_api_key}
+        base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
         connect-timeout-ms: 10000
         read-timeout-ms: 30000
         models:
-          - name: "deepseek-ai/DeepSeek-V3.1"
+          - name: "deepseek-chat"
             display-name: "DeepSeek-V3.1"
             max-tokens: 4192
             temperature: 0.7
@@ -141,7 +139,7 @@ ai:
       greatwall:
         enabled: ${GREATWALL_ENABLED:true}
         display-name: "长城大模型"
-        api-key-env: "GREATWALL_API_KEY"
+        api-key: ${GREATWALL_API_KEY:your_greatwall_key}
         base-url: ${GREATWALL_BASE_URL:https://agent.ai.sinopec.com/aicoapi/gateway/v2/chatbot/api_run/1745897196_38b0ccad-62d4-49d2-a44a-8da43d8ab344}
         connect-timeout-ms: 15000
         read-timeout-ms: 60000
@@ -155,7 +153,6 @@ ai:
             enabled: true
             sort-order: 1
             non-standard-api: true
-            api-run-id: "1745897196_38b0ccad-62d4-49d2-a44a-8da43d8ab344"
             tpuid-prefix: "guest"
 
 # 长城大模型SSL配置

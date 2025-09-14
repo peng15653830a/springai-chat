@@ -3,8 +3,12 @@ package com.example.service.impl;
 import com.example.config.ChatStreamingProperties;
 import com.example.dto.request.StreamChatRequest;
 import com.example.dto.response.SseEventResponse;
+import com.example.dto.response.SearchResult;
+import com.example.dto.request.MessageSaveRequest;
 import com.example.manager.ChatClientManager;
 import com.example.service.*;
+import com.example.tool.WebSearchTool;
+import org.springframework.ai.chat.client.ChatClient;
 import com.example.handler.ChatErrorHandler;
 import com.example.strategy.model.ModelSelector;
 import com.example.strategy.prompt.PromptBuilder;
@@ -14,6 +18,9 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Objects;
 
 /**
  * 重构后的AI聊天服务实现类
@@ -27,13 +34,13 @@ import reactor.core.publisher.Mono;
 public class AiChatServiceImpl implements AiChatService {
 
     private final ChatStreamingProperties streamingProperties;
-    private final SearchService searchService;
     private final ConversationService conversationService;
     private final MessageService messageService;
     private final ChatClientManager chatClientManager;
     private final ModelSelector modelSelector;
     private final PromptBuilder promptBuilder;
     private final ChatErrorHandler errorHandler;
+    private final SseEventPublisher sseEventPublisher;
 
     @Override
     public Flux<SseEventResponse> streamChat(StreamChatRequest request) {
@@ -46,11 +53,28 @@ public class AiChatServiceImpl implements AiChatService {
                 request.getProvider(), 
                 request.getModel());
 
-        return Flux.concat(
-            prepareContext(request),  // 准备阶段：处理输入和上下文
-            processChat(request),     // 执行阶段：与AI模型交互
-            finishChat(request)       // 完成阶段：保存结果
+        // 设置当前会话ID到SseEventPublisher，确保WebSearchTool能发送SSE事件
+        sseEventPublisher.setCurrentConversationId(request.getConversationId());
+        log.debug("🔧 设置会话ID到SseEventPublisher: {}", request.getConversationId());
+
+        // 获取SseEventPublisher的事件流，用于合并搜索事件
+        var searchEventFlux = sseEventPublisher.registerConversationFlux(request.getConversationId());
+
+        // 合并搜索事件流和主聊天流
+        return Flux.merge(
+            searchEventFlux,  // 搜索相关的SSE事件流
+            Flux.concat(
+                prepareContext(request),  // 准备阶段：处理输入和上下文
+                processChat(request),     // 执行阶段：与AI模型交互（Spring AI自动处理Tool Calling）
+                finishChat(request)       // 完成阶段：保存结果
+            )
         )
+        .doFinally(signalType -> {
+            // 清理SseEventPublisher的当前会话ID和事件发射器
+            sseEventPublisher.clearCurrentConversationId();
+            sseEventPublisher.removeConversation(request.getConversationId());
+            log.debug("🧹 清理SseEventPublisher会话ID: {}", request.getConversationId());
+        })
         .onErrorResume(errorHandler::handleChatError);
     }
 
@@ -74,12 +98,17 @@ public class AiChatServiceImpl implements AiChatService {
      */
     private Flux<SseEventResponse> processChat(StreamChatRequest request) {
         log.debug("开始处理AI聊天，会话ID: {}", request.getConversationId());
-        
+
         return buildPrompt(request)
             .flatMapMany(prompt -> {
-                // 选择模型并执行流式聊天
-                ModelSelector.ModelSelection modelSelection = selectModel(request);
-                return streamFromAI(prompt, modelSelection, request);
+                // 预创建助手消息以获取消息ID用于工具调用关联
+                return messageService.preCreateAssistantMessage(request.getConversationId())
+                    .flatMapMany(messageId -> {
+                        log.debug("预创建助手消息成功，消息ID: {}", messageId);
+                        // 选择模型并执行流式聊天
+                        ModelSelector.ModelSelection modelSelection = selectModel(request);
+                        return streamFromAI(prompt, modelSelection, request, messageId);
+                    });
             });
     }
 
@@ -115,11 +144,11 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     /**
-     * 搜索增强（可选）
+     * 搜索增强（Spring AI自动处理Tool Calling）
      */
     private Flux<SseEventResponse> enrichWithSearch(StreamChatRequest request) {
-        return searchService.performSearchWithEvents(request.getMessage(), request.isSearchEnabled())
-            .flatMapMany(SearchService.SearchContextResult::getSearchEvents);
+        // Spring AI会根据需要自动调用WebSearchTool
+        return Flux.empty();
     }
 
     /**
@@ -153,77 +182,64 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     /**
-     * 从AI模型流式获取响应
+     * 从AI模型流式获取响应 - 使用Spring AI原生方式与Advisor机制
      */
-    private Flux<SseEventResponse> streamFromAI(String prompt, ModelSelector.ModelSelection modelSelection, 
-                                               StreamChatRequest request) {
-        log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}", 
-            modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking());
+    private Flux<SseEventResponse> streamFromAI(String prompt, ModelSelector.ModelSelection modelSelection,
+                                               StreamChatRequest request, Long messageId) {
+        log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}, 消息ID: {}",
+            modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking(), messageId);
 
-        StringBuilder contentBuilder = new StringBuilder();
+        Long conversationId = request.getConversationId();
+
+        // 设置会话ID和消息ID到WebSearchTool的线程本地存储，解决线程上下文问题
+        WebSearchTool.setToolConversationId(conversationId);
+        WebSearchTool.setToolMessageId(messageId);
+        log.debug("🔧 已设置会话ID {}和消息ID {}到WebSearchTool", conversationId, messageId);
 
         return Flux.concat(
             // 1. 发送开始事件
             Mono.just(SseEventResponse.start("AI正在思考中...")),
-            
-            // 2. 调用AI模型并处理响应
-            callAiModel(prompt, modelSelection, request)
-                .doOnNext(event -> {
-                    // 收集内容用于保存
-                    if ("chunk".equals(event.getType()) && event.getData() != null) {
-                        contentBuilder.append(event.getData().toString());
+
+            // 2. 使用Spring AI ChatClient流式调用（自动处理Tool Calling和Advisor消息保存）
+            getChatClientForModel(modelSelection)
+                .prompt()
+                .user(prompt)
+                .advisors(advisorSpec -> advisorSpec
+                    .param(com.example.advisor.SimplifiedMessageHistoryAdvisor.CONVERSATION_ID_KEY, conversationId)
+                    .param(com.example.advisor.SimplifiedMessageHistoryAdvisor.MESSAGE_ID_KEY, messageId))
+                .stream()
+                .chatResponse()
+                .mapNotNull(chatResponse -> {
+                    // 提取响应内容并创建SSE事件
+                    var result = chatResponse.getResult();
+                    if (result != null && result.getOutput() != null) {
+                        // 使用getText()方法获取纯文本内容
+                        String content = result.getOutput().getText();
+                        return content != null && !content.trim().isEmpty() ?
+                            SseEventResponse.chunk(content) : null;
                     }
-                }),
-            
-            // 3. 保存消息并发送结束事件
-            saveAiResponse(request.getConversationId(), contentBuilder.toString())
+                    return null;
+                })
+                .filter(Objects::nonNull),
+
+            // 3. 发送结束事件（消息保存由Advisor自动处理）
+            Mono.just(SseEventResponse.end(null))
         )
         .timeout(streamingProperties.getResponseTimeout())
-        .onErrorResume(errorHandler::handleChatError);
+        .onErrorResume(errorHandler::handleChatError)
+        .doFinally(signalType -> {
+            // 清理WebSearchTool的线程本地存储
+            WebSearchTool.clearCurrentSearchResults();
+            log.debug("🧹 已清理WebSearchTool线程本地存储");
+        });
     }
-
-    // ========================= 第三层：具体实现细节 =========================
-
+    
     /**
-     * 调用AI模型
+     * 获取指定模型的ChatClient
+     * 现在所有模型的ChatClient都配置了WebSearchTool和MessageHistoryAdvisor
      */
-    private Flux<SseEventResponse> callAiModel(String prompt, ModelSelector.ModelSelection modelSelection, 
-                                              StreamChatRequest request) {
-        try {
-            ChatClient chatClient = chatClientManager.getChatClient(modelSelection.providerName());
-            
-            return chatClient.prompt()
-                .user(prompt)
-                .stream()
-                .content()
-                .map(content -> {
-                    log.debug("💬 收到内容片段，长度: {}", content.length());
-                    return SseEventResponse.chunk(content);
-                })
-                .onErrorResume(error -> {
-                    log.error("❌ {} API调用失败", modelSelection.providerName(), error);
-                    return Flux.just(SseEventResponse.error("AI服务暂时不可用：" + error.getMessage()));
-                });
-                
-        } catch (Exception e) {
-            log.error("❌ 创建ChatClient失败", e);
-            return Flux.just(SseEventResponse.error("初始化AI服务失败：" + e.getMessage()));
-        }
-    }
-
-    /**
-     * 保存AI响应
-     */
-    private Mono<SseEventResponse> saveAiResponse(Long conversationId, String content) {
-        log.info("💾 准备保存AI响应，会话ID: {}, 内容长度: {}", 
-            conversationId, content != null ? content.length() : 0);
-        
-        if (content == null || content.trim().isEmpty()) {
-            log.warn("⚠️ AI响应内容为空，会话ID: {}", conversationId);
-            return Mono.just(SseEventResponse.end(null));
-        }
-        
-        return messageService.saveAiMessageAsync(conversationId, content.trim(), null)
-            .onErrorReturn(SseEventResponse.error("保存AI响应失败"));
+    private ChatClient getChatClientForModel(ModelSelector.ModelSelection modelSelection) {
+        // 使用ChatClientManager，每个ChatClient都已配置WebSearchTool和MessageHistoryAdvisor
+        return chatClientManager.getChatClient(modelSelection.providerName());
     }
 }
