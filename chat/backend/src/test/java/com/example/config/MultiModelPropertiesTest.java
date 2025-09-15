@@ -87,16 +87,12 @@ class MultiModelPropertiesTest {
         
         properties.getProviders().putAll(providers);
         
-        // Set environment variable
-        String originalValue = System.getenv("TEST_API_KEY");
-        try {
-            // Note: We can't easily set environment variables in tests, so we'll just test the method structure
-            String apiKey = properties.getApiKey("testProvider");
-            // This will be null since we can't set the environment variable in tests
-            assertNull(apiKey);
-        } finally {
-            // Restore original value if needed
-        }
+        // When
+        String apiKey = properties.getApiKey("testProvider");
+        
+        // Then
+        // 修正：getApiKey方法直接返回配置的API密钥，不再从环境变量获取
+        assertEquals("TEST_API_KEY", apiKey);
     }
 
     @Test

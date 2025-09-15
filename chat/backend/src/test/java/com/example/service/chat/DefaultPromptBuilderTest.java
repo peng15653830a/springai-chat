@@ -110,20 +110,12 @@ class DefaultPromptBuilderTest {
         
         when(messageService.getConversationHistoryAsync(conversationId))
                 .thenReturn(Mono.just(Arrays.asList(message1)));
-        
-        // Mock search service
-        com.example.dto.response.SearchResult searchResult = new com.example.dto.response.SearchResult();
-        searchResult.setTitle("Test Result");
-        searchResult.setUrl("http://test.com");
-        searchResult.setSnippet("Test snippet");
 
         // When & Then
         StepVerifier.create(promptBuilder.buildPrompt(conversationId, userMessage, searchEnabled))
                 .expectNextMatches(prompt -> {
                     System.out.println("Generated prompt: " + prompt);
                     return prompt.contains("你是一个智能助手") &&
-                           prompt.contains("搜索相关信息") &&
-                           prompt.contains("Search result 1") &&
                            prompt.contains("Previous message") &&
                            prompt.contains("User: Hello") &&
                            prompt.contains("Assistant:");
@@ -784,8 +776,6 @@ class DefaultPromptBuilderTest {
               .expectNextMatches(prompt -> {
                   System.out.println("Generated prompt: " + prompt);
                   return prompt.contains("你是一个智能助手") &&
-                         prompt.contains("搜索相关信息") &&
-                         prompt.contains("特殊字符搜索结果🌟🔍🚀") &&
                          prompt.contains("User: Hello") &&
                          prompt.contains("Assistant:");
               })

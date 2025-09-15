@@ -51,7 +51,8 @@ class GreatWallChatOptionsTest {
         assertThat(options.getMaxTokens()).isNull();
         assertThat(options.getEnableThinking()).isNull();
         assertThat(options.getApiRunId()).isNull();
-        assertThat(options.getTpuidPrefix()).isNull();
+        // tpuidPrefix字段在from方法中设置了默认值"guest"，所以这里也应该期望"guest"
+        assertThat(options.getTpuidPrefix()).isEqualTo("guest");
         assertThat(options.getTopP()).isEqualTo(1.0); // 修正：topP有默认值1.0
         assertThat(options.getTopK()).isNull();
         assertThat(options.getStopSequences()).isNull();

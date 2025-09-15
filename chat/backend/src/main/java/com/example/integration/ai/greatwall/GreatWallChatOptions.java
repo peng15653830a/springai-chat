@@ -46,12 +46,12 @@ public class GreatWallChatOptions implements ChatOptions {
     /**
      * 用户ID前缀（长城大模型特有）
      */
-    private String tpuidPrefix;
+    private String tpuidPrefix = "guest";
 
     /**
      * Top-P采样参数 (Spring AI ChatOptions必需)
      */
-    private Double topP;
+    private Double topP = 1.0;
 
     /**
      * Top-K采样参数 (Spring AI ChatOptions必需)

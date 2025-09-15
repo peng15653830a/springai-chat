@@ -29,7 +29,7 @@ public class MessageToolResultServiceImpl implements MessageToolResultService {
     private final ObjectMapper objectMapper;
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Long startToolCall(Long messageId, String toolName, String toolInput) {
         log.debug("开始工具调用记录，消息ID: {}, 工具: {}", messageId, toolName);
 
@@ -51,7 +51,7 @@ public class MessageToolResultServiceImpl implements MessageToolResultService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void completeToolCall(Long toolResultId, String toolResult) {
         log.debug("完成工具调用记录，ID: {}", toolResultId);
 
@@ -67,7 +67,7 @@ public class MessageToolResultServiceImpl implements MessageToolResultService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void failToolCall(Long toolResultId, String errorMessage) {
         log.debug("记录工具调用失败，ID: {}, 错误: {}", toolResultId, errorMessage);
 
@@ -83,7 +83,7 @@ public class MessageToolResultServiceImpl implements MessageToolResultService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Long saveSearchResults(Long messageId, String query, List<SearchResult> searchResults) {
         log.debug("保存搜索结果，消息ID: {}, 查询: {}, 结果数量: {}",
                 messageId, query, searchResults != null ? searchResults.size() : 0);
@@ -144,7 +144,7 @@ public class MessageToolResultServiceImpl implements MessageToolResultService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteMessageToolResults(Long messageId) {
         log.debug("删除消息工具调用结果，消息ID: {}", messageId);
 

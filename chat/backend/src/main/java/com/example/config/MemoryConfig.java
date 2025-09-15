@@ -9,6 +9,8 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 
 /**
  * 基于数据库的对话记忆配置（Spring AI 1.0.0）
+ * 
+ * @author xupeng
  */
 @Configuration
 public class MemoryConfig {

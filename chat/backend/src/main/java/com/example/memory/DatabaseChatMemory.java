@@ -20,6 +20,8 @@ import static com.example.constant.AiChatConstants.ROLE_USER;
 
 /**
  * 持久化 ChatMemory 实现：通过 MessageMapper 读写数据库。
+ * 
+ * @author xupeng
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -91,7 +93,9 @@ public class DatabaseChatMemory implements ChatMemory {
     @Override
     public void clear(String conversationId) {
         Long cid = parseConversationId(conversationId);
-        if (cid == null) return;
+        if (cid == null) {
+            return;
+        }
         try {
             messageMapper.deleteByConversationId(cid);
         } catch (Exception e) {

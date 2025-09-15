@@ -93,7 +93,7 @@ public class WebSearchTool {
             sseEventPublisher.publishSearchComplete(conversationId);
 
             // 格式化搜索结果返回给AI模型
-            String formattedResults = formatSearchResultsForAI(results);
+            String formattedResults = formatSearchResultsForAi(results);
             log.info("✅ 搜索完成，返回{}条结果给AI模型", results.size());
 
             return formattedResults;
@@ -120,7 +120,7 @@ public class WebSearchTool {
     /**
      * 格式化搜索结果给AI模型使用
      */
-    private String formatSearchResultsForAI(List<SearchResult> results) {
+    private String formatSearchResultsForAi(List<SearchResult> results) {
         if (results == null || results.isEmpty()) {
             log.warn("⚠️ 搜索结果为空或null");
             return "没有找到相关搜索结果。";
