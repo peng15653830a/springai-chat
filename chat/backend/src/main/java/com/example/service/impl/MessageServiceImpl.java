@@ -1,6 +1,5 @@
 package com.example.service.impl;
 
-import com.example.dto.request.AiMessageSaveRequest;
 import com.example.dto.request.MessageSaveRequest;
 import com.example.dto.response.SseEventResponse;
 import com.example.entity.Message;
@@ -44,16 +43,16 @@ public class MessageServiceImpl implements MessageService {
       throw new IllegalArgumentException("消息内容不能为空");
     }
 
-    log.debug("保存消息，会话ID: {}, 角色: {}, 内容长度: {}, 是否有思考: {}, 是否有搜索结果: {}", 
+    log.debug("保存消息，会话ID: {}, 角色: {}, 内容长度: {}, 是否有思考: {}",
             request.getConversationId(), request.getRole(), request.getContent().length(),
-            request.getThinking() != null, request.getSearchResults() != null);
+            request.getThinking() != null);
 
     Message message = new Message();
     message.setConversationId(request.getConversationId());
     message.setRole(request.getRole());
     message.setContent(request.getContent());
     message.setThinking(request.getThinking());
-    message.setSearchResults(request.getSearchResults());
+    // 搜索结果已迁移到message_tool_results表，不再存储在message中
     messageMapper.insert(message);
     
     log.debug("消息保存成功，消息ID: {}", message.getId());
@@ -114,7 +113,7 @@ public class MessageServiceImpl implements MessageService {
               .role(ROLE_ASSISTANT)
               .content(content)
               .thinking(thinking)
-              .searchResults(null)
+              // 不再使用searchResults字段
               .build());
           
           log.info("AI消息保存成功，消息ID: {}, thinking内容: {}", 
@@ -127,39 +126,6 @@ public class MessageServiceImpl implements MessageService {
         });
   }
 
-  @Override
-  public Mono<SseEventResponse> saveAiMessageWithSearchAsync(AiMessageSaveRequest request) {
-    return Mono.fromCallable(() -> {
-          // 将搜索结果序列化为JSON（如果存在）
-          String searchResultsJson = null;
-          if (request.getSearchResults() != null && !request.getSearchResults().isEmpty()) {
-            try {
-              searchResultsJson = new com.fasterxml.jackson.databind.ObjectMapper()
-                  .writeValueAsString(request.getSearchResults());
-            } catch (Exception e) {
-              log.warn("序列化搜索结果失败", e);
-            }
-          }
-          
-          // 保存AI消息，包含thinking和搜索结果
-          Message aiMessage = saveMessage(MessageSaveRequest.builder()
-                  .conversationId(request.getConversationId())
-                  .role(ROLE_ASSISTANT)
-                  .content(request.getContent())
-                  .thinking(request.getThinking())
-                  .searchResults(searchResultsJson)
-                  .build());
-          
-          log.info("AI消息保存成功，消息ID: {}, thinking: {}, 搜索结果: {}", 
-              aiMessage.getId(), request.getThinking() != null ? "有" : "无", 
-              request.getSearchResults() != null ? "有" : "无");
-          return SseEventResponse.end(aiMessage.getId());
-        })
-        .onErrorMap(error -> {
-          log.error("保存AI消息失败，会话ID: {}", request.getConversationId(), error);
-          return new RuntimeException("保存AI消息失败: " + error.getMessage(), error);
-        });
-  }
 
   @Override
   public Mono<List<Message>> getConversationHistoryAsync(Long conversationId) {

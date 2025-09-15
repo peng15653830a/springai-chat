@@ -2,7 +2,6 @@ package com.example.memory;
 
 import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
-import com.example.tool.WebSearchTool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -51,8 +50,12 @@ public class DatabaseChatMemory implements ChatMemory {
 
     @Override
     public void add(String conversationId, List<org.springframework.ai.chat.messages.Message> messages) {
+        log.info("🔥 DatabaseChatMemory.add() 被调用: conversationId={}, messages数量={}",
+            conversationId, messages != null ? messages.size() : 0);
+
         Long cid = parseConversationId(conversationId);
         if (cid == null || messages == null || messages.isEmpty()) {
+            log.warn("⚠️ 参数验证失败: cid={}, messages={}", cid, messages);
             return;
         }
 
@@ -62,21 +65,15 @@ public class DatabaseChatMemory implements ChatMemory {
                 entity.setConversationId(cid);
 
                 if (msg.getMessageType() == MessageType.USER) {
-                    entity.setRole(ROLE_USER);
-                    entity.setContent(((UserMessage) msg).getText());
+                    // 跳过用户消息保存，由应用层手动保存以获取真实messageId
+                    log.debug("跳过用户消息保存（应用层已处理）: {}", ((UserMessage) msg).getText());
+                    continue;
                 } else if (msg.getMessageType() == MessageType.ASSISTANT) {
                     entity.setRole(ROLE_ASSISTANT);
                     entity.setContent(((AssistantMessage) msg).getText());
-                    // 附加当前线程保存的搜索结果（若有）
-                    var results = WebSearchTool.getCurrentSearchResults();
-                    if (results != null && !results.isEmpty()) {
-                        try {
-                            String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(results);
-                            entity.setSearchResults(json);
-                        } catch (Exception e) {
-                            log.warn("序列化搜索结果失败: {}", e.getMessage());
-                        }
-                    }
+                    // 搜索结果已通过WebSearchTool保存到message_tool_results表，无需重复保存
+                    log.info("💾 保存助手回复消息: {}", entity.getContent().length() > 50 ?
+                        entity.getContent().substring(0, 50) + "..." : entity.getContent());
                 } else if (msg.getMessageType() == MessageType.SYSTEM) {
                     entity.setRole(ROLE_SYSTEM);
                     entity.setContent(((SystemMessage) msg).getText());

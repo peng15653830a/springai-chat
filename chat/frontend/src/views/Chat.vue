@@ -95,9 +95,9 @@
                   v-show="expandedThinking.has(message.id)" 
                   class="thinking-content"
                 >
-                  <VueMarkdownRender 
-                    :source="String(message.thinking || '')"
-                    :options="markdownOptions"
+                  <TypewriterMarkdown
+                    :content="String(message.thinking || '')"
+                    :enable-typewriter="false"
                     class="thinking-body"
                   />
                 </div>
@@ -108,10 +108,10 @@
                 <div v-if="message.role === 'user'" class="message-body">
                   {{ message.content }}
                 </div>
-                <VueMarkdownRender 
+                <TypewriterMarkdown
                   v-else
-                  :source="String(message.content || '')"
-                  :options="markdownOptions"
+                  :content="String(message.content || '')"
+                  :enable-typewriter="message.id === streamingMessageId"
                   class="message-body markdown-content"
                 />
                 <div class="message-actions">
@@ -252,17 +252,18 @@ import { useModelStore } from '../stores/model'
 import { conversationApi, chatApi, modelApi } from '../api'
 import { useEventSource } from '@vueuse/core'
 import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
 import { debounce } from 'lodash-es'
 import SearchIndicator from '../components/SearchIndicator.vue'
 import RightPanel from '../components/RightPanel.vue'
-import VueMarkdownRender from 'vue-markdown-render'
+import TypewriterMarkdown from '../components/TypewriterMarkdown.vue'
 
 export default {
   name: 'Chat',
   components: {
-    VueMarkdownRender,
     SearchIndicator,
-    RightPanel
+    RightPanel,
+    TypewriterMarkdown
   },
   setup(props, { emit }) {
     const userStore = useUserStore()
@@ -430,19 +431,7 @@ export default {
     // 右侧面板状态管理
     const currentSearchResults = ref([])
     const currentSearchMessageId = ref(null)
-    
-    // Markdown 渲染配置 - 确保支持表格
-    const markdownOptions = {
-      breaks: true,      // 启用换行
-      typographer: true, // 启用排版优化
-      html: false,       // 禁用HTML标签（安全考虑）
-      linkify: true,     // 自动识别链接
-      // 确保表格解析功能开启
-      tables: true,
-      // markdown-it 插件配置
-      plugins: []
-    }
-    
+
     // 加载对话列表
     const loadConversations = async () => {
       try {
@@ -1070,7 +1059,6 @@ export default {
       expandedThinking,
       processedMessages,
       parseSearchResults,
-      markdownOptions,
       createNewConversation,
       selectConversation,
       deleteConversation,

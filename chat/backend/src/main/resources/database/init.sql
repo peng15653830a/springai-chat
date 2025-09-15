@@ -46,6 +46,20 @@ CREATE TABLE IF NOT EXISTS messages (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 消息工具调用结果表
+CREATE TABLE IF NOT EXISTS message_tool_results (
+    id BIGSERIAL PRIMARY KEY,
+    message_id BIGINT NOT NULL,
+    tool_name VARCHAR(50) NOT NULL,
+    call_sequence INT NOT NULL,
+    tool_input TEXT,
+    tool_result TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- =================================================================
 -- 2. 索引
 -- =================================================================
@@ -58,21 +72,32 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages (conversatio
 CREATE INDEX IF NOT EXISTS idx_conversations_provider_model ON conversations (provider_name, model_name);
 CREATE INDEX IF NOT EXISTS idx_messages_provider_model ON messages (provider_name, model_name);
 
+-- 消息工具调用结果表索引
+CREATE INDEX IF NOT EXISTS idx_message_tool_results_message_id ON message_tool_results (message_id);
+CREATE INDEX IF NOT EXISTS idx_message_tool_results_message_id_tool_name ON message_tool_results (message_id, tool_name);
+CREATE INDEX IF NOT EXISTS idx_message_tool_results_message_id_sequence ON message_tool_results (message_id, call_sequence);
+
 -- =================================================================
 -- 3. 外键约束（简化）
 -- =================================================================
 
-DO $$ 
+DO $$
 BEGIN
     -- 基础表外键
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_conversations_user') THEN
-        ALTER TABLE conversations ADD CONSTRAINT fk_conversations_user 
+        ALTER TABLE conversations ADD CONSTRAINT fk_conversations_user
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_messages_conversation') THEN
-        ALTER TABLE messages ADD CONSTRAINT fk_messages_conversation 
+        ALTER TABLE messages ADD CONSTRAINT fk_messages_conversation
             FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
+    END IF;
+
+    -- 消息工具调用结果表外键
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_message_tool_results_message') THEN
+        ALTER TABLE message_tool_results ADD CONSTRAINT fk_message_tool_results_message
+            FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE;
     END IF;
 END $$;
 
@@ -100,8 +125,13 @@ CREATE TRIGGER update_conversations_updated_at
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_messages_updated_at ON messages;
-CREATE TRIGGER update_messages_updated_at 
-    BEFORE UPDATE ON messages 
+CREATE TRIGGER update_messages_updated_at
+    BEFORE UPDATE ON messages
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_message_tool_results_updated_at ON message_tool_results;
+CREATE TRIGGER update_message_tool_results_updated_at
+    BEFORE UPDATE ON message_tool_results
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =================================================================

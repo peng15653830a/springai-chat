@@ -10,6 +10,7 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.1.0",
     "@gijela/ai-hooks": "^1.0.2",
+    "@types/markdown-it": "^14.1.2",
     "@vueuse/core": "^13.6.0",
     "@vueuse/integrations": "^13.6.0",
     "axios": "^1.5.0",
@@ -20,7 +21,6 @@
     "markdown-it-table": "^4.1.1",
     "pinia": "^2.1.7",
     "vue": "^3.3.8",
-    "vue-markdown-render": "^2.2.1",
     "vue-router": "^4.2.5"
   },
   "devDependencies": {

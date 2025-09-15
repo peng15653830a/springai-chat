@@ -37,10 +37,6 @@ public class MessageSaveRequest {
      */
     private String thinking;
     
-    /**
-     * 搜索结果（可选，用于包含搜索上下文的消息）
-     */
-    private String searchResults;
     
     // ========================= 便利方法 =========================
     
@@ -78,29 +74,5 @@ public class MessageSaveRequest {
                 .build();
     }
     
-    /**
-     * 创建包含搜索结果的AI消息保存请求的便利方法
-     */
-    public static MessageSaveRequest forAssistantWithSearch(Long conversationId, String content, String searchResults) {
-        return MessageSaveRequest.builder()
-                .conversationId(conversationId)
-                .role("assistant")
-                .content(content)
-                .searchResults(searchResults)
-                .build();
-    }
     
-    /**
-     * 创建包含完整信息的AI消息保存请求的便利方法
-     */
-    public static MessageSaveRequest forAssistantComplete(Long conversationId, String content, 
-                                                         String thinking, String searchResults) {
-        return MessageSaveRequest.builder()
-                .conversationId(conversationId)
-                .role("assistant")
-                .content(content)
-                .thinking(thinking)
-                .searchResults(searchResults)
-                .build();
-    }
 }

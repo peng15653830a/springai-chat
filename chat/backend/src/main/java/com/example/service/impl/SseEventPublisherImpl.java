@@ -9,6 +9,7 @@ import reactor.core.publisher.Sinks;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import jakarta.annotation.PreDestroy;
 
 /**
  * SSE事件发布器实现类
@@ -170,14 +171,38 @@ public class SseEventPublisherImpl implements SseEventPublisher {
         currentSearchResults.remove(); // 同时清理搜索结果
     }
     
-    @Override
-    public List<SearchResult> getCurrentSearchResults() {
-        List<SearchResult> results = currentSearchResults.get();
-        return results != null ? results : java.util.Collections.emptyList();
-    }
     
     @Override
     public void clearCurrentSearchResults() {
         currentSearchResults.remove();
+    }
+
+    @Override
+    public List<SearchResult> getCurrentSearchResults() {
+        return currentSearchResults.get();
+    }
+
+    /**
+     * 应用关闭时清理ThreadLocal，防止内存泄漏
+     * 这是针对Spring AI框架限制的合理工作区域的安全保护
+     */
+    @PreDestroy
+    public void cleanup() {
+        try {
+            currentConversationId.remove();
+            currentSearchResults.remove();
+            // 清理所有事件发射器
+            conversationSinks.values().forEach(sink -> {
+                try {
+                    sink.tryEmitComplete();
+                } catch (Exception e) {
+                    log.warn("清理事件发射器时出错: {}", e.getMessage());
+                }
+            });
+            conversationSinks.clear();
+            log.info("🧹 ThreadLocal和事件发射器已清理完成");
+        } catch (Exception e) {
+            log.warn("⚠️ 清理ThreadLocal时出错: {}", e.getMessage());
+        }
     }
 }

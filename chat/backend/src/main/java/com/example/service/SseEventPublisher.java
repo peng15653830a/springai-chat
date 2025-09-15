@@ -72,17 +72,18 @@ public interface SseEventPublisher {
      */
     void setCurrentConversationId(Long conversationId);
     
-    /**
-     * 获取当前会话的搜索结果
-     * 
-     * @return 搜索结果列表
-     */
-    List<SearchResult> getCurrentSearchResults();
     
     /**
      * 清空当前会话的搜索结果
      */
     void clearCurrentSearchResults();
+
+    /**
+     * 获取当前会话的搜索结果
+     *
+     * @return 当前搜索结果列表
+     */
+    List<SearchResult> getCurrentSearchResults();
     
     /**
      * 清理当前线程的会话ID

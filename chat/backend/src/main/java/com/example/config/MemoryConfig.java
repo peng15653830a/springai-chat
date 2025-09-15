@@ -20,7 +20,7 @@ public class MemoryConfig {
 
     @Bean
     public MessageChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
-        // 使用自定义的参数键提取 conversationId
+        // 使用默认配置，先让它能正常启动
         return MessageChatMemoryAdvisor.builder(chatMemory).build();
     }
 }

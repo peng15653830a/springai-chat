@@ -26,8 +26,7 @@ public class Message {
   /** AI推理过程 */
   private String thinking;
   
-  /** 搜索结果 */
-  private String searchResults;
+  // 搜索结果已迁移到message_tool_results表，支持一对多关系
   
   /** 创建时间 */
   private LocalDateTime createdAt;

@@ -11,11 +11,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `mvn clean compile` - 编译后端代码
 - `mvn spring-boot:run` - 启动Spring Boot应用（端口8080）
 - `mvn test` - 运行单元测试
+- `mvn test -Dtest=类名` - 运行单个测试类（如：`mvn test -Dtest=MessageRequestTest`）
+- `mvn test -Dtest=类名#方法名` - 运行单个测试方法
 - `mvn pmd:check` - 阿里巴巴P3C代码规范检查
 - `mvn spotless:check` - 代码格式检查
 - `mvn spotless:apply` - 自动格式化代码
 - `mvn test jacoco:report` - 生成测试覆盖率报告
 - `./scripts/code-review.sh` - 执行完整代码质量检查（P3C + 编译 + 格式）
+- `./scripts/code-review.sh p3c` - 仅执行P3C代码规范检查
+- `./scripts/code-review.sh compile` - 仅执行编译检查
+- `./scripts/code-review.sh format` - 仅执行代码格式检查
 
 ### 前端命令
 - `cd frontend && npm install` - 安装前端依赖
@@ -37,6 +42,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **三层架构**: Controller → Service → Mapper（MyBatis）
 - **SSE流式传输**: 使用JSON包装解决Markdown格式传输问题
 - **异步处理**: AI响应、搜索、标题生成全异步
+- **记忆管理**: 基于MessageChatMemoryAdvisor实现对话历史持久化，支持上下文连续对话
 - **企业模型支持**: 支持长城大模型等企业级AI服务
 
 ### 前端架构（Vue 3 + Element Plus）
@@ -64,10 +70,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `SearchServiceImpl` (src/main/java/com/example/service/impl/) - 搜索增强功能
 - `ModelProviderFactory` (src/main/java/com/example/service/factory/) - 模型提供者工厂
 
+### 核心工具和管理类
+- `WebSearchTool` (src/main/java/com/example/tool/) - 搜索增强工具
+- `ChatClientManager` (src/main/java/com/example/manager/) - 聊天客户端管理器
+- `DatabaseChatMemory` (src/main/java/com/example/memory/) - 数据库聊天记忆实现
+
 ### 关键配置类
 - `MultiModelProperties` (src/main/java/com/example/config/) - 多模型配置
 - `ChatStreamingProperties` (src/main/java/com/example/config/) - 流式响应配置
 - `AiConfig` (src/main/java/com/example/config/) - AI相关配置
+- `MemoryConfig` (src/main/java/com/example/config/) - 聊天记忆配置
 
 ### 前端核心组件
 - `Chat.vue` (frontend/src/views/) - 主聊天界面

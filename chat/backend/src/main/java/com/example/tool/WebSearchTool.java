@@ -6,16 +6,19 @@ import com.example.service.MessageToolResultService;
 import com.example.dto.response.SearchResult;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Spring AI Tool for web search functionality
- * 按照Spring AI 1.0.0标准实现
- * 
+ * 按照Spring AI 1.0.0标准实现，使用ToolContext获取上下文信息
+ *
  * @author xupeng
  */
 @Slf4j
@@ -26,33 +29,34 @@ public class WebSearchTool {
     private final SearchService searchService;
     private final SseEventPublisher sseEventPublisher;
     private final MessageToolResultService messageToolResultService;
+    private final ObjectMapper objectMapper;
 
-    // 线程本地存储，保存当前搜索结果供后续使用
-    private static final ThreadLocal<List<SearchResult>> currentSearchResults = new ThreadLocal<>();
-
-    // 线程本地存储，保存当前会话ID
-    private static final ThreadLocal<Long> toolConversationId = new ThreadLocal<>();
-
-    // 线程本地存储，保存当前消息ID
-    private static final ThreadLocal<Long> toolMessageId = new ThreadLocal<>();
 
     @Tool(description = "执行网络搜索获取最新信息")
     public String searchWeb(
-            @ToolParam(description = "搜索查询内容，用于查找相关信息") String query
+            @ToolParam(description = "搜索查询内容，用于查找相关信息") String query,
+            ToolContext toolContext
     ) {
         log.info("🔍 Spring AI Tool调用搜索，查询: {}", query);
 
         Long toolResultId = null;
         try {
-            // 获取当前会话ID和消息ID
-            Long conversationId = getCurrentConversationId();
-            Long messageId = getCurrentMessageId();
-            log.info("🔧 WebSearchTool获取到会话ID: {}, 消息ID: {}", conversationId, messageId);
+            // 从ToolContext获取上下文信息（Spring AI 1.0标准做法）
+            Map<String, Object> context = toolContext.getContext();
+            log.info("🔧 ToolContext内容: {}", context);
+            Long conversationId = (Long) context.get("conversationId");
+            Long messageId = (Long) context.get("messageId");
+            log.info("🔧 WebSearchTool从ToolContext获取到会话ID: {}, 消息ID: {}", conversationId, messageId);
 
             // 开始工具调用记录（消息级别存储）
-            if (messageId != null) {
-                toolResultId = messageToolResultService.startToolCall(messageId, "webSearch", query);
-                log.debug("🔧 开始工具调用记录，ID: {}", toolResultId);
+            if (messageId != null && messageId > 0) {
+                try {
+                    toolResultId = messageToolResultService.startToolCall(messageId, "webSearch", query);
+                    log.debug("🔧 开始工具调用记录，ID: {}", toolResultId);
+                } catch (Exception e) {
+                    log.warn("⚠️ 无法创建工具调用记录，messageId可能不存在: {}, 错误: {}", messageId, e.getMessage());
+                    // 继续执行搜索，但不保存工具调用记录
+                }
             }
 
             // 发布搜索开始事件
@@ -61,13 +65,22 @@ public class WebSearchTool {
             // 执行搜索
             List<SearchResult> results = searchService.search(query);
 
-            // 保存搜索结果到线程本地存储
-            currentSearchResults.set(results);
+            // 注意：ToolContext的context map是不可修改的，不能直接put
+            // 我们通过ThreadLocal传递搜索结果（针对Spring AI框架限制的合理工作区域）
+            // 将搜索结果存储到ThreadLocal，供DatabaseChatMemory使用
+            if (results != null && !results.isEmpty()) {
+                // 通过SseEventPublisher存储到ThreadLocal（已有publishSearchResults方法会存储）
+                log.debug("🔧 搜索结果将通过SseEventPublisher存储到ThreadLocal");
+            }
 
             // 完成工具调用记录
             if (messageId != null && toolResultId != null) {
-                messageToolResultService.saveSearchResults(messageId, query, results);
-                log.debug("✅ 工具调用记录已完成，ID: {}", toolResultId);
+                try {
+                    messageToolResultService.completeToolCall(toolResultId, objectMapper.writeValueAsString(results));
+                    log.debug("✅ 工具调用记录已完成，ID: {}", toolResultId);
+                } catch (Exception e) {
+                    log.warn("⚠️ 无法保存搜索结果到工具调用记录: {}", e.getMessage());
+                }
             }
 
             // 发布搜索结果事件到前端
@@ -86,63 +99,23 @@ public class WebSearchTool {
             return formattedResults;
 
         } catch (Exception e) {
-            log.error("❌ 搜索执行失败: {}", e.getMessage(), e);
+            log.error("❌ 搜索执行失败，异常类型: {}, 异常信息: {}", e.getClass().getSimpleName(), e.getMessage(), e);
 
             // 记录工具调用失败
             if (toolResultId != null) {
                 messageToolResultService.failToolCall(toolResultId, "搜索服务暂时不可用: " + e.getMessage());
             }
 
-            // 获取当前会话ID并发布搜索错误事件
-            Long conversationId = getCurrentConversationId();
-            sseEventPublisher.publishSearchError(conversationId, "搜索服务暂时不可用，请稍后重试");
+            // 从ToolContext获取会话ID并发布搜索错误事件
+            Map<String, Object> context = toolContext.getContext();
+            Long conversationId = (Long) context.get("conversationId");
+            if (conversationId != null) {
+                sseEventPublisher.publishSearchError(conversationId, "搜索服务暂时不可用，请稍后重试");
+            }
             return "搜索服务暂时不可用，请稍后重试。";
         }
     }
-    
-    /**
-     * 设置当前会话ID到工具线程本地存储
-     */
-    public static void setToolConversationId(Long conversationId) {
-        toolConversationId.set(conversationId);
-    }
 
-    /**
-     * 设置当前消息ID到工具线程本地存储
-     */
-    public static void setToolMessageId(Long messageId) {
-        toolMessageId.set(messageId);
-    }
-
-    /**
-     * 获取当前会话ID
-     */
-    private Long getCurrentConversationId() {
-        return toolConversationId.get();
-    }
-
-    /**
-     * 获取当前消息ID
-     */
-    private Long getCurrentMessageId() {
-        return toolMessageId.get();
-    }
-
-    /**
-     * 获取当前线程的搜索结果
-     */
-    public static List<SearchResult> getCurrentSearchResults() {
-        return currentSearchResults.get();
-    }
-
-    /**
-     * 清理当前线程的搜索结果、会话ID和消息ID
-     */
-    public static void clearCurrentSearchResults() {
-        currentSearchResults.remove();
-        toolConversationId.remove();
-        toolMessageId.remove();
-    }
 
     /**
      * 格式化搜索结果给AI模型使用

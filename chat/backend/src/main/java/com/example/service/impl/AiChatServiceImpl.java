@@ -98,11 +98,17 @@ public class AiChatServiceImpl implements AiChatService {
     private Flux<SseEventResponse> processChat(StreamChatRequest request) {
         log.debug("开始处理AI聊天，会话ID: {}", request.getConversationId());
 
-        // 使用原始用户消息，历史与保存交给 MemoryAdvisor
         String userMessage = request.getMessage();
         return Flux.defer(() -> {
             ModelSelector.ModelSelection modelSelection = selectModel(request);
-            return streamFromAI(userMessage, modelSelection, request, null);
+
+            // 先保存用户消息获取真实messageId，用于工具调用关联
+            return messageService.saveUserMessageAsync(request.getConversationId(), userMessage)
+                .flatMapMany(savedUserMessage -> {
+                    Long realMessageId = savedUserMessage.getId();
+                    log.info("✅ 已保存用户消息，获得真实messageId: {}", realMessageId);
+                    return streamFromAI(userMessage, modelSelection, request, realMessageId);
+                });
         });
     }
 
@@ -176,18 +182,14 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     /**
-     * 从AI模型流式获取响应 - 使用Spring AI原生方式与Advisor机制
+     * 从AI模型流式获取响应 - 使用Spring AI 1.0标准ToolContext传递消息ID
      */
     private Flux<SseEventResponse> streamFromAI(String userMessage, ModelSelector.ModelSelection modelSelection,
                                                StreamChatRequest request, Long messageId) {
-        log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}, 消息ID: {}",
+        log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}, messageId: {}",
             modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking(), messageId);
 
         Long conversationId = request.getConversationId();
-
-        // 设置会话ID和消息ID到WebSearchTool的线程本地存储，解决线程上下文问题
-        WebSearchTool.setToolConversationId(conversationId);
-        log.debug("🔧 已设置会话ID {}到WebSearchTool", conversationId);
 
         return Flux.concat(
             // 1. 发送开始事件
@@ -198,8 +200,13 @@ public class AiChatServiceImpl implements AiChatService {
                 .prompt()
                 .user(userMessage)
                 .advisors(advisorSpec -> advisorSpec
-                    // MemoryAdvisor 将使用该参数加载/保存历史
-                    .param("conversationId", conversationId))
+                    // 直接传递会话ID字符串，不用参数键
+                    .param(conversationId.toString()))
+                // 使用Spring AI 1.0标准ToolContext传递上下文给工具
+                .toolContext(java.util.Map.of(
+                    "conversationId", conversationId,
+                    "messageId", messageId  // 传递真实messageId用于工具调用关联
+                ))
                 .stream()
                 .chatResponse()
                 .mapNotNull(chatResponse -> {
@@ -221,9 +228,7 @@ public class AiChatServiceImpl implements AiChatService {
         .timeout(streamingProperties.getResponseTimeout())
         .onErrorResume(errorHandler::handleChatError)
         .doFinally(signalType -> {
-            // 清理WebSearchTool的线程本地存储
-            WebSearchTool.clearCurrentSearchResults();
-            log.debug("🧹 已清理WebSearchTool线程本地存储");
+            log.debug("🧹 聊天请求处理完成");
         });
     }
     

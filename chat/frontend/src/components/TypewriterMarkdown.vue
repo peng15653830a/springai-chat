@@ -1,21 +1,16 @@
 <template>
-  <div class="typewriter-markdown" ref="containerRef">
-    <VueMarkdownRender 
-      :markdown="displayedContent" 
-      :options="markdownOptions"
-    />
+  <div class="typewriter-markdown" ref="containerRef" v-html="renderedHtml">
   </div>
 </template>
 
 <script>
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import VueMarkdownRender from 'vue-markdown-render'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
 
 export default {
   name: 'TypewriterMarkdown',
-  components: {
-    VueMarkdownRender
-  },
   props: {
     content: {
       type: String,
@@ -33,29 +28,27 @@ export default {
   emits: ['typing-complete'],
   setup(props, { emit }) {
     const displayedContent = ref('')
+    const renderedHtml = ref('')
     const containerRef = ref(null)
     const currentIndex = ref(0)
     const isTyping = ref(false)
     const typewriterTimer = ref(null)
-    
-    // Markdown渲染配置
-    const markdownOptions = {
+
+    // 初始化markdown-it实例
+    const md = new MarkdownIt({
       html: true,
       linkify: true,
       typographer: true,
       breaks: true,
-      highlight: (str, lang) => {
-        // 使用highlight.js进行代码高亮
-        if (window.hljs && lang && window.hljs.getLanguage(lang)) {
+      highlight: function (str, lang) {
+        if (lang && hljs.getLanguage(lang)) {
           try {
-            return window.hljs.highlight(str, { language: lang }).value
-          } catch (err) {
-            console.error('代码高亮失败:', err)
-          }
+            return hljs.highlight(str, { language: lang }).value
+          } catch (__) {}
         }
-        return str
+        return '' // 使用外部默认转义
       }
-    }
+    })
     
     // 清理定时器
     const clearTypewriterTimer = () => {
@@ -65,29 +58,41 @@ export default {
       }
     }
     
+    // 渲染markdown内容
+    const renderMarkdown = (content) => {
+      if (!content) {
+        renderedHtml.value = ''
+        return
+      }
+      renderedHtml.value = md.render(content)
+    }
+
     // 打字机效果实现
     const startTypewriter = () => {
       if (!props.enableTypewriter || !props.content) {
         displayedContent.value = props.content
+        renderMarkdown(props.content)
         emit('typing-complete')
         return
       }
-      
+
       isTyping.value = true
       currentIndex.value = 0
       displayedContent.value = ''
-      
+      renderedHtml.value = ''
+
       const typeNextChar = () => {
         if (currentIndex.value < props.content.length) {
           // 逐字符添加内容
           displayedContent.value = props.content.substring(0, currentIndex.value + 1)
+          renderMarkdown(displayedContent.value)
           currentIndex.value++
-          
+
           // 自动滚动到底部
           nextTick(() => {
             scrollToBottom()
           })
-          
+
           typewriterTimer.value = setTimeout(typeNextChar, props.speed)
         } else {
           // 打字完成
@@ -95,7 +100,7 @@ export default {
           emit('typing-complete')
         }
       }
-      
+
       typeNextChar()
     }
     
@@ -112,7 +117,7 @@ export default {
     // 监听内容变化
     watch(() => props.content, (newContent, oldContent) => {
       clearTypewriterTimer()
-      
+
       if (!oldContent || oldContent.length === 0) {
         // 新消息，启动打字机效果
         startTypewriter()
@@ -126,6 +131,7 @@ export default {
           }
         } else {
           displayedContent.value = newContent
+          renderMarkdown(newContent)
         }
       } else {
         // 内容完全替换
@@ -140,8 +146,8 @@ export default {
     
     return {
       displayedContent,
+      renderedHtml,
       containerRef,
-      markdownOptions,
       isTyping
     }
   }
