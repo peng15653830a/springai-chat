@@ -31,7 +31,7 @@ class PromptBuilderTest {
 
     @BeforeEach
     void setUp() {
-        promptBuilder = new DefaultPromptBuilder(messageService, searchService);
+        promptBuilder = new DefaultPromptBuilder(messageService);
     }
 
     @Test

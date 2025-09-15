@@ -29,7 +29,7 @@ public class SearchProperties {
         /**
          * Tavily API密钥
          */
-        private String apiKey = "";
+        private String apiKey;
 
         /**
          * Tavily API基础URL

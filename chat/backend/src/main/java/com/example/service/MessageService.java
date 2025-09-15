@@ -82,4 +82,12 @@ public interface MessageService {
    * @return 历史消息列表
    */
   Mono<List<Message>> getConversationHistoryAsync(Long conversationId);
+
+  /**
+   * 预创建助手消息用于工具调用关联
+   *
+   * @param conversationId 会话ID
+   * @return 预创建的助手消息ID
+   */
+  Mono<Long> preCreateAssistantMessage(Long conversationId);
 }

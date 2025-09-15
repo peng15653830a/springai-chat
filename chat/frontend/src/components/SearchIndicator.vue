@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { Search, ArrowRight } from '@element-plus/icons-vue'
 
 // Props
@@ -41,11 +41,35 @@ const emit = defineEmits(['click'])
 
 // 计算属性
 const resultCount = computed(() => {
-  return props.results?.length || 0
+  const count = props.results?.length || 0
+  console.log('🔧 DEBUG: SearchIndicator resultCount computed:', count, 'results:', props.results)
+  return count
+})
+
+// 监听props变化
+watch(() => props.results, (newResults, oldResults) => {
+  console.log('🔧 DEBUG: SearchIndicator props.results changed')
+  console.log('🔧 DEBUG: newResults:', newResults)
+  console.log('🔧 DEBUG: oldResults:', oldResults)
+  console.log('🔧 DEBUG: newResults length:', newResults?.length)
+}, { deep: true, immediate: true })
+
+watch(() => props.messageId, (newId, oldId) => {
+  console.log('🔧 DEBUG: SearchIndicator props.messageId changed:', oldId, '->', newId)
+}, { immediate: true })
+
+// 组件挂载
+onMounted(() => {
+  console.log('🔧 DEBUG: SearchIndicator mounted')
+  console.log('🔧 DEBUG: props.messageId:', props.messageId)
+  console.log('🔧 DEBUG: props.results:', props.results)
+  console.log('🔧 DEBUG: resultCount:', resultCount.value)
 })
 
 // 方法
 const handleClick = () => {
+  console.log('🔧 DEBUG: SearchIndicator clicked, emitting event')
+  console.log('🔧 DEBUG: messageId:', props.messageId, 'results:', props.results)
   emit('click', {
     messageId: props.messageId,
     results: props.results

@@ -92,9 +92,9 @@ public class MultiModelProperties {
         private String displayName;
 
         /**
-         * API密钥环境变量名
+         * API密钥
          */
-        private String apiKeyEnv;
+        private String apiKey;
 
         /**
          * API基础URL
@@ -191,11 +191,11 @@ public class MultiModelProperties {
      */
     public String getApiKey(String providerName) {
         ProviderConfig provider = providers.get(providerName);
-        if (provider == null || provider.getApiKeyEnv() == null) {
+        if (provider == null || provider.getApiKey() == null) {
             return null;
         }
-        // 使用标准环境变量获取
-        return System.getenv(provider.getApiKeyEnv());
+        // 直接返回配置的API密钥
+        return provider.getApiKey();
     }
 
     /**

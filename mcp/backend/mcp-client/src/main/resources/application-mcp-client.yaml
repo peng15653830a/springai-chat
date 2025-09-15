@@ -10,7 +10,7 @@ spring:
             # MCP Server名称，自己随便取名
             order-mcp-server:
               # url 根据 MCP Server 配置调整
-              url: "http://127.0.0.1:8080"
+              url: "http://127.0.0.1:8082"
         # stdio 方式
 #        stdio:
 #          connections:

@@ -51,8 +51,7 @@ public class GreatWallChatOptions implements ChatOptions {
     /**
      * Top-P采样参数 (Spring AI ChatOptions必需)
      */
-    @Builder.Default
-    private Double topP = 1.0;
+    private Double topP;
 
     /**
      * Top-K采样参数 (Spring AI ChatOptions必需)
@@ -83,6 +82,7 @@ public class GreatWallChatOptions implements ChatOptions {
                 .maxTokens(4096)
                 .enableThinking(false)
                 .tpuidPrefix("guest")
+                .topP(1.0)
                 .build();
     }
 

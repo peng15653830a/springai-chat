@@ -2,7 +2,6 @@ package com.example.strategy.prompt;
 
 import com.example.entity.Message;
 import com.example.service.MessageService;
-import com.example.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,30 +21,16 @@ import java.util.stream.Collectors;
 public class DefaultPromptBuilder implements PromptBuilder {
 
     private final MessageService messageService;
-    private final SearchService searchService;
 
     @Override
     public Mono<String> buildPrompt(Long conversationId, String userMessage, boolean searchEnabled) {
-        log.debug("开始构建对话 {} 的提示词，搜索启用: {}", conversationId, searchEnabled);
+        log.debug("开始构建对话 {} 的提示词，搜索由Tool Calling自动处理", conversationId);
 
         // 获取历史消息
-        Mono<List<Message>> historyMono = messageService.getConversationHistoryAsync(conversationId);
-        
-        // 获取搜索上下文（如果启用）
-        Mono<String> searchContextMono = searchEnabled ? 
-                searchService.performSearchWithEvents(userMessage, true)
-                        .map(result -> {
-                            List<com.example.dto.response.SearchResult> searchResults = result.getSearchResults();
-                            return searchResults != null ? 
-                                searchService.formatSearchResults(searchResults) : "";
-                        }) :
-                Mono.just("");
-
-        return Mono.zip(historyMono, searchContextMono)
-                .map(tuple -> {
-                    List<Message> messages = tuple.getT1();
-                    String searchContext = tuple.getT2();
-                    return buildPromptFromMessages(messages, userMessage, searchContext);
+        return messageService.getConversationHistoryAsync(conversationId)
+                .map(messages -> {
+                    // 不再在这里进行搜索，搜索由Spring AI Tool Calling自动处理
+                    return buildPromptFromMessages(messages, userMessage, null);
                 });
     }
 
@@ -87,12 +72,14 @@ public class DefaultPromptBuilder implements PromptBuilder {
     public String buildSystemPrompt() {
         return """
                 你是一个智能助手，请根据用户的问题提供准确、有用的回答。
+                你具有网络搜索能力，会自动搜索最新信息来回答问题。
                 
                 回答要求：
                 1. 回答要准确、简洁、有条理
-                2. 如果有搜索相关信息，请结合这些信息回答
-                3. 如果不确定答案，请诚实说明
-                4. 使用友好、专业的语气
+                2. 总是使用搜索工具获取最新信息
+                3. 基于搜索结果提供准确回答
+                4. 如果不确定答案，请诚实说明
+                5. 使用友好、专业的语气
                 """;
     }
 

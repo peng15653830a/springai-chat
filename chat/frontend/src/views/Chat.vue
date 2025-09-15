@@ -57,8 +57,20 @@
             <div class="message-content">
               <!-- 搜索指示器（仅AI消息且有搜索结果时显示） -->
               <SearchIndicator 
-                v-if="message.searchResults && message.role === 'assistant'" 
-                :results="parseSearchResults(message.searchResults)"
+                v-if="(() => {
+                  const shouldShow = message.searchResults && message.role === 'assistant';
+                  console.log('🔧 DEBUG: SearchIndicator 渲染条件检查 - messageId:', message.id, 'role:', message.role, 'hasSearchResults:', !!message.searchResults, 'shouldShow:', shouldShow);
+                  if (message.searchResults) {
+                    console.log('🔧 DEBUG: searchResults 内容（前100字符）:', message.searchResults.substring(0, 100));
+                  }
+                  return shouldShow;
+                })()"
+                :results="(() => {
+                  const parsedResults = parseSearchResults(message.searchResults);
+                  console.log('🔧 DEBUG: SearchIndicator 传入的results:', parsedResults);
+                  console.log('🔧 DEBUG: SearchIndicator results长度:', parsedResults?.length);
+                  return parsedResults;
+                })()"
                 :messageId="message.id"
                 @click="handleSearchIndicatorClick"
               />
@@ -322,9 +334,11 @@ export default {
     
     // 监听SSE数据
     watch(sseData, (newData) => {
+      console.log('🔧 DEBUG: sseData变化检测到:', newData)
       if (newData) {
         try {
           const sseEvent = JSON.parse(newData)
+          console.log('🔧 DEBUG: SSE事件解析成功:', sseEvent)
           handleSSEEvent(sseEvent)
         } catch (error) {
           console.error('❌ 解析SSE事件失败:', error, newData)
@@ -363,27 +377,35 @@ export default {
     const handleSSEEvent = (sseEvent) => {
       const { type, data } = sseEvent
       console.log('📨 收到SSE事件:', type, data)
+      console.log('🔧 DEBUG: 事件类型检查 - type=' + type + ', 是否为search_results:', type === 'search_results')
       
       switch (type) {
         case 'start':
+          console.log('🎯 DEBUG: 处理start事件')
           handleStartEvent(data)
           break
         case 'chunk':
+          console.log('🔥 DEBUG: 处理chunk事件')
           handleChunkEvent(data)
           break
         case 'thinking':
+          console.log('🧠 DEBUG: 处理thinking事件')
           handleThinkingEvent(data)
           break
         case 'search':
+          console.log('🔍 DEBUG: 处理search事件')
           handleSearchEvent(data)
           break
         case 'search_results':
+          console.log('📋 DEBUG: 准备处理search_results事件，data:', JSON.stringify(data, null, 2))
           handleSearchResultsEvent(data)
           break
         case 'end':
+          console.log('🏁 DEBUG: 处理end事件')
           handleEndEvent(data)
           break
         case 'error':
+          console.log('❌ DEBUG: 处理error事件')
           handleErrorEvent(data)
           break
         default:
@@ -660,17 +682,38 @@ export default {
     
     const handleSearchResultsEvent = (data) => {
       console.log('📋 SSE search_results event:', data)
+      console.log('🔧 DEBUG: handleSearchResultsEvent 方法被调用，data类型:', typeof data)
+      console.log('🔧 DEBUG: data内容详情:', JSON.stringify(data, null, 2))
+      console.log('🔧 DEBUG: data.results 存在?', !!data?.results)
+      console.log('🔧 DEBUG: data.results 长度:', data?.results?.length)
+      
       try {
         // 处理搜索结果数据 - 更新当前正在构建的assistant消息
         if (data && data.results) {
+          console.log('🔧 DEBUG: 搜索结果数据验证通过，开始处理')
           const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+          console.log('🔧 DEBUG: 最后一条消息:', lastMessage)
+          console.log('🔧 DEBUG: 最后一条消息角色:', lastMessage?.role)
+          
           if (lastMessage && lastMessage.role === 'assistant') {
-            // 将搜索结果数据存储到消息中
-            lastMessage.searchResults = JSON.stringify(data.results)
-            // 触发响应式更新
-            chatStore.messages = [...chatStore.messages]
-            console.log('✅ 搜索结果已添加到消息:', data.results.length, '条结果')
+            console.log('🔧 DEBUG: 找到assistant消息，准备添加搜索结果')
+            
+            // 检查是否已经有搜索结果，避免覆盖
+            if (!lastMessage.searchResults || lastMessage.searchResults === 'null' || lastMessage.searchResults === '[]') {
+              console.log('🔧 DEBUG: 消息没有搜索结果或为空，设置新的搜索结果')
+              // 将搜索结果数据存储到消息中
+              lastMessage.searchResults = JSON.stringify(data.results)
+              console.log('🔧 DEBUG: searchResults 已设置:', lastMessage.searchResults?.substring(0, 200) + '...')
+              // 触发响应式更新
+              chatStore.messages = [...chatStore.messages]
+              console.log('✅ 搜索结果已添加到消息:', data.results.length, '条结果')
+              console.log('🔧 DEBUG: chatStore.messages 已更新，总消息数:', chatStore.messages.length)
+            } else {
+              console.log('🔧 DEBUG: 消息已有搜索结果，跳过覆盖。现有结果:', lastMessage.searchResults?.substring(0, 100))
+              console.log('🔧 DEBUG: 新搜索结果:', JSON.stringify(data.results).substring(0, 100))
+            }
           } else {
+            console.log('🔧 DEBUG: 没有找到assistant消息，创建新消息')
             // 如果没有assistant消息，创建一个临时消息来存储搜索结果
             const newMessage = {
               id: 'temp-search-' + Date.now(),
@@ -679,9 +722,12 @@ export default {
               searchResults: JSON.stringify(data.results),
               createdAt: new Date()
             }
+            console.log('🔧 DEBUG: 创建的新消息:', newMessage)
             chatStore.addMessage(newMessage)
             console.log('✅ 创建新消息存储搜索结果:', data.results.length, '条结果')
           }
+        } else {
+          console.warn('🔧 DEBUG: 搜索结果数据无效或为空')
         }
       } catch (error) {
         console.error('❌ Error processing search_results event:', error, data)
@@ -977,22 +1023,38 @@ export default {
     
     // 解析搜索结果JSON数据
     const parseSearchResults = (searchResultsData) => {
-      if (!searchResultsData) return []
+      console.log('🔧 DEBUG: parseSearchResults 被调用，入参:', searchResultsData)
+      console.log('🔧 DEBUG: 入参类型:', typeof searchResultsData)
+      console.log('🔧 DEBUG: 入参是否为数组:', Array.isArray(searchResultsData))
+      
+      if (!searchResultsData) {
+        console.log('🔧 DEBUG: 入参为空，返回空数组')
+        return []
+      }
       
       try {
         // 如果已经是对象数组，直接返回
         if (Array.isArray(searchResultsData)) {
+          console.log('🔧 DEBUG: 入参已经是数组，直接返回，长度:', searchResultsData.length)
           return searchResultsData
         }
         
         // 如果是字符串，尝试解析JSON
         if (typeof searchResultsData === 'string') {
-          return JSON.parse(searchResultsData)
+          console.log('🔧 DEBUG: 入参是字符串，尝试解析JSON')
+          console.log('🔧 DEBUG: 字符串内容（前200字符）:', searchResultsData.substring(0, 200))
+          const parsed = JSON.parse(searchResultsData)
+          console.log('🔧 DEBUG: JSON解析成功，结果类型:', typeof parsed)
+          console.log('🔧 DEBUG: JSON解析成功，结果是否为数组:', Array.isArray(parsed))
+          console.log('🔧 DEBUG: JSON解析结果（前200字符）:', JSON.stringify(parsed).substring(0, 200))
+          return parsed
         }
         
+        console.log('🔧 DEBUG: 入参既不是数组也不是字符串，返回空数组')
         return []
       } catch (error) {
-        console.error('解析搜索结果失败:', error)
+        console.error('❌ 解析搜索结果失败:', error)
+        console.error('❌ 失败的原始数据:', searchResultsData)
         return []
       }
     }
