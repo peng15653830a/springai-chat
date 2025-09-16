@@ -294,7 +294,10 @@ public class GreatWallChatApi implements ChatApi {
             return Flux.empty();
         }
 
-        log.debug("💬 长城大模型内容片段: {}", content);
+        if (log.isDebugEnabled()) {
+            String escaped = content.replace("\n", "\\n");
+            log.debug("💬 长城大模型内容片段(escaped): {}", escaped.length() > 200 ? escaped.substring(0, 200) + "..." : escaped);
+        }
 
         // 转换为标准化响应
         ChatCompletionResponse.Delta deltaObj = ChatCompletionResponse.Delta.builder()
@@ -353,7 +356,10 @@ public class GreatWallChatApi implements ChatApi {
             return Flux.empty();
         }
 
-        log.debug("💬 长城大模型内容片段: {}", content);
+        if (log.isDebugEnabled()) {
+            String escaped = content.replace("\n", "\\n");
+            log.debug("💬 长城大模型内容片段(escaped): {}", escaped.length() > 200 ? escaped.substring(0, 200) + "..." : escaped);
+        }
 
         // 转换为标准化响应
         ChatCompletionResponse.Delta deltaObj = ChatCompletionResponse.Delta.builder()

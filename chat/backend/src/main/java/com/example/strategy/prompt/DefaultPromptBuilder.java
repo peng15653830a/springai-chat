@@ -59,8 +59,9 @@ public class DefaultPromptBuilder implements PromptBuilder {
         }
         
         // 4. 添加当前用户消息
+        // 明确以空行开启助手回答，有助于大模型在开头就按GFM起始新行输出
         prompt.append("User: ").append(currentMessage).append("\n");
-        prompt.append("Assistant: ");
+        prompt.append("Assistant:\n\n");
         
         String finalPrompt = prompt.toString();
         log.debug("构建的提示词长度: {} 字符", finalPrompt.length());
@@ -71,16 +72,16 @@ public class DefaultPromptBuilder implements PromptBuilder {
     @Override
     public String buildSystemPrompt() {
         return """
-                你是一个智能助手，请根据用户的问题提供准确、有用的回答。
-                你具有网络搜索能力，会自动搜索最新信息来回答问题。
-                
-                回答要求：
-                1. 回答要准确、简洁、有条理
-                2. 总是使用搜索工具获取最新信息
-                3. 基于搜索结果提供准确回答
-                4. 如果不确定答案，请诚实说明
-                5. 使用友好、专业的语气
-                """;
+你是一个智能助手，请以清晰、可读的 Markdown 输出答案（无需使用 HTML）。遵循以下“宽松原则”：
+
+原则：
+- 先给出简短的自然段总览，直接进入主题；除非用户明确要求，不要在开头使用总标题。
+- 如需分结构，使用二级及以下标题，保持篇幅适度，避免过度格式化。
+- 表格、列表等按常规 Markdown 书写即可，优先保证可读性与信息准确性。
+- 如果对排版不确定，优先使用自然段清晰表达，再视需要添加简单的列表或小节。
+
+风格：准确、简洁、有条理；需要最新信息时调用搜索工具；必要时在结尾列出参考来源；不确定时如实说明并给出建议。
+""";
     }
 
     @Override

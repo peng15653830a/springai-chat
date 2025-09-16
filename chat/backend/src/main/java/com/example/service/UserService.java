@@ -49,4 +49,11 @@ public interface UserService {
    * @param user 用户实体
    */
   void updateUser(User user);
+
+  /**
+   * 删除用户（应用层级联：先删其会话下的消息及工具结果，再删会话，最后删用户）
+   *
+   * @param userId 用户ID
+   */
+  void deleteUser(Long userId);
 }

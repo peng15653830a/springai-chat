@@ -60,4 +60,11 @@ public interface MessageMapper {
    * @param conversationId 对话ID
    */
   void deleteByConversationId(@Param("conversationId") Long conversationId);
+
+  /**
+   * 根据ID更新消息内容/思考
+   *
+   * @param message 消息实体（需包含id、content/thinking）
+   */
+  void updateById(Message message);
 }

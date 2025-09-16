@@ -57,20 +57,8 @@
             <div class="message-content">
               <!-- 搜索指示器（仅AI消息且有搜索结果时显示） -->
               <SearchIndicator 
-                v-if="(() => {
-                  const shouldShow = message.searchResults && message.role === 'assistant';
-                  console.log('🔧 DEBUG: SearchIndicator 渲染条件检查 - messageId:', message.id, 'role:', message.role, 'hasSearchResults:', !!message.searchResults, 'shouldShow:', shouldShow);
-                  if (message.searchResults) {
-                    console.log('🔧 DEBUG: searchResults 内容（前100字符）:', message.searchResults.substring(0, 100));
-                  }
-                  return shouldShow;
-                })()"
-                :results="(() => {
-                  const parsedResults = parseSearchResults(message.searchResults);
-                  console.log('🔧 DEBUG: SearchIndicator 传入的results:', parsedResults);
-                  console.log('🔧 DEBUG: SearchIndicator results长度:', parsedResults?.length);
-                  return parsedResults;
-                })()"
+                v-if="message.role === 'assistant' && !!parseSearchResults(message.searchResults).length"
+                :results="parseSearchResults(message.searchResults)"
                 :messageId="message.id"
                 @click="handleSearchIndicatorClick"
               />
@@ -111,6 +99,7 @@
                 <TypewriterMarkdown
                   v-else
                   :content="String(message.content || '')"
+                  :anchor-prefix="`msg-${message.id}`"
                   :enable-typewriter="message.id === streamingMessageId"
                   class="message-body markdown-content"
                 />
@@ -286,6 +275,20 @@ export default {
     const pendingSearchEnabled = ref(false)
     const pendingDeepThinking = ref(false)
     
+    // 清理/重置当前SSE驱动状态，避免误发起上次请求
+    const resetSseState = () => {
+      try {
+        closeSSE()
+      } catch (e) {
+        // ignore
+      }
+      pendingMessage.value = ''
+      pendingSearchEnabled.value = false
+      pendingDeepThinking.value = false
+      chatStore.setLoading(false)
+      chatStore.setConnected(false)
+    }
+    
     // 动态SSE URL - 只在有待发送消息时才建立连接
     const sseUrl = computed(() => {
       if (!chatStore.currentConversation?.id || !pendingMessage.value) {
@@ -457,6 +460,10 @@ export default {
     // 创建新对话
     const createNewConversation = async () => {
       try {
+        // 重置输入与SSE状态，避免沿用上一次待发送消息
+        inputMessage.value = ''
+        resetSseState()
+        chatStore.setMessages([])
         const response = await conversationApi.create({
           userId: userStore.currentUser.id,
           title: null // 不传递硬编码标题，让后端自动生成
@@ -477,8 +484,10 @@ export default {
         console.log('⚠️ 已经是当前对话，跳过切换')
         return
       }
-      
+
       console.log('🔄 切换到对话:', conversation.id)
+      // 切换对话前重置SSE状态，避免携带上一条待发送消息
+      resetSseState()
       chatStore.setCurrentConversation(conversation)
       
       // useEventSource会自动管理连接，无需手动断开
@@ -497,14 +506,15 @@ export default {
             }
           })
           
-          // 自动显示最新的搜索结果
+          // 自动显示最新的搜索结果（历史加载时）
           const latestMessageWithSearch = response.data
-            .filter(msg => msg.role === 'assistant' && msg.searchResults)
+            .filter(msg => msg.role === 'assistant' && msg.searchResults && (Array.isArray(msg.searchResults) ? msg.searchResults.length > 0 : true))
             .pop() // 获取最新的一条
           
           if (latestMessageWithSearch) {
-            const searchResults = parseSearchResults(latestMessageWithSearch.searchResults)
-            currentSearchResults.value = searchResults
+            const searchResults = Array.isArray(latestMessageWithSearch.searchResults) ? latestMessageWithSearch.searchResults : parseSearchResults(latestMessageWithSearch.searchResults)
+            const filtered = Array.isArray(searchResults) ? searchResults.filter(r => r && typeof r.url === 'string' && (r.url.startsWith('http://') || r.url.startsWith('https://'))) : []
+            currentSearchResults.value = filtered
             currentSearchMessageId.value = latestMessageWithSearch.id
           } else {
             // 清空右侧面板内容，但保持用户设置的展开/收起状态
@@ -687,19 +697,36 @@ export default {
           if (lastMessage && lastMessage.role === 'assistant') {
             console.log('🔧 DEBUG: 找到assistant消息，准备添加搜索结果')
             
-            // 检查是否已经有搜索结果，避免覆盖
-            if (!lastMessage.searchResults || lastMessage.searchResults === 'null' || lastMessage.searchResults === '[]') {
+            // 检查是否已经有搜索结果，若已有则合并而非覆盖
+            if (!lastMessage.searchResults || (Array.isArray(lastMessage.searchResults) && lastMessage.searchResults.length === 0)) {
               console.log('🔧 DEBUG: 消息没有搜索结果或为空，设置新的搜索结果')
               // 将搜索结果数据存储到消息中
-              lastMessage.searchResults = JSON.stringify(data.results)
-              console.log('🔧 DEBUG: searchResults 已设置:', lastMessage.searchResults?.substring(0, 200) + '...')
+              lastMessage.searchResults = Array.isArray(data.results) ? data.results : []
+              console.log('🔧 DEBUG: searchResults 已设置 (count):', Array.isArray(lastMessage.searchResults) ? lastMessage.searchResults.length : 0)
               // 触发响应式更新
               chatStore.messages = [...chatStore.messages]
               console.log('✅ 搜索结果已添加到消息:', data.results.length, '条结果')
               console.log('🔧 DEBUG: chatStore.messages 已更新，总消息数:', chatStore.messages.length)
             } else {
-              console.log('🔧 DEBUG: 消息已有搜索结果，跳过覆盖。现有结果:', lastMessage.searchResults?.substring(0, 100))
-              console.log('🔧 DEBUG: 新搜索结果:', JSON.stringify(data.results).substring(0, 100))
+              console.log('🔧 DEBUG: 消息已有搜索结果，尝试合并。')
+              try {
+                const existing = Array.isArray(lastMessage.searchResults) ? lastMessage.searchResults : parseSearchResults(lastMessage.searchResults)
+                const incoming = Array.isArray(data.results) ? data.results : []
+                const merged = [...existing, ...incoming]
+                lastMessage.searchResults = merged
+                chatStore.messages = [...chatStore.messages]
+                console.log('✅ 已合并搜索结果，总数:', merged.length)
+              } catch (e) {
+                console.warn('⚠️ 合并搜索结果失败，保持原值', e)
+              }
+            }
+            // 同步更新右侧面板，确保对话中可见全部结果（使用合并后的消息结果）
+            try {
+              const panelResults = Array.isArray(lastMessage.searchResults) ? lastMessage.searchResults : parseSearchResults(lastMessage.searchResults)
+              currentSearchResults.value = Array.isArray(panelResults) ? [...panelResults] : []
+              currentSearchMessageId.value = lastMessage.id
+            } catch (e) {
+              console.warn('⚠️ 更新右侧面板失败:', e)
             }
           } else {
             console.log('🔧 DEBUG: 没有找到assistant消息，创建新消息')
@@ -708,11 +735,19 @@ export default {
               id: 'temp-search-' + Date.now(),
               role: 'assistant',
               content: '',
-              searchResults: JSON.stringify(data.results),
+              searchResults: Array.isArray(data.results) ? data.results : [],
               createdAt: new Date()
             }
             console.log('🔧 DEBUG: 创建的新消息:', newMessage)
             chatStore.addMessage(newMessage)
+            // 同步右侧面板（使用新消息中的结果）
+            try {
+            const panelResults = Array.isArray(newMessage.searchResults) ? newMessage.searchResults : parseSearchResults(newMessage.searchResults)
+            currentSearchResults.value = Array.isArray(panelResults) ? [...panelResults] : []
+              currentSearchMessageId.value = newMessage.id
+            } catch (e) {
+              console.warn('⚠️ 更新右侧面板失败(新消息):', e)
+            }
             console.log('✅ 创建新消息存储搜索结果:', data.results.length, '条结果')
           }
         } else {
@@ -961,7 +996,8 @@ export default {
     
     // 处理搜索指示器点击
     const handleSearchIndicatorClick = ({ messageId, results }) => {
-      currentSearchResults.value = results
+      const filtered = Array.isArray(results) ? results.filter(r => r && typeof r.url === 'string' && (r.url.startsWith('http://') || r.url.startsWith('https://'))) : []
+      currentSearchResults.value = filtered
       currentSearchMessageId.value = messageId
       // 展开右侧面板
       if (rightPanel.value) {
@@ -1036,7 +1072,12 @@ export default {
           console.log('🔧 DEBUG: JSON解析成功，结果类型:', typeof parsed)
           console.log('🔧 DEBUG: JSON解析成功，结果是否为数组:', Array.isArray(parsed))
           console.log('🔧 DEBUG: JSON解析结果（前200字符）:', JSON.stringify(parsed).substring(0, 200))
-          return parsed
+          // 兼容可能为对象包裹 { results: [...] } 的情况
+          if (Array.isArray(parsed)) return parsed
+          if (parsed && Array.isArray(parsed.results)) return parsed.results
+          // 如果是单个对象，包装为数组
+          if (parsed && typeof parsed === 'object') return [parsed]
+          return []
         }
         
         console.log('🔧 DEBUG: 入参既不是数组也不是字符串，返回空数组')

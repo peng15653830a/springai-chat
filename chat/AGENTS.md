@@ -1,4 +1,8 @@
 # 仓库指南
+## 重点关注
+- 始终用中文回答问题
+- 多使用mcp工具，尤其是搜索工具，多参考业界标准实践
+- 设计应该尽可能的简单，做决策时多问问自己，这么设计会导致系统复杂度上升吗
 
 ## 项目结构与模块组织
 - `backend/`：Spring Boot 3（Java 17），集成 Spring AI、MyBatis、REST/SSE。配置位于 `src/main/resources/application.yml`，测试位于 `src/test/java`。

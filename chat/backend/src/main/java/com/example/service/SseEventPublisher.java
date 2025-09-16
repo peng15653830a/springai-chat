@@ -86,6 +86,14 @@ public interface SseEventPublisher {
     List<SearchResult> getCurrentSearchResults();
     
     /**
+     * 根据会话ID获取搜索结果（跨线程安全）
+     *
+     * @param conversationId 会话ID
+     * @return 指定会话的搜索结果
+     */
+    List<SearchResult> getSearchResultsByConversationId(Long conversationId);
+    
+    /**
      * 清理当前线程的会话ID
      */
     void clearCurrentConversationId();

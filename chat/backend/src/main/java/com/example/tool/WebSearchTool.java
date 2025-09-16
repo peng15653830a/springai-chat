@@ -83,10 +83,17 @@ public class WebSearchTool {
                 }
             }
 
-            // 发布搜索结果事件到前端
+            // 发布搜索结果事件到前端（仅发送可作为引用的来源：带有效URL的项）
             if (results != null && !results.isEmpty()) {
-                sseEventPublisher.publishSearchResults(conversationId, results);
-                log.info("📤 搜索结果已发送到前端，共{}条结果", results.size());
+                java.util.List<SearchResult> displayResults = results.stream()
+                        .filter(r -> r != null && r.getUrl() != null && !r.getUrl().isBlank())
+                        .filter(r -> {
+                            String u = r.getUrl();
+                            return u.startsWith("http://") || u.startsWith("https://");
+                        })
+                        .toList();
+                sseEventPublisher.publishSearchResults(conversationId, displayResults);
+                log.info("📤 搜索结果已发送到前端：可引用来源 {} 条（原始 {} 条）", displayResults.size(), results.size());
             }
 
             // 发布搜索完成事件

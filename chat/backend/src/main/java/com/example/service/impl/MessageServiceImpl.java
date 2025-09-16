@@ -26,6 +26,7 @@ import static com.example.constant.AiChatConstants.ROLE_USER;
 public class MessageServiceImpl implements MessageService {
 
   private final MessageMapper messageMapper;
+  private final com.example.service.MessageToolResultService messageToolResultService;
 
   @Override
   public Message saveMessage(com.example.dto.request.MessageSaveRequest request) {
@@ -78,10 +79,36 @@ public class MessageServiceImpl implements MessageService {
       throw new IllegalArgumentException("消息ID无效");
     }
     try {
+      // 先清理该消息的工具调用记录
+      try {
+        messageToolResultService.deleteMessageToolResults(messageId);
+      } catch (Exception ignore) {
+      }
       messageMapper.deleteById(messageId);
     } catch (Exception e) {
       log.error("删除消息失败，消息ID: {}", messageId, e);
       // 不抛出异常，保持与测试一致的行为
+    }
+  }
+
+  @Override
+  public void updateMessageContent(Long messageId, String content, String thinking) {
+    if (messageId == null || messageId <= 0) {
+      throw new IllegalArgumentException("消息ID无效");
+    }
+    Message entity = new Message();
+    entity.setId(messageId);
+    entity.setContent(content);
+    entity.setThinking(thinking);
+    try {
+      messageMapper.updateById(entity);
+      log.info("消息更新成功，消息ID: {}，内容长度: {}，是否包含thinking: {}",
+          messageId,
+          content != null ? content.length() : 0,
+          thinking != null);
+    } catch (Exception e) {
+      log.error("更新消息失败，消息ID: {}", messageId, e);
+      throw e;
     }
   }
 

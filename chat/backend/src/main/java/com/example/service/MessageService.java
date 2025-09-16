@@ -45,6 +45,15 @@ public interface MessageService {
    */
   void deleteMessage(Long messageId);
 
+  /**
+   * 更新已存在的AI消息内容/思考
+   *
+   * @param messageId 消息ID
+   * @param content 内容
+   * @param thinking 思考内容
+   */
+  void updateMessageContent(Long messageId, String content, String thinking);
+
   // ========================= 响应式方法 =========================
   
   /**

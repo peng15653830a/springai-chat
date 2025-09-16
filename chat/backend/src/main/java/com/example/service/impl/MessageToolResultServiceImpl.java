@@ -152,4 +152,25 @@ public class MessageToolResultServiceImpl implements MessageToolResultService {
 
         log.debug("消息 {} 的工具调用结果已删除", messageId);
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteMessageToolResultsByMessageIds(java.util.List<Long> messageIds) {
+        if (messageIds == null || messageIds.isEmpty()) {
+            return;
+        }
+        log.debug("批量删除消息工具调用结果，消息ID数量: {}", messageIds.size());
+        try {
+            messageToolResultMapper.deleteByMessageIds(messageIds);
+            log.debug("已批量删除 {} 条消息的工具调用结果", messageIds.size());
+        } catch (Exception e) {
+            log.warn("批量删除消息工具调用结果失败，将改为逐条删除。错误: {}", e.getMessage());
+            for (Long id : messageIds) {
+                try {
+                    messageToolResultMapper.deleteByMessageId(id);
+                } catch (Exception ignore) {
+                }
+            }
+        }
+    }
 }

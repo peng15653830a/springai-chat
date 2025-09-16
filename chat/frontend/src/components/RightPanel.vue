@@ -13,16 +13,16 @@
     
     <div v-show="!props.collapsed" class="panel-content">
       <!-- 搜索结果详情 -->
-      <div v-if="currentSearchResults && currentSearchResults.length > 0" class="search-detail-section">
+      <div v-if="internalResults && internalResults.length > 0" class="search-detail-section">
         <div class="search-info">
           <el-icon class="search-icon"><Search /></el-icon>
-          <span class="search-count">找到 {{ currentSearchResults.length }} 个相关来源</span>
+          <span class="search-count">找到 {{ internalResults.length }} 个相关来源</span>
         </div>
         
-        <div class="search-results-list">
+        <div class="search-results-list" :key="renderKey">
           <div 
-            v-for="(result, index) in currentSearchResults" 
-            :key="index"
+            v-for="(result, index) in internalResults" 
+            :key="computeKey(result, index)"
             class="search-result-card"
           >
             <div class="result-header">
@@ -97,10 +97,9 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['toggle'])
 
-// 计算属性
-const currentSearchResults = computed(() => {
-  return props.searchResults || []
-})
+// 内部结果列表，避免直接依赖外部引用，确保变更触发渲染
+const internalResults = ref([])
+const renderKey = ref(0)
 
 // 方法
 const togglePanel = () => {
@@ -132,7 +131,15 @@ watch(() => props.searchResults, (newResults, oldResults) => {
       (!oldResults || oldResults.length === 0)) {
     emit('toggle') // 通知父组件展开
   }
-}, { deep: true })
+  // 同步内部列表，使用拷贝确保渲染更新
+  if (Array.isArray(newResults)) {
+    internalResults.value = newResults.map(r => ({ ...r }))
+  } else {
+    internalResults.value = []
+  }
+  // bump 渲染key，强制列表重建，避免索引key导致的复用问题
+  renderKey.value += 1
+}, { deep: true, immediate: true })
 
 // 暴露展开方法供父组件调用
 const expand = () => {
@@ -143,6 +150,14 @@ const expand = () => {
 defineExpose({
   expand
 })
+
+// 工具：为结果项生成稳定且随变更更新的key
+const computeKey = (result, index) => {
+  const u = result?.url || ''
+  const t = result?.title || ''
+  const c = (result?.content || '').slice(0, 20)
+  return `${renderKey.value}-${u}-${t}-${index}-${c.length}`
+}
 </script>
 
 <style scoped>

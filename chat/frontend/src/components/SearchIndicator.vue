@@ -41,8 +41,9 @@ const emit = defineEmits(['click'])
 
 // 计算属性
 const resultCount = computed(() => {
-  const count = props.results?.length || 0
-  console.log('🔧 DEBUG: SearchIndicator resultCount computed:', count, 'results:', props.results)
+  const list = Array.isArray(props.results) ? props.results : []
+  const count = list.filter(r => r && typeof r.url === 'string' && (r.url.startsWith('http://') || r.url.startsWith('https://'))).length
+  console.log('🔧 DEBUG: SearchIndicator resultCount computed (http sources):', count)
   return count
 })
 

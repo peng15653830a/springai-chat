@@ -2,6 +2,7 @@ package com.example.memory;
 
 import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
+import com.example.service.MessageToolResultService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -28,6 +29,7 @@ import static com.example.constant.AiChatConstants.ROLE_USER;
 public class DatabaseChatMemory implements ChatMemory {
 
     private final MessageMapper messageMapper;
+    private final MessageToolResultService messageToolResultService;
 
     @Override
     public List<org.springframework.ai.chat.messages.Message> get(String conversationId) {
@@ -70,12 +72,10 @@ public class DatabaseChatMemory implements ChatMemory {
                     // 跳过用户消息保存，由应用层手动保存以获取真实messageId
                     log.debug("跳过用户消息保存（应用层已处理）: {}", ((UserMessage) msg).getText());
                     continue;
-                } else if (msg.getMessageType() == MessageType.ASSISTANT) {
-                    entity.setRole(ROLE_ASSISTANT);
-                    entity.setContent(((AssistantMessage) msg).getText());
-                    // 搜索结果已通过WebSearchTool保存到message_tool_results表，无需重复保存
-                    log.info("💾 保存助手回复消息: {}", entity.getContent().length() > 50 ?
-                        entity.getContent().substring(0, 50) + "..." : entity.getContent());
+            } else if (msg.getMessageType() == MessageType.ASSISTANT) {
+                    // 实验项目：助手消息改由应用层预创建并在结束时更新内容，这里不再持久化，避免重复
+                    log.info("🛑 跳过助手消息持久化，由应用层负责更新内容");
+                    continue;
                 } else if (msg.getMessageType() == MessageType.SYSTEM) {
                     entity.setRole(ROLE_SYSTEM);
                     entity.setContent(((SystemMessage) msg).getText());
@@ -97,6 +97,15 @@ public class DatabaseChatMemory implements ChatMemory {
             return;
         }
         try {
+            // 先清理该会话下所有消息的工具调用记录，再删除消息
+            List<Message> messages = messageMapper.selectByConversationId(cid);
+            if (messages != null && !messages.isEmpty()) {
+                java.util.List<Long> ids = messages.stream().map(Message::getId).toList();
+                try {
+                    messageToolResultService.deleteMessageToolResultsByMessageIds(ids);
+                } catch (Exception ignore) {
+                }
+            }
             messageMapper.deleteByConversationId(cid);
         } catch (Exception e) {
             log.warn("清理会话历史失败: {}", e.getMessage());

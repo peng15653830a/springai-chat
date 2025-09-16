@@ -37,6 +37,11 @@ public class SseEventPublisherImpl implements SseEventPublisher {
      */
     private final ThreadLocal<List<SearchResult>> currentSearchResults = new ThreadLocal<>();
 
+    /**
+     * 跨线程存储每个会话的搜索结果
+     */
+    private final ConcurrentHashMap<Long, List<SearchResult>> conversationSearchResults = new ConcurrentHashMap<>();
+
     @Override
     public void setCurrentConversationId(Long conversationId) {
         currentConversationId.set(conversationId);
@@ -95,6 +100,8 @@ public class SseEventPublisherImpl implements SseEventPublisher {
         if (conversationId != null && results != null && !results.isEmpty()) {
             // 存储搜索结果到线程本地变量
             currentSearchResults.set(results);
+            // 额外存入跨线程可见Map，便于后续落库
+            conversationSearchResults.put(conversationId, results);
 
             publishEvent(conversationId, SseEventResponse.searchResults(results));
             log.info("🔍 发布搜索结果事件，会话ID: {}, 结果数量: {}", conversationId, results.size());
@@ -147,6 +154,10 @@ public class SseEventPublisherImpl implements SseEventPublisher {
             sink.tryEmitComplete();
             log.debug("移除会话事件发射器，会话ID: {}", conversationId);
         }
+        // 清理会话级搜索结果
+        if (conversationId != null) {
+            conversationSearchResults.remove(conversationId);
+        }
     }
 
     /**
@@ -182,6 +193,14 @@ public class SseEventPublisherImpl implements SseEventPublisher {
         return currentSearchResults.get();
     }
 
+    @Override
+    public List<SearchResult> getSearchResultsByConversationId(Long conversationId) {
+        if (conversationId == null) {
+            return null;
+        }
+        return conversationSearchResults.get(conversationId);
+    }
+
     /**
      * 应用关闭时清理ThreadLocal，防止内存泄漏
      * 这是针对Spring AI框架限制的合理工作区域的安全保护
@@ -191,6 +210,7 @@ public class SseEventPublisherImpl implements SseEventPublisher {
         try {
             currentConversationId.remove();
             currentSearchResults.remove();
+            conversationSearchResults.clear();
             // 清理所有事件发射器
             conversationSinks.values().forEach(sink -> {
                 try {

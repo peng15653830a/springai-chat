@@ -1,6 +1,8 @@
 package com.example.entity;
 
 import lombok.Data;
+import com.example.dto.response.SearchResult;
+import java.util.List;
 
 import java.time.LocalDateTime;
 
@@ -26,7 +28,8 @@ public class Message {
   /** AI推理过程 */
   private String thinking;
   
-  // 搜索结果已迁移到message_tool_results表，支持一对多关系
+  // 搜索结果（非持久化字段，接口层用于返回给前端，直接为数组类型）
+  private List<SearchResult> searchResults;
   
   /** 创建时间 */
   private LocalDateTime createdAt;

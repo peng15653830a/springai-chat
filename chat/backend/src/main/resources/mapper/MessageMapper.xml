@@ -13,8 +13,8 @@
     </resultMap>
     
     <insert id="insert" parameterType="com.example.entity.Message" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO messages (conversation_id, role, content, thinking, created_at)
-        VALUES (#{conversationId}, #{role}, #{content}, #{thinking}, NOW())
+        INSERT INTO messages (conversation_id, role, content, thinking, created_at, updated_at)
+        VALUES (#{conversationId}, #{role}, #{content}, #{thinking}, NOW(), NOW())
     </insert>
     
     <select id="selectById" resultMap="messageResultMap">
@@ -38,8 +38,16 @@
         DELETE FROM messages WHERE id = #{id}
     </delete>
     
-    <delete id="deleteByConversationId">
-        DELETE FROM messages WHERE conversation_id = #{conversationId}
-    </delete>
-    
+  <delete id="deleteByConversationId">
+    DELETE FROM messages WHERE conversation_id = #{conversationId}
+  </delete>
+  
+  <update id="updateById" parameterType="com.example.entity.Message">
+    UPDATE messages
+    SET content = #{content},
+        thinking = #{thinking},
+        updated_at = NOW()
+    WHERE id = #{id}
+  </update>
+  
 </mapper>

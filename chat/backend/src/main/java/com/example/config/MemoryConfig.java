@@ -1,6 +1,7 @@
 package com.example.config;
 
 import com.example.mapper.MessageMapper;
+import com.example.service.MessageToolResultService;
 import com.example.memory.DatabaseChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,8 +17,8 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 public class MemoryConfig {
 
     @Bean
-    public ChatMemory chatMemory(MessageMapper messageMapper) {
-        return new DatabaseChatMemory(messageMapper);
+    public ChatMemory chatMemory(MessageMapper messageMapper, MessageToolResultService messageToolResultService) {
+        return new DatabaseChatMemory(messageMapper, messageToolResultService);
     }
 
     @Bean

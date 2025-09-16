@@ -158,7 +158,7 @@
     
     <!-- 默认配置 -->
     <springProfile name="!dev &amp; !test &amp; !prod">
-        <root level="INFO">
+        <root level="DEBUG">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE_ALL"/>
             <appender-ref ref="ASYNC_FILE_ERROR"/>

@@ -92,9 +92,10 @@ public class SearchServiceImpl implements SearchService {
             List<SearchResult> results = new ArrayList<>();
 
             // 首先添加AI生成的答案（如果有）
+            // 注意：AI 摘要不应作为“可点击来源”，因此不设置URL
             if (tavilyResponse.getAnswer() != null && !tavilyResponse.getAnswer().isEmpty()) {
                 SearchResult answerResult = SearchResult.create(
-                    "AI 摘要", "AI Generated Summary", tavilyResponse.getAnswer(), null);
+                    "AI 摘要", null, null, tavilyResponse.getAnswer());
                 results.add(answerResult);
             }
 

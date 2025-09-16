@@ -42,6 +42,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final PromptBuilder promptBuilder;
     private final ChatErrorHandler errorHandler;
     private final SseEventPublisher sseEventPublisher;
+    private final MessageToolResultService messageToolResultService;
 
     @Override
     public Flux<SseEventResponse> streamChat(StreamChatRequest request) {
@@ -93,9 +94,7 @@ public class AiChatServiceImpl implements AiChatService {
         
         return Flux.concat(
             // 生成标题（异步）
-            generateTitleAsync(request),
-            // 搜索增强（可选）
-            enrichWithSearch(request)
+            generateTitleAsync(request)
         );
     }
 
@@ -114,7 +113,7 @@ public class AiChatServiceImpl implements AiChatService {
                 .flatMapMany(savedUserMessage -> {
                     Long realMessageId = savedUserMessage.getId();
                     log.info("✅ 已保存用户消息，获得真实messageId: {}", realMessageId);
-                    return streamFromAi(userMessage, modelSelection, request, realMessageId);
+                    return streamFromAi( modelSelection, request, realMessageId);
                 });
         });
     }
@@ -132,29 +131,12 @@ public class AiChatServiceImpl implements AiChatService {
     // ========================= 第二层：各阶段具体实现 =========================
 
     /**
-     * 保存用户消息
-     */
-    private Flux<SseEventResponse> saveUserMessage(StreamChatRequest request) {
-        return messageService.saveUserMessageAsync(request.getConversationId(), request.getMessage())
-            .then(Mono.<SseEventResponse>empty())
-            .flux();
-    }
-
-    /**
      * 生成标题（异步执行）
      */
     private Flux<SseEventResponse> generateTitleAsync(StreamChatRequest request) {
         // 异步生成标题，不阻塞主流程
         conversationService.generateTitleIfNeededAsync(request.getConversationId(), request.getMessage())
             .subscribe();
-        return Flux.empty();
-    }
-
-    /**
-     * 搜索增强（Spring AI自动处理Tool Calling）
-     */
-    private Flux<SseEventResponse> enrichWithSearch(StreamChatRequest request) {
-        // Spring AI会根据需要自动调用WebSearchTool
         return Flux.empty();
     }
 
@@ -191,55 +173,99 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 从AI模型流式获取响应 - 使用Spring AI 1.0标准ToolContext传递消息ID
      */
-    private Flux<SseEventResponse> streamFromAi(String userMessage, ModelSelector.ModelSelection modelSelection,
-                                               StreamChatRequest request, Long messageId) {
-        log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}, messageId: {}",
-            modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking(), messageId);
+    private Flux<SseEventResponse> streamFromAi( ModelSelector.ModelSelection modelSelection,
+                                               StreamChatRequest request, Long userMessageId) {
+        log.info("🚀 使用{}提供者，模型: {}, 深度思考: {}, userMessageId: {}",
+            modelSelection.providerName(), modelSelection.modelName(), request.isDeepThinking(), userMessageId);
 
         Long conversationId = request.getConversationId();
         String conversationIdStr = conversationId.toString();
+        final StringBuilder contentBuffer = new StringBuilder();
 
-        return Flux.concat(
-            // 1. 发送开始事件
-            Mono.just(SseEventResponse.start("AI正在思考中...")),
+        // 先创建一个占位的助手消息以便在工具调用期即可记录到具体messageId
+        return Mono.fromCallable(() -> {
+                com.example.entity.Message draft = messageService.saveMessage(
+                    com.example.dto.request.MessageSaveRequest.builder()
+                        .conversationId(conversationId)
+                        .role(com.example.constant.AiChatConstants.ROLE_ASSISTANT)
+                        .content("[draft]")
+                        .build()
+                );
+                log.info("📝 已创建占位助手消息，messageId: {}", draft.getId());
+                return draft.getId();
+            })
+            .flatMapMany(assistantMessageId -> {
+                java.util.concurrent.atomic.AtomicBoolean updated = new java.util.concurrent.atomic.AtomicBoolean(false);
+                return Flux.concat(
+                    // 1. 发送开始事件
+                    Mono.just(SseEventResponse.start("AI正在思考中...")),
 
-            // 2. 使用Spring AI ChatClient流式调用（自动处理Tool Calling和Advisor消息保存）
-            // 先构建提示词
-            buildPrompt(request)
-                .flatMapMany(prompt -> 
-                    getChatClientForModel(modelSelection)
-                        .prompt()
-                        // 使用构建好的提示词
-                        .user(prompt)
-                        .advisors(advisorSpec -> advisorSpec
-                            // 使用ChatMemory.CONVERSATION_ID常量正确传递会话ID
-                            .param(ChatMemory.CONVERSATION_ID, conversationIdStr))
-                        // 使用Spring AI 1.0标准ToolContext传递上下文给工具
-                        .toolContext(java.util.Map.of(
-                            "conversationId", conversationId,
-                            // 传递真实messageId用于工具调用关联
-                            "messageId", messageId
-                        ))
-                        .stream()
-                        .chatResponse()
-                        .mapNotNull(chatResponse -> {
-                            // 提取响应内容并创建SSE事件
-                            var result = chatResponse.getResult();
-                            if (result != null && result.getOutput() != null) {
-                                // 使用getText()方法获取纯文本内容
-                                String content = result.getOutput().getText();
-                                return content != null && !content.trim().isEmpty() ?
-                                    SseEventResponse.chunk(content) : null;
+                    // 2. 流式调用模型（向工具传递conversationId与messageId）
+                    buildPrompt(request)
+                        .flatMapMany(prompt ->
+                            getChatClientForModel(modelSelection)
+                                .prompt()
+                                .user(prompt)
+                                .advisors(advisorSpec -> advisorSpec
+                                    .param(ChatMemory.CONVERSATION_ID, conversationIdStr))
+                                .toolContext(java.util.Map.of(
+                                    "conversationId", conversationId,
+                                    "messageId", assistantMessageId
+                                ))
+                                .stream()
+                                .chatResponse()
+                                .mapNotNull(chatResponse -> {
+                                    var result = chatResponse.getResult();
+                                    if (result != null && result.getOutput() != null) {
+                                        String content = result.getOutput().getText();
+                                        if (content != null && !content.trim().isEmpty()) {
+                                            if (log.isDebugEnabled()) {
+                                                String escaped = content.replace("\n", "\\n");
+                                                log.debug("📦 Chunk(escaped) preview: {}", escaped.length() > 200 ? escaped.substring(0, 200) + "..." : escaped);
+                                            }
+                                            contentBuffer.append(content);
+                                            return SseEventResponse.chunk(content);
+                                        }
+                                    }
+                                    return null;
+                                })
+                                .filter(Objects::nonNull)
+                        ),
+
+                    // 3. 结束：更新占位消息的最终内容，并返回messageId
+                    Mono.fromCallable(() -> {
+                        String finalContent = contentBuffer.toString();
+                        try {
+                            messageService.updateMessageContent(assistantMessageId, finalContent, null);
+                            log.info("✅ 助手消息内容已更新，messageId: {}，长度: {}", assistantMessageId, finalContent.length());
+                            updated.set(true);
+                        } catch (Exception e) {
+                            log.warn("更新助手消息内容失败，messageId: {}，错误: {}", assistantMessageId, e.getMessage());
+                            throw e;
+                        }
+                        return SseEventResponse.end(assistantMessageId);
+                    })
+                )
+                // 将超时放到内部链路，便于统一清理占位消息
+                .timeout(streamingProperties.getResponseTimeout())
+                .onErrorResume(ex -> {
+                    if (!updated.get()) {
+                        try {
+                            // 先清理该消息的工具调用记录，再删消息
+                            try {
+                                messageToolResultService.deleteMessageToolResults(assistantMessageId);
+                            } catch (Exception ignore) {
+                                // 忽略工具结果清理的异常，继续清理消息
                             }
-                            return null;
-                        })
-                        .filter(Objects::nonNull)
-                ),
-
-            // 3. 发送结束事件（消息保存由Advisor自动处理）
-            Mono.just(SseEventResponse.end(null))
-        )
-        .timeout(streamingProperties.getResponseTimeout())
+                            messageService.deleteMessage(assistantMessageId);
+                            log.info("🧹 已清理失败对话产生的占位消息及其相关工具记录，messageId: {}", assistantMessageId);
+                        } catch (Exception cleanEx) {
+                            log.warn("清理占位消息失败，messageId: {}，错误: {}", assistantMessageId, cleanEx.getMessage());
+                        }
+                    }
+                    return errorHandler.handleChatError(ex);
+                });
+            })
         .onErrorResume(errorHandler::handleChatError)
         .doFinally(signalType -> {
             log.debug("🧹 聊天请求处理完成");

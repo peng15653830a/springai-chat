@@ -70,4 +70,11 @@ public interface MessageToolResultService {
      * @param messageId 消息ID
      */
     void deleteMessageToolResults(Long messageId);
+
+    /**
+     * 批量删除多条消息的所有工具调用结果
+     *
+     * @param messageIds 消息ID列表
+     */
+    void deleteMessageToolResultsByMessageIds(java.util.List<Long> messageIds);
 }

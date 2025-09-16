@@ -50,8 +50,19 @@ public class ChatController {
         request.isDeepThinking(), request.getUserId(), request.getProvider(), request.getModel());
     
     return aiChatService.streamChat(request)
-        .doOnNext(event -> log.debug("发送SSE事件: {} - {}", event.getType(), 
-            event.getData() instanceof SseEventResponse.ChunkData ? "chunk" : event.getData()))
+        .doOnNext(event -> {
+          if (log.isDebugEnabled()) {
+            if (event.getData() instanceof SseEventResponse.ChunkData data) {
+              String content = data.getContent();
+              String escaped = content != null ? content.replace("\n", "\\n") : "";
+              log.debug("发送SSE事件: {} - chunk(len={}, preview={})", event.getType(),
+                  content != null ? content.length() : 0,
+                  escaped.length() > 200 ? escaped.substring(0, 200) + "..." : escaped);
+            } else {
+              log.debug("发送SSE事件: {} - {}", event.getType(), event.getData());
+            }
+          }
+        })
         .doOnError(error -> log.error("流式聊天发生错误，会话ID: {}", request.getConversationId(), error))
         .doOnComplete(() -> log.info("流式聊天完成，会话ID: {}", request.getConversationId()));
   }
