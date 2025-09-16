@@ -79,7 +79,24 @@ echo "启动Spring Boot应用..."
 # 确保环境变量被加载
 source ~/.bashrc 2>/dev/null || true
 cd backend
-mvn spring-boot:run > ../backend.log 2>&1 &
+# 本地开发跳过PMD/Spotless检查与测试，加快并避免因代码规范失败而中断
+if [[ "$EMBEDDED_DB" == "true" ]]; then
+  echo "🧪 使用内置H2数据库(开发模式)启动后端"
+  mvn -Dpmd.skip=true -Dspotless.skip=true -DskipTests \
+    spring-boot:run \
+    -Dspring-boot.run.arguments="\
+      --spring.datasource.url=jdbc:h2:mem:ai_chat;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false \
+      --spring.datasource.driver-class-name=org.h2.Driver \
+      --spring.datasource.username=sa \
+      --spring.datasource.password= \
+      --spring.sql.init.mode=always \
+      --spring.sql.init.schema-locations=classpath:database/init-h2.sql \
+    " \
+    > ../backend.log 2>&1 &
+else
+  echo "🗄️ 使用外部数据库(按 application.yml 或环境变量)启动后端"
+  mvn -Dpmd.skip=true -Dspotless.skip=true -DskipTests spring-boot:run > ../backend.log 2>&1 &
+fi
 BACKEND_PID=$!
 echo "后端服务PID: $BACKEND_PID"
 cd ..

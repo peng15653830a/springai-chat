@@ -83,10 +83,9 @@
                   v-show="expandedThinking.has(message.id)" 
                   class="thinking-content"
                 >
-                  <TypewriterMarkdown
+                  <MarkdownRenderer
                     :content="String(message.thinking || '')"
-                    :enable-typewriter="false"
-                    class="thinking-body"
+                    class="thinking-body markdown-content"
                   />
                 </div>
               </div>
@@ -96,11 +95,9 @@
                 <div v-if="message.role === 'user'" class="message-body">
                   {{ message.content }}
                 </div>
-                <TypewriterMarkdown
+                <MarkdownRenderer
                   v-else
                   :content="String(message.content || '')"
-                  :anchor-prefix="`msg-${message.id}`"
-                  :enable-typewriter="message.id === streamingMessageId"
                   class="message-body markdown-content"
                 />
                 <div class="message-actions">
@@ -245,14 +242,14 @@ import 'highlight.js/styles/github.css'
 import { debounce } from 'lodash-es'
 import SearchIndicator from '../components/SearchIndicator.vue'
 import RightPanel from '../components/RightPanel.vue'
-import TypewriterMarkdown from '../components/TypewriterMarkdown.vue'
+import MarkdownRenderer from '../components/MarkdownRenderer.vue'
 
 export default {
   name: 'Chat',
   components: {
     SearchIndicator,
     RightPanel,
-    TypewriterMarkdown
+    MarkdownRenderer
   },
   setup(props, { emit }) {
     const userStore = useUserStore()
@@ -911,7 +908,7 @@ export default {
           })
           availableModels.value = allModels
           
-          // 如果有模型，选择第一个可用的作为默认模型
+          // 选择第一个可用的模型作为默认模型（保持用户偏好逻辑）
           if (allModels.length > 0) {
             const firstAvailable = allModels.find(model => model.available)
             if (firstAvailable) {
@@ -945,7 +942,6 @@ export default {
       const savedProvider = localStorage.getItem('selectedProvider')
       
       if (savedModel && savedProvider) {
-        // 验证模型是否仍然可用
         const model = availableModels.value.find(m => m.name === savedModel && m.providerName === savedProvider)
         if (model && model.available) {
           selectedModel.value = savedModel
