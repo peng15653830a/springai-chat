@@ -334,17 +334,30 @@ export default {
       }
     )
     
-    // 监听SSE数据
+    // 监听SSE数据（兼容后端事件字段变更：type 大小写、data|payload 等差异）
     watch(sseData, (newData) => {
       console.log('🔧 DEBUG: sseData变化检测到:', newData)
-      if (newData) {
-        try {
-          const sseEvent = JSON.parse(newData)
-          console.log('🔧 DEBUG: SSE事件解析成功:', sseEvent)
-          handleSSEEvent(sseEvent)
-        } catch (error) {
-          console.error('❌ 解析SSE事件失败:', error, newData)
+      if (!newData) return
+
+      try {
+        const raw = JSON.parse(newData)
+        console.log('🔧 DEBUG: SSE事件解析成功:', raw)
+
+        // 统一事件类型为小写字符串，兼容 START/CHUNK/SEARCH_RESULTS 等枚举形式
+        const rawType = raw?.type ?? raw?.event
+        const type = typeof rawType === 'string' ? rawType.toLowerCase() : String(rawType || '')
+
+        // 统一负载字段为 data，兼容 payload
+        let data = raw?.data ?? raw?.payload ?? null
+
+        // 兼容搜索事件负载：后端为 { status: 'start|complete' }，旧前端为 { type: 'start|complete' }
+        if (type === 'search' && data && typeof data === 'object' && !('type' in data) && ('status' in data)) {
+          data = { type: data.status, ...data }
         }
+
+        handleSSEEvent({ type, data })
+      } catch (error) {
+        console.error('❌ 解析SSE事件失败:', error, newData)
       }
     })
     
@@ -666,10 +679,11 @@ export default {
     const handleSearchEvent = (data) => {
       console.log('🔍 SSE search event:', data)
       try {
-        // 处理搜索状态事件
-        if (data?.type === 'start') {
+        // 处理搜索状态事件，兼容 { type: 'start|complete' } 或 { status: 'start|complete' }
+        const status = (data?.type || data?.status || '').toString().toLowerCase()
+        if (status === 'start') {
           ElMessage.info('正在搜索相关信息...')
-        } else if (data?.type === 'complete') {
+        } else if (status === 'complete') {
           ElMessage.success('搜索完成')
         }
       } catch (error) {
@@ -804,11 +818,8 @@ export default {
       console.error('❌ SSE error event received:', data)
       
       // 显示错误信息
-      if (typeof data === 'string' && data.trim()) {
-        ElMessage.error(data)
-      } else {
-        ElMessage.error('发生未知错误')
-      }
+      const message = typeof data === 'string' ? data : (data && typeof data.message === 'string' ? data.message : '')
+      ElMessage.error(message || '发生未知错误')
       
       // 停止加载状态
       chatStore.setLoading(false)
@@ -1132,10 +1143,14 @@ export default {
 .chat-container {
   height: 100vh;
   display: flex;
+  /* 响应式内容最大宽度：小屏>=760px，随视口放大，最大到1200px */
+  /* 自适应：在手机到超大屏之间流式变化，避免小屏溢出（使用rem以避免px的局限） */
+  --content-max-width: clamp(20rem, 72vw, 75rem);
 }
 
 .sidebar {
-  width: 280px;
+  /* 左侧栏宽度随视口变化：更紧凑（最小12rem，理想16vw，最大18rem） */
+  width: clamp(12rem, 16vw, 18rem);
   background: #f5f5f5;
   border-right: 1px solid #e0e0e0;
   display: flex;
@@ -1144,8 +1159,9 @@ export default {
 }
 
 .sidebar.collapsed {
-  width: 60px;
-  min-width: 60px;
+  /* 折叠态宽度：最小3rem，理想5vw，最大4.5rem */
+  width: clamp(3rem, 5vw, 4.5rem);
+  min-width: clamp(3rem, 5vw, 4.5rem);
 }
 
 .sidebar-header {
@@ -1255,7 +1271,8 @@ export default {
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 3% 20px 3%;
+  /* 横向内边距自适应，避免大屏左右留白过大 */
+  padding: 20px clamp(8px, 2vw, 24px);
   width: 100%;
   box-sizing: border-box;
 }
@@ -1264,7 +1281,7 @@ export default {
   display: flex;
   flex-direction: column;
   margin-bottom: 12px;
-  max-width: 800px;
+  max-width: var(--content-max-width);
   margin-left: auto;
   margin-right: auto;
   width: 100%;
@@ -1437,7 +1454,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
-  max-width: 800px;
+  max-width: var(--content-max-width);
   margin-left: auto;
   margin-right: auto;
 }
@@ -1499,7 +1516,7 @@ export default {
   display: flex;
   gap: 10px;
   align-items: flex-end;
-  max-width: 800px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;

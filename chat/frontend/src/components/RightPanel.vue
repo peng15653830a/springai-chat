@@ -162,7 +162,8 @@ const computeKey = (result, index) => {
 
 <style scoped>
 .right-panel {
-  width: 300px;
+  /* 右侧栏宽度随视口变化：更紧凑（最小14rem，理想18vw，最大22rem） */
+  width: clamp(14rem, 18vw, 22rem);
   background: #ffffff;
   border-left: 1px solid #e0e0e0;
   display: flex;
@@ -172,7 +173,8 @@ const computeKey = (result, index) => {
 }
 
 .right-panel.collapsed {
-  width: 60px;
+  /* 折叠态宽度：最小3rem，理想5vw，最大4.5rem */
+  width: clamp(3rem, 5vw, 4.5rem);
 }
 
 .right-panel.collapsed .panel-title {
@@ -340,11 +342,7 @@ const computeKey = (result, index) => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .right-panel {
-    width: 280px;
-  }
-}
+/* 通过clamp已覆盖响应式，不再需要固定断点 */
 
 /* 深色主题适配 */
 @media (prefers-color-scheme: dark) {
