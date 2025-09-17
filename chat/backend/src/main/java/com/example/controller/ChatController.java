@@ -1,7 +1,7 @@
 package com.example.controller;
 
 import com.example.dto.request.StreamChatRequest;
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import com.example.service.AiChatService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ public class ChatController {
    * @return 响应式SSE事件流
    */
   @GetMapping(value = "/stream/{conversationId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public Flux<SseEventResponse> streamChat(@PathVariable Long conversationId, StreamChatRequest request) {
+  public Flux<ChatEvent> streamChat(@PathVariable Long conversationId, StreamChatRequest request) {
     // 设置路径参数到请求对象中
     request.setConversationId(conversationId);
     
@@ -52,14 +52,14 @@ public class ChatController {
     return aiChatService.streamChat(request)
         .doOnNext(event -> {
           if (log.isDebugEnabled()) {
-            if (event.getData() instanceof SseEventResponse.ChunkData data) {
+            if (event.getPayload() instanceof ChatEvent.ChunkPayload data) {
               String content = data.getContent();
               String escaped = content != null ? content.replace("\n", "\\n") : "";
               log.debug("发送SSE事件: {} - chunk(len={}, preview={})", event.getType(),
                   content != null ? content.length() : 0,
                   escaped.length() > 200 ? escaped.substring(0, 200) + "..." : escaped);
             } else {
-              log.debug("发送SSE事件: {} - {}", event.getType(), event.getData());
+              log.debug("发送SSE事件: {} - {}", event.getType(), event.getPayload());
             }
           }
         })

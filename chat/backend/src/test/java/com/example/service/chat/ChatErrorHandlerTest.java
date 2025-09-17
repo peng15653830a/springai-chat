@@ -2,7 +2,7 @@ package com.example.service.chat;
 
 import com.example.handler.ChatErrorHandler;
 import com.example.handler.DefaultChatErrorHandler;
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -33,13 +33,13 @@ class ChatErrorHandlerTest {
         Throwable error = new RuntimeException("Test error");
 
         // 执行测试
-        Flux<SseEventResponse> errorResponse = errorHandler.handleChatError(error);
+        Flux<ChatEvent> errorResponse = errorHandler.handleChatError(error);
 
         // 验证结果
         StepVerifier.create(errorResponse)
                 .expectNextMatches(response -> {
-                    assertThat(response.getType()).isEqualTo("error");
-                    assertThat(response.getData()).isNotNull();
+                    assertThat(response.getType()).isEqualTo(ChatEvent.ChatEventType.ERROR);
+                    assertThat(response.getPayload()).isNotNull();
                     return true;
                 })
                 .verifyComplete();
@@ -48,13 +48,13 @@ class ChatErrorHandlerTest {
     @Test
     void testHandleChatErrorWithNullError() {
         // 执行测试
-        Flux<SseEventResponse> errorResponse = errorHandler.handleChatError(null);
+        Flux<ChatEvent> errorResponse = errorHandler.handleChatError(null);
 
         // 验证结果
         StepVerifier.create(errorResponse)
                 .expectNextMatches(response -> {
-                    assertThat(response.getType()).isEqualTo("error");
-                    assertThat(response.getData()).isNotNull();
+                    assertThat(response.getType()).isEqualTo(ChatEvent.ChatEventType.ERROR);
+                    assertThat(response.getPayload()).isNotNull();
                     return true;
                 })
                 .verifyComplete();
@@ -575,13 +575,13 @@ class ChatErrorHandlerTest {
         Throwable error = new RuntimeException("特殊字符错误🌟🔍🚀");
 
         // 执行测试
-        Flux<SseEventResponse> errorResponse = errorHandler.handleChatError(error);
+        Flux<ChatEvent> errorResponse = errorHandler.handleChatError(error);
 
         // 验证结果
         StepVerifier.create(errorResponse)
                 .expectNextMatches(response -> {
-                    assertThat(response.getType()).isEqualTo("error");
-                    assertThat(response.getData()).isNotNull();
+                    assertThat(response.getType()).isEqualTo(ChatEvent.ChatEventType.ERROR);
+                    assertThat(response.getPayload()).isNotNull();
                     return true;
                 })
                 .verifyComplete();
@@ -597,13 +597,13 @@ class ChatErrorHandlerTest {
         Throwable error = new RuntimeException(longMessage.toString());
 
         // 执行测试
-        Flux<SseEventResponse> errorResponse = errorHandler.handleChatError(error);
+        Flux<ChatEvent> errorResponse = errorHandler.handleChatError(error);
 
         // 验证结果
         StepVerifier.create(errorResponse)
                 .expectNextMatches(response -> {
-                    assertThat(response.getType()).isEqualTo("error");
-                    assertThat(response.getData()).isNotNull();
+                    assertThat(response.getType()).isEqualTo(ChatEvent.ChatEventType.ERROR);
+                    assertThat(response.getPayload()).isNotNull();
                     return true;
                 })
                 .verifyComplete();

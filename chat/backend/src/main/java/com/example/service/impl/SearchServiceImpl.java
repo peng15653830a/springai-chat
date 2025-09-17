@@ -8,12 +8,9 @@ import com.example.service.SearchService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import java.time.Duration;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -34,6 +31,9 @@ public class SearchServiceImpl implements SearchService {
 
     private final SearchProperties searchProperties;
     private final ObjectMapper objectMapper;
+    private final WebClient.Builder webClientBuilder;
+
+    // 不保留历史构造方式，统一通过注入 WebClient.Builder
 
     @Override
     public List<SearchResult> search(String query) {
@@ -44,30 +44,27 @@ public class SearchServiceImpl implements SearchService {
             return new ArrayList<>();
         }
 
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(searchProperties.getTavily().getBaseUrl());
-
-            // 设置请求头
-            httpPost.setHeader("Content-Type", "application/json");
-
-            // 构建请求体
+        try {
             TavilyRequest request = TavilyRequest.createBasic(
                 searchProperties.getTavily().getApiKey(), query);
 
             String jsonRequest = objectMapper.writeValueAsString(request);
-            httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
 
-            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                int statusCode = response.getStatusLine().getStatusCode();
-                String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            String responseString = webClientBuilder.build().post()
+                .uri(searchProperties.getTavily().getBaseUrl())
+                .header("Content-Type", "application/json")
+                .bodyValue(jsonRequest)
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(20))
+                .retryWhen(reactor.util.retry.Retry.max(2).filter(ex -> true))
+                .block();
 
-                if (statusCode == HTTP_STATUS_OK) {
-                    return parseTavilyResponse(responseString);
-                } else {
-                    log.error("Tavily搜索API调用失败，状态码: {}, 响应: {}", statusCode, responseString);
-                    return new ArrayList<>();
-                }
+            if (responseString == null || responseString.isEmpty()) {
+                log.warn("Tavily搜索API响应为空");
+                return new ArrayList<>();
             }
+            return parseTavilyResponse(responseString);
         } catch (Exception e) {
             log.error("Tavily搜索API调用异常: {}", e.getMessage(), e);
             return new ArrayList<>();
@@ -90,14 +87,6 @@ public class SearchServiceImpl implements SearchService {
             TavilyResponse tavilyResponse = objectMapper.readValue(responseString, TavilyResponse.class);
 
             List<SearchResult> results = new ArrayList<>();
-
-            // 首先添加AI生成的答案（如果有）
-            // 注意：AI 摘要不应作为“可点击来源”，因此不设置URL
-            if (tavilyResponse.getAnswer() != null && !tavilyResponse.getAnswer().isEmpty()) {
-                SearchResult answerResult = SearchResult.create(
-                    "AI 摘要", null, null, tavilyResponse.getAnswer());
-                results.add(answerResult);
-            }
 
             // 解析搜索结果
             if (tavilyResponse.getResults() != null && !tavilyResponse.getResults().isEmpty()) {

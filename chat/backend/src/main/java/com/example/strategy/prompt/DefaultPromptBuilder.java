@@ -38,27 +38,14 @@ public class DefaultPromptBuilder implements PromptBuilder {
     public String buildPromptFromMessages(List<Message> messages, String currentMessage, String searchContext) {
         StringBuilder prompt = new StringBuilder();
         
-        // 1. 添加系统提示
-        prompt.append(buildSystemPrompt()).append("\n\n");
-        
-        // 2. 添加搜索上下文（如果有）
+        // 仅添加可选的搜索上下文（系统提示与历史由 ChatClient.defaultSystem + Memory 注入）
+        // 1) 添加搜索上下文（如果有）
         if (searchContext != null && !searchContext.trim().isEmpty()) {
             prompt.append("搜索相关信息：\n")
                   .append(searchContext)
                   .append("\n\n");
         }
-        
-        // 3. 添加历史对话
-        if (messages != null && !messages.isEmpty()) {
-            prompt.append("历史对话：\n");
-            for (Message message : messages) {
-                String role = "assistant".equals(message.getRole()) ? "Assistant" : "User";
-                prompt.append(role).append(": ").append(message.getContent()).append("\n");
-            }
-            prompt.append("\n");
-        }
-        
-        // 4. 添加当前用户消息
+        // 2) 仅添加当前用户消息（历史由 Memory 注入）
         // 明确以空行开启助手回答，有助于大模型在开头就按GFM起始新行输出
         prompt.append("User: ").append(currentMessage).append("\n");
         prompt.append("Assistant:\n\n");
@@ -71,17 +58,8 @@ public class DefaultPromptBuilder implements PromptBuilder {
 
     @Override
     public String buildSystemPrompt() {
-        return """
-你是一个智能助手，请以清晰、可读的 Markdown 输出答案（无需使用 HTML）。遵循以下“宽松原则”：
-
-原则：
-- 先给出简短的自然段总览，直接进入主题；除非用户明确要求，不要在开头使用总标题。
-- 如需分结构，使用二级及以下标题，保持篇幅适度，避免过度格式化。
-- 表格、列表等按常规 Markdown 书写即可，优先保证可读性与信息准确性。
-- 如果对排版不确定，优先使用自然段清晰表达，再视需要添加简单的列表或小节。
-
-风格：准确、简洁、有条理；需要最新信息时调用搜索工具；必要时在结尾列出参考来源；不确定时如实说明并给出建议。
-""";
+        // 系统提示改由 ChatClientManager.defaultSystem 注入
+        return "你是一个有用的AI助理。";
     }
 
     @Override

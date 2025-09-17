@@ -1,7 +1,7 @@
 package com.example.controller;
 
 import com.example.dto.request.StreamChatRequest;
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import com.example.service.AiChatService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,13 +39,13 @@ class ChatControllerTest {
     void testStreamChat_WithMessage() {
         // Given
         Long conversationId = 1L;
-        SseEventResponse eventResponse = new SseEventResponse("message", "Hello");
-        Flux<SseEventResponse> responseFlux = Flux.just(eventResponse);
+        ChatEvent eventResponse = ChatEvent.chunk("Hello");
+        Flux<ChatEvent> responseFlux = Flux.just(eventResponse);
         
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<SseEventResponse> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -62,7 +62,7 @@ class ChatControllerTest {
         streamChatRequest.setMessage(null);
 
         // When
-        Flux<SseEventResponse> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -76,7 +76,7 @@ class ChatControllerTest {
         streamChatRequest.setMessage("   ");
 
         // When
-        Flux<SseEventResponse> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -109,13 +109,13 @@ class ChatControllerTest {
         Long conversationId = 1L;
         streamChatRequest.setSearchEnabled(true);
         
-        SseEventResponse eventResponse = new SseEventResponse("message", "Hello with search");
-        Flux<SseEventResponse> responseFlux = Flux.just(eventResponse);
+        ChatEvent eventResponse = ChatEvent.chunk("Hello with search");
+        Flux<ChatEvent> responseFlux = Flux.just(eventResponse);
         
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<SseEventResponse> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -131,13 +131,13 @@ class ChatControllerTest {
         Long conversationId = 1L;
         streamChatRequest.setDeepThinking(true);
         
-        SseEventResponse eventResponse = new SseEventResponse("message", "Hello with deep thinking");
-        Flux<SseEventResponse> responseFlux = Flux.just(eventResponse);
+        ChatEvent eventResponse = ChatEvent.chunk("Hello with deep thinking");
+        Flux<ChatEvent> responseFlux = Flux.just(eventResponse);
         
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<SseEventResponse> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -154,13 +154,13 @@ class ChatControllerTest {
         streamChatRequest.setProvider("qwen");
         streamChatRequest.setModel("qwen-plus");
         
-        SseEventResponse eventResponse = new SseEventResponse("message", "Hello with provider and model");
-        Flux<SseEventResponse> responseFlux = Flux.just(eventResponse);
+        ChatEvent eventResponse = ChatEvent.chunk("Hello with provider and model");
+        Flux<ChatEvent> responseFlux = Flux.just(eventResponse);
         
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<SseEventResponse> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -180,13 +180,13 @@ class ChatControllerTest {
         streamChatRequest.setProvider("deepseek");
         streamChatRequest.setModel("deepseek-chat");
         
-        SseEventResponse eventResponse = new SseEventResponse("message", "Hello with all parameters");
-        Flux<SseEventResponse> responseFlux = Flux.just(eventResponse);
+        ChatEvent eventResponse = ChatEvent.chunk("Hello with all parameters");
+        Flux<ChatEvent> responseFlux = Flux.just(eventResponse);
         
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<SseEventResponse> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)

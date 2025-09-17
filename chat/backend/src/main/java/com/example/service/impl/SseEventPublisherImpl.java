@@ -1,7 +1,7 @@
 package com.example.service.impl;
 
 import com.example.dto.response.SearchResult;
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import com.example.service.SseEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,73 +24,16 @@ public class SseEventPublisherImpl implements SseEventPublisher {
      * 存储每个会话的事件发射器
      * Key: conversationId, Value: Sinks.Many
      */
-    private final ConcurrentHashMap<Long, Sinks.Many<SseEventResponse>> conversationSinks = 
+    private final ConcurrentHashMap<Long, Sinks.Many<ChatEvent>> conversationSinks = 
         new ConcurrentHashMap<>();
     
-    /**
-     * 线程本地变量存储当前请求的会话ID
-     */
-    private final ThreadLocal<Long> currentConversationId = new ThreadLocal<>();
-    
-    /**
-     * 线程本地变量存储当前会话的搜索结果
-     */
-    private final ThreadLocal<List<SearchResult>> currentSearchResults = new ThreadLocal<>();
-
-    /**
-     * 跨线程存储每个会话的搜索结果
-     */
+    /** 跨线程存储每个会话的搜索结果 */
     private final ConcurrentHashMap<Long, List<SearchResult>> conversationSearchResults = new ConcurrentHashMap<>();
-
-    @Override
-    public void setCurrentConversationId(Long conversationId) {
-        currentConversationId.set(conversationId);
-    }
-
-    @Override
-    public void publishSearchStart() {
-        Long conversationId = currentConversationId.get();
-        if (conversationId != null) {
-            publishEvent(conversationId, SseEventResponse.start("开始搜索最新信息..."));
-            log.debug("发布搜索开始事件，会话ID: {}", conversationId);
-        }
-    }
-
-    @Override
-    public void publishSearchResults(List<SearchResult> results) {
-        Long conversationId = currentConversationId.get();
-        if (conversationId != null && results != null && !results.isEmpty()) {
-            // 存储搜索结果到线程本地变量
-            currentSearchResults.set(results);
-            
-            publishEvent(conversationId, SseEventResponse.searchResults(results));
-            log.debug("发布搜索结果事件，会话ID: {}, 结果数量: {}", conversationId, results.size());
-        }
-    }
-
-    @Override
-    public void publishSearchComplete() {
-        Long conversationId = currentConversationId.get();
-        if (conversationId != null) {
-            publishEvent(conversationId, SseEventResponse.search("complete"));
-            log.debug("发布搜索完成事件，会话ID: {}", conversationId);
-        }
-    }
-
-    @Override
-    public void publishSearchError(String errorMessage) {
-        Long conversationId = currentConversationId.get();
-        if (conversationId != null) {
-            publishSearchError(conversationId, errorMessage);
-        }
-    }
-
-    // 添加带会话ID参数的重载方法
 
     @Override
     public void publishSearchStart(Long conversationId) {
         if (conversationId != null) {
-            publishEvent(conversationId, SseEventResponse.start("开始搜索最新信息..."));
+            publishEvent(conversationId, ChatEvent.start("开始搜索最新信息..."));
             log.debug("发布搜索开始事件，会话ID: {}", conversationId);
         }
     }
@@ -98,12 +41,10 @@ public class SseEventPublisherImpl implements SseEventPublisher {
     @Override
     public void publishSearchResults(Long conversationId, List<SearchResult> results) {
         if (conversationId != null && results != null && !results.isEmpty()) {
-            // 存储搜索结果到线程本地变量
-            currentSearchResults.set(results);
-            // 额外存入跨线程可见Map，便于后续落库
+            // 存入跨线程可见Map，便于后续落库
             conversationSearchResults.put(conversationId, results);
 
-            publishEvent(conversationId, SseEventResponse.searchResults(results));
+            publishEvent(conversationId, ChatEvent.searchResults(results));
             log.info("🔍 发布搜索结果事件，会话ID: {}, 结果数量: {}", conversationId, results.size());
         }
     }
@@ -111,7 +52,7 @@ public class SseEventPublisherImpl implements SseEventPublisher {
     @Override
     public void publishSearchComplete(Long conversationId) {
         if (conversationId != null) {
-            publishEvent(conversationId, SseEventResponse.search("complete"));
+            publishEvent(conversationId, ChatEvent.search("complete"));
             log.debug("发布搜索完成事件，会话ID: {}", conversationId);
         }
     }
@@ -119,7 +60,7 @@ public class SseEventPublisherImpl implements SseEventPublisher {
     @Override
     public void publishSearchError(Long conversationId, String errorMessage) {
         if (conversationId != null) {
-            publishEvent(conversationId, SseEventResponse.error(errorMessage));
+            publishEvent(conversationId, ChatEvent.error(errorMessage));
             log.debug("发布搜索错误事件，会话ID: {}, 错误: {}", conversationId, errorMessage);
         }
     }
@@ -130,15 +71,15 @@ public class SseEventPublisherImpl implements SseEventPublisher {
      * @param conversationId 会话ID
      * @return 事件发射器
      */
-    public Sinks.Many<SseEventResponse> registerConversation(Long conversationId) {
-        Sinks.Many<SseEventResponse> sink = Sinks.many().multicast().onBackpressureBuffer();
+    public Sinks.Many<ChatEvent> registerConversation(Long conversationId) {
+        Sinks.Many<ChatEvent> sink = Sinks.many().multicast().onBackpressureBuffer();
         conversationSinks.put(conversationId, sink);
         log.debug("注册会话事件发射器，会话ID: {}", conversationId);
         return sink;
     }
 
     @Override
-    public reactor.core.publisher.Flux<SseEventResponse> registerConversationFlux(Long conversationId) {
+    public reactor.core.publisher.Flux<ChatEvent> registerConversationFlux(Long conversationId) {
         return registerConversation(conversationId).asFlux();
     }
 
@@ -149,7 +90,7 @@ public class SseEventPublisherImpl implements SseEventPublisher {
      */
     @Override
     public void removeConversation(Long conversationId) {
-        Sinks.Many<SseEventResponse> sink = conversationSinks.remove(conversationId);
+        Sinks.Many<ChatEvent> sink = conversationSinks.remove(conversationId);
         if (sink != null) {
             sink.tryEmitComplete();
             log.debug("移除会话事件发射器，会话ID: {}", conversationId);
@@ -166,32 +107,14 @@ public class SseEventPublisherImpl implements SseEventPublisher {
      * @param conversationId 会话ID
      * @param event 事件
      */
-    private void publishEvent(Long conversationId, SseEventResponse event) {
-        Sinks.Many<SseEventResponse> sink = conversationSinks.get(conversationId);
+    private void publishEvent(Long conversationId, ChatEvent event) {
+        Sinks.Many<ChatEvent> sink = conversationSinks.get(conversationId);
         if (sink != null) {
             sink.tryEmitNext(event);
         }
     }
 
-    /**
-     * 清理当前线程的会话ID
-     */
-    @Override
-    public void clearCurrentConversationId() {
-        currentConversationId.remove();
-        currentSearchResults.remove(); // 同时清理搜索结果
-    }
-    
-    
-    @Override
-    public void clearCurrentSearchResults() {
-        currentSearchResults.remove();
-    }
-
-    @Override
-    public List<SearchResult> getCurrentSearchResults() {
-        return currentSearchResults.get();
-    }
+    // 无历史兼容代码
 
     @Override
     public List<SearchResult> getSearchResultsByConversationId(Long conversationId) {
@@ -208,8 +131,6 @@ public class SseEventPublisherImpl implements SseEventPublisher {
     @PreDestroy
     public void cleanup() {
         try {
-            currentConversationId.remove();
-            currentSearchResults.remove();
             conversationSearchResults.clear();
             // 清理所有事件发射器
             conversationSinks.values().forEach(sink -> {

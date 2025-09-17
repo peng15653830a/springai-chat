@@ -43,10 +43,6 @@ export const useChatStore = defineStore('chat', {
         const lastMessage = this.messages[this.messages.length - 1]
         if (lastMessage.role === 'assistant') {
           lastMessage.content += content
-          // 触发实时渲染更新
-          if (window.updateMessageContent) {
-            window.updateMessageContent(lastMessage.id, lastMessage.content)
-          }
         }
       }
     },

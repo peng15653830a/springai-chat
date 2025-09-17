@@ -1,6 +1,6 @@
 package com.example.handler;
 
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import reactor.core.publisher.Flux;
 
 /**
@@ -17,7 +17,7 @@ public interface ChatErrorHandler {
      * @param error 错误信息
      * @return 错误响应事件流
      */
-    Flux<SseEventResponse> handleChatError(Throwable error);
+    Flux<ChatEvent> handleChatError(Throwable error);
 
     /**
      * 获取用户友好的错误消息

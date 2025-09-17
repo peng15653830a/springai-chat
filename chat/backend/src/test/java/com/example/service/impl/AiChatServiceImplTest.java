@@ -2,7 +2,7 @@ package com.example.service.impl;
 
 import com.example.config.ChatStreamingProperties;
 import com.example.dto.request.StreamChatRequest;
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import com.example.entity.Message;
 import com.example.manager.ChatClientManager;
 import com.example.service.ConversationService;
@@ -102,14 +102,12 @@ class AiChatServiceImplTest {
         lenient().when(conversationService.generateTitleIfNeededAsync(any(), any())).thenReturn(Mono.empty());
         
         // 添加对SseEventPublisherImpl方法的mock
-        Sinks.Many<SseEventResponse> mockSink = mock(Sinks.Many.class);
+        Sinks.Many<ChatEvent> mockSink = mock(Sinks.Many.class);
         lenient().when(sseEventPublisher.registerConversation(anyLong())).thenReturn(mockSink);
         lenient().when(mockSink.asFlux()).thenReturn(Flux.empty());
         
-        // 添加对其他SseEventPublisherImpl方法的mock
-        lenient().doNothing().when(sseEventPublisher).setCurrentConversationId(anyLong());
+        // 添加对其他SseEventPublisherImpl方法的mock（仅保留 removeConversation）
         lenient().doNothing().when(sseEventPublisher).removeConversation(anyLong());
-        lenient().doNothing().when(sseEventPublisher).clearCurrentConversationId();
         
         // 添加对registerConversationFlux的mock
         lenient().when(sseEventPublisher.registerConversationFlux(anyLong())).thenReturn(Flux.empty());
@@ -133,11 +131,11 @@ class AiChatServiceImplTest {
             .thenReturn(Mono.just("提示词"));
             
         when(errorHandler.handleChatError(any()))
-            .thenReturn(Flux.just(SseEventResponse.error("AI服务暂时不可用，请稍后重试")));
+            .thenReturn(Flux.just(ChatEvent.error("AI服务暂时不可用，请稍后重试")));
 
         // When & Then
         StepVerifier.create(aiChatService.streamChat(request))
-            .expectNext(SseEventResponse.error("AI服务暂时不可用，请稍后重试"))
+            .expectNext(ChatEvent.error("AI服务暂时不可用，请稍后重试"))
             .verifyComplete();
 
         verify(errorHandler).handleChatError(any());
@@ -169,6 +167,7 @@ class AiChatServiceImplTest {
         lenient().when(chatClientManager.getChatClient("test-provider")).thenReturn(chatClient);
         lenient().when(chatClient.prompt()).thenReturn(promptRequestSpec);
         lenient().when(promptRequestSpec.user(anyString())).thenReturn(promptRequestSpec);
+        lenient().when(promptRequestSpec.options(any())).thenReturn(promptRequestSpec);
         lenient().doReturn(promptRequestSpec).when(promptRequestSpec).advisors(any(org.springframework.ai.chat.client.advisor.api.Advisor[].class));
         lenient().doReturn(promptRequestSpec).when(promptRequestSpec).advisors(any(java.util.function.Consumer.class));
         lenient().when(promptRequestSpec.toolContext(anyMap())).thenReturn(promptRequestSpec);
@@ -186,9 +185,9 @@ class AiChatServiceImplTest {
 
         // When & Then
         StepVerifier.create(aiChatService.streamChat(request))
-            .expectNext(SseEventResponse.start("AI正在思考中..."))
-            .expectNext(SseEventResponse.chunk("AI response chunk"))
-            .expectNext(SseEventResponse.end(null))
+            .expectNext(ChatEvent.start("AI正在思考中..."))
+            .expectNext(ChatEvent.chunk("AI response chunk"))
+            .expectNextMatches(ev -> ev.getType() == ChatEvent.ChatEventType.END)
             .verifyComplete();
     }
 }

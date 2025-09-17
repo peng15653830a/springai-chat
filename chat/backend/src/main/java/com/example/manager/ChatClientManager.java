@@ -23,6 +23,9 @@ import java.util.stream.Collectors;
 @Component
 public class ChatClientManager {
 
+    private static final String PROVIDER_OPENAI = "openai";
+    private static final String PROVIDER_DEEPSEEK = "deepseek";
+
     @Autowired
     private Map<String, ChatModel> chatModels;
     
@@ -62,17 +65,7 @@ public class ChatClientManager {
      * 创建ChatClient实例，使用Function方式注册Tool
      */
     private ChatClient createChatClient(String provider) {
-        String modelBeanName = provider.toLowerCase() + "ChatModel";
-        ChatModel chatModel = chatModels.get(modelBeanName);
-        
-        if (chatModel == null) {
-            chatModel = chatModels.values().stream()
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("未找到可用的ChatModel: " + provider));
-            
-            log.warn("⚠️ 未找到精确匹配的ChatModel: {}，使用默认模型", modelBeanName);
-        }
+        ChatModel chatModel = resolveChatModel(provider);
         
         log.info("🔧 开始为 {} 创建ChatClient", provider);
         log.info("🔧 WebSearchTool可用性: {}", webSearchTool != null);
@@ -105,6 +98,52 @@ public class ChatClientManager {
                 
         log.info("✅ ChatClient创建完成，provider: {}", provider);
         return client;
+    }
+
+    /**
+     * 根据 provider 名称解析 ChatModel，大小写不敏感，并兼容历史 Bean 命名。
+     */
+    private ChatModel resolveChatModel(String provider) {
+        if (provider == null) {
+            throw new IllegalArgumentException("provider 不能为空");
+        }
+        String lower = provider.toLowerCase();
+
+        // 1) 首选精确等价（不区分大小写）
+        for (Map.Entry<String, ChatModel> e : chatModels.entrySet()) {
+            if (e.getKey().equalsIgnoreCase(lower + "ChatModel")) {
+                return e.getValue();
+            }
+        }
+        // 2) 兼容 openai 的历史命名 customOpenAiChatModel
+        if (PROVIDER_OPENAI.equals(lower)) {
+            for (Map.Entry<String, ChatModel> e : chatModels.entrySet()) {
+                if (e.getKey().equalsIgnoreCase("customOpenAiChatModel") || e.getKey().equalsIgnoreCase("openAiChatModel")) {
+                    return e.getValue();
+                }
+            }
+        }
+        // 3) 兼容 DeepSeek 的 camel 命名 deepSeekChatModel
+        if (PROVIDER_DEEPSEEK.equals(lower)) {
+            for (Map.Entry<String, ChatModel> e : chatModels.entrySet()) {
+                if (e.getKey().equalsIgnoreCase("deepSeekChatModel")) {
+                    return e.getValue();
+                }
+            }
+        }
+        // 4) 子串匹配（兜底）：bean 名包含 provider 名
+        for (Map.Entry<String, ChatModel> e : chatModels.entrySet()) {
+            if (e.getKey().toLowerCase().contains(lower)) {
+                log.warn("⚠️ 使用子串匹配到的ChatModel: {} 对应 provider: {}", e.getKey(), provider);
+                return e.getValue();
+            }
+        }
+
+        // 5) 兜底：任意一个可用模型
+        return chatModels.values().stream()
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("未找到可用的ChatModel: " + provider));
     }
 
     /**

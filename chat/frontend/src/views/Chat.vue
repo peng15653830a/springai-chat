@@ -50,7 +50,7 @@
         <!-- 消息列表 -->
         <div ref="messageList" class="message-list">
           <div
-            v-for="message in processedMessages"
+            v-for="(message, idx) in processedMessages"
             :key="message.id"
             :class="['message-item', message.role]"
           >
@@ -83,8 +83,9 @@
                   v-show="expandedThinking.has(message.id)" 
                   class="thinking-content"
                 >
-                  <MarkdownRenderer
+                  <MarkdownView
                     :content="String(message.thinking || '')"
+                    :enableTypewriter="false"
                     class="thinking-body markdown-content"
                   />
                 </div>
@@ -95,9 +96,11 @@
                 <div v-if="message.role === 'user'" class="message-body">
                   {{ message.content }}
                 </div>
-                <MarkdownRenderer
+                <MarkdownView
                   v-else
                   :content="String(message.content || '')"
+                  :enableTypewriter="chatStore.isLoading && idx === processedMessages.length - 1"
+                  :anchorPrefix="String(message.id || '')"
                   class="message-body markdown-content"
                 />
                 <div class="message-actions">
@@ -237,19 +240,17 @@ import { useChatStore } from '../stores/chat'
 import { useModelStore } from '../stores/model'
 import { conversationApi, chatApi, modelApi } from '../api'
 import { useEventSource } from '@vueuse/core'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github.css'
 import { debounce } from 'lodash-es'
 import SearchIndicator from '../components/SearchIndicator.vue'
 import RightPanel from '../components/RightPanel.vue'
-import MarkdownRenderer from '../components/MarkdownRenderer.vue'
+import MarkdownView from '../components/MarkdownView.vue'
 
 export default {
   name: 'Chat',
   components: {
     SearchIndicator,
     RightPanel,
-    MarkdownRenderer
+    MarkdownView
   },
   setup(props, { emit }) {
     const userStore = useUserStore()
@@ -1040,6 +1041,8 @@ export default {
       pendingDeepThinking.value = false
       chatStore.setLoading(false)
       chatStore.setConnected(false)
+
+      
     })
     
     // 解析搜索结果JSON数据

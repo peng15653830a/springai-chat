@@ -1,6 +1,6 @@
 package com.example.service;
 
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import com.example.entity.Message;
 import reactor.core.publisher.Mono;
 
@@ -73,7 +73,7 @@ public interface MessageService {
    * @param thinking 推理过程内容（可选）
    * @return 保存的AI消息和结束事件
    */
-  Mono<SseEventResponse> saveAiMessageAsync(Long conversationId, String content, String thinking);
+  Mono<ChatEvent> saveAiMessageAsync(Long conversationId, String content, String thinking);
 
 
   /**

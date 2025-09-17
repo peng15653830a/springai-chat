@@ -15,6 +15,7 @@ public interface MessageToolResultMapper {
 
     /**
      * 保存工具调用结果
+     * @param toolResult 工具调用结果实体
      */
     @Insert("""
         INSERT INTO message_tool_results
@@ -27,6 +28,7 @@ public interface MessageToolResultMapper {
 
     /**
      * 更新工具调用结果
+     * @param toolResult 工具调用结果实体
      */
     @Update("""
         UPDATE message_tool_results
@@ -37,6 +39,8 @@ public interface MessageToolResultMapper {
 
     /**
      * 根据消息ID查询所有工具调用结果
+     * @param messageId 消息ID
+     * @return 工具调用结果列表
      */
     @Select("""
         SELECT id, message_id, tool_name, call_sequence, tool_input, tool_result, status, error_message, created_at, updated_at
@@ -48,6 +52,9 @@ public interface MessageToolResultMapper {
 
     /**
      * 根据消息ID和工具名称查询工具调用结果
+     * @param messageId 消息ID
+     * @param toolName 工具名称
+     * @return 工具调用结果列表
      */
     @Select("""
         SELECT id, message_id, tool_name, call_sequence, tool_input, tool_result, status, error_message, created_at, updated_at
@@ -59,6 +66,8 @@ public interface MessageToolResultMapper {
 
     /**
      * 获取指定消息的下一个工具调用序号
+     * @param messageId 消息ID
+     * @return 下一个调用序号（从1开始）
      */
     @Select("""
         SELECT COALESCE(MAX(call_sequence), 0) + 1
@@ -69,12 +78,14 @@ public interface MessageToolResultMapper {
 
     /**
      * 删除指定消息的所有工具调用结果
+     * @param messageId 消息ID
      */
     @Delete("DELETE FROM message_tool_results WHERE message_id = #{messageId}")
     void deleteByMessageId(Long messageId);
 
     /**
      * 批量删除工具调用结果
+     * @param messageIds 消息ID集合
      */
     @Delete("""
         <script>

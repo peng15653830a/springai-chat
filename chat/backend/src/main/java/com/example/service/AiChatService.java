@@ -1,7 +1,7 @@
 package com.example.service;
 
 import com.example.dto.request.StreamChatRequest;
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import reactor.core.publisher.Flux;
 
 /**
@@ -18,6 +18,6 @@ public interface AiChatService {
    * @param request 流式聊天请求对象，包含所有参数
    * @return 响应式SSE事件流
    */
-  Flux<SseEventResponse> streamChat(StreamChatRequest request);
+  Flux<ChatEvent> streamChat(StreamChatRequest request);
 
 }

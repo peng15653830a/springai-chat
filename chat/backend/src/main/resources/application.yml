@@ -12,11 +12,11 @@ spring:
 
   # 数据源配置
   datasource:
-    # PostgreSQL数据库配置
+    # PostgreSQL数据库配置（强依赖环境变量覆盖，避免默认敏感值）
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/ai_chat
-    username: root
-    password: xupeng2016
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_chat}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
   
   # JPA配置
   jpa:

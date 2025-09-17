@@ -1,7 +1,7 @@
 package com.example.service.impl;
 
 import com.example.dto.request.MessageSaveRequest;
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
 import com.example.service.MessageService;
@@ -132,7 +132,7 @@ public class MessageServiceImpl implements MessageService {
   }
 
   @Override
-  public Mono<SseEventResponse> saveAiMessageAsync(Long conversationId, String content, String thinking) {
+  public Mono<ChatEvent> saveAiMessageAsync(Long conversationId, String content, String thinking) {
     return Mono.fromCallable(() -> {
           // 保存AI消息，包含thinking内容
           Message aiMessage = saveMessage(MessageSaveRequest.builder()
@@ -145,7 +145,7 @@ public class MessageServiceImpl implements MessageService {
           
           log.info("AI消息保存成功，消息ID: {}, thinking内容: {}", 
               aiMessage.getId(), thinking != null ? "有" : "无");
-          return SseEventResponse.end(aiMessage.getId());
+          return ChatEvent.end(aiMessage.getId());
         })
         .onErrorMap(error -> {
           log.error("保存AI消息失败，会话ID: {}", conversationId, error);

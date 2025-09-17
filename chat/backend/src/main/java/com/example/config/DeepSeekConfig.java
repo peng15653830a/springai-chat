@@ -65,18 +65,6 @@ public class DeepSeekConfig {
         }
     }
     
-    /**
-     * 创建DeepSeek ChatClient Bean
-     */
-    @Bean
-    @ConditionalOnMissingBean(name = "deepSeekChatClient")
-    public ChatClient deepSeekChatClient(@Qualifier("deepSeekChatModel") ChatModel deepSeekChatModel) {
-        log.info("🏗️ 创建DeepSeek ChatClient Bean");
-        
-        return ChatClient.builder(deepSeekChatModel)
-                .defaultSystem("你是一个有用的AI助手。")
-                .build();
-    }
     
     /**
      * 获取默认模型配置

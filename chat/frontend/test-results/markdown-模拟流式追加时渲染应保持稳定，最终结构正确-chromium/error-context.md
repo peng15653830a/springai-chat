@@ -1,0 +1,96 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: T
+        - generic [ref=e9]: Tester
+      - button "新对话" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12] [cursor=pointer]:
+          - img [ref=e14] [cursor=pointer]
+          - text: 新对话
+    - generic [ref=e17] [cursor=pointer]:
+      - generic [ref=e18] [cursor=pointer]: Test Conversation
+      - generic [ref=e19] [cursor=pointer]: 9月17日 10:16
+      - button [ref=e20] [cursor=pointer]:
+        - img [ref=e23] [cursor=pointer]
+  - generic [ref=e26]:
+    - generic [ref=e27]:
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e31]: 演示一下Markdown渲染
+          - button "复制" [ref=e33] [cursor=pointer]:
+            - img [ref=e36] [cursor=pointer]
+        - generic [ref=e39]: 9月17日 10:16
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - paragraph [ref=e44]: 这是首段文字
+            - heading "没有空格的标题 🔗" [level=2] [ref=e45]:
+              - text: 没有空格的标题
+              - link "🔗" [ref=e46] [cursor=pointer]:
+                - /url: "#m1-没有空格的标题"
+            - paragraph [ref=e47]: 紧跟一段说明文字
+            - list [ref=e48]:
+              - listitem [ref=e49]: 列表项A
+            - list [ref=e50]:
+              - listitem [ref=e51]: 数字列表1
+            - code [ref=e53]:
+              - generic [ref=e54]: console
+              - text: .
+              - generic [ref=e55]: log
+              - text: (
+              - generic [ref=e56]: "'x'"
+              - text: )
+            - table [ref=e57]:
+              - rowgroup [ref=e58]:
+                - row "列A 列B" [ref=e59]:
+                  - cell "列A" [ref=e60]
+                  - cell "列B" [ref=e61]
+              - rowgroup [ref=e62]:
+                - row "1 2" [ref=e63]:
+                  - cell "1" [ref=e64]
+                  - cell "2" [ref=e65]
+          - button "复制" [ref=e67] [cursor=pointer]:
+            - img [ref=e70] [cursor=pointer]
+        - generic [ref=e73]: 9月17日 10:16
+      - generic [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]: test streaming
+          - button "复制" [ref=e79] [cursor=pointer]:
+            - img [ref=e82] [cursor=pointer]
+        - generic [ref=e85]: 9月17日 10:16
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - paragraph [ref=e90]: 段落A
+          - button "复制" [ref=e92] [cursor=pointer]:
+            - img [ref=e95] [cursor=pointer]
+        - generic [ref=e98]: 9月17日 10:16
+    - generic [ref=e99]:
+      - generic [ref=e101]:
+        - generic [ref=e103] [cursor=pointer]:
+          - generic:
+            - combobox [ref=e105]
+            - generic [ref=e107] [cursor=pointer]: 选择模型
+          - img [ref=e110] [cursor=pointer]
+        - button "深度思考" [ref=e112] [cursor=pointer]:
+          - generic [ref=e113] [cursor=pointer]:
+            - img [ref=e115] [cursor=pointer]
+            - text: 深度思考
+            - img [ref=e118] [cursor=pointer]
+        - button "联网搜索" [ref=e120] [cursor=pointer]:
+          - generic [ref=e121] [cursor=pointer]:
+            - img [ref=e123] [cursor=pointer]
+            - text: 联网搜索
+            - img [ref=e127] [cursor=pointer]
+      - generic [ref=e129]:
+        - textbox "输入问题，支持联网搜索..." [ref=e131]
+        - button [disabled] [ref=e133]:
+          - img [ref=e136]
+  - img [ref=e140] [cursor=pointer]
+  - img [ref=e144] [cursor=pointer]
+  - button [ref=e148] [cursor=pointer]:
+    - img [ref=e150] [cursor=pointer]
+```

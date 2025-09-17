@@ -28,7 +28,10 @@ public class Message {
   /** AI推理过程 */
   private String thinking;
   
-  // 搜索结果（非持久化字段，接口层用于返回给前端，直接为数组类型）
+  /**
+   * 搜索结果（非持久化字段，仅用于接口返回给前端展示）
+   * 注意：持久化表为 message_tool_results，本字段仅做聚合视图用途。
+   */
   private List<SearchResult> searchResults;
   
   /** 创建时间 */

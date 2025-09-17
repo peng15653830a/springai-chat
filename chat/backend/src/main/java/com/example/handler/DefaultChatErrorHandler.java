@@ -1,6 +1,6 @@
 package com.example.handler;
 
-import com.example.dto.response.SseEventResponse;
+import com.example.dto.stream.ChatEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -40,7 +40,7 @@ public class DefaultChatErrorHandler implements ChatErrorHandler {
     private static final String ILLEGAL_STATE_ERROR = "IllegalState";
 
     @Override
-    public Flux<SseEventResponse> handleChatError(Throwable error) {
+    public Flux<ChatEvent> handleChatError(Throwable error) {
         log.error("聊天过程中发生错误", error);
         
         String errorMessage = getErrorMessage(error);
@@ -48,7 +48,7 @@ public class DefaultChatErrorHandler implements ChatErrorHandler {
         
         log.debug("错误类型: {}, 错误消息: {}", errorType, errorMessage);
         
-        return Flux.just(SseEventResponse.error(errorMessage));
+        return Flux.just(ChatEvent.error(errorMessage));
     }
 
     @Override

@@ -1,6 +1,5 @@
 <template>
-  <div class="typewriter-markdown" ref="containerRef" v-html="renderedHtml">
-  </div>
+  <div class="typewriter-markdown" ref="containerRef" v-html="renderedHtml"></div>
 </template>
 
 <script>
@@ -14,9 +13,10 @@ import anchor from 'markdown-it-anchor'
 import toc from 'markdown-it-toc-done-right'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
+import DOMPurify from 'dompurify'
 
 export default {
-  name: 'TypewriterMarkdown',
+  name: 'MarkdownView',
   props: {
     content: {
       type: String,
@@ -41,6 +41,8 @@ export default {
     const containerRef = ref(null)
     const isTyping = ref(false)
     const typewriterTimer = ref(null)
+    const fullText = ref('')
+    const typedIndex = ref(0)
 
     // 初始化markdown-it实例
     const md = new MarkdownIt({
@@ -115,30 +117,29 @@ export default {
     // 仅规范换行，不注入字符
     const normalize = (raw) => String(raw || '').replace(/\r\n?/g, '\n')
 
-    // 最终渲染时的 GFM 规范化（不影响原文，仅用于渲染）
-    const normalizeGfmFinal = (raw) => {
+    // 渲染阶段的 GFM 友好规范化（不修改源，而是在渲染前修补可读性）
+    const normalizeGfmForRender = (raw) => {
       let text = normalize(raw)
-      // 在非行首出现的标题标记前插入空行，避免与上一段黏连
+      // 非行首出现的标题标记前插入空行，避免与上一段黏连
       text = text.replace(/([^\n])(?=(#{1,6}\s))/g, '$1\n\n')
-      // 标题 # 之后若缺少空格则补 1 个空格
+      // 标题 # 后缺空格则补空格
       text = text.replace(/(^|\n)(#{1,6})([^\s#])/g, '$1$2 $3')
-      // 列表标记（- 或 1.）若不在行首，则在其前插入换行
+      // 列表标记不在行首，前插入换行
       text = text.replace(/([^\n])(?=(-\s|\d+\.\s))/g, '$1\n')
+      // 行首无序列表补空格
+      text = text.replace(/(^|\n)([-*+])([^\s\-\*\+])/g, '$1$2 $3')
+      // 行首有序列表补空格
+      text = text.replace(/(^|\n)(\d+\.)([^\s])/g, '$1$2 $3')
       return text
     }
 
-    // 渲染稳定块：按段落（\n\n）切分，且保证代码围栏成对
-    const sliceStableContent = (raw) => {
-      const text = normalize(raw)
-      const boundary = text.lastIndexOf('\n\n')
-      if (boundary === -1) return ''
-      let candidate = text.slice(0, boundary + 2)
-      const fences = candidate.match(/```/g) || []
-      if (fences.length % 2 === 1) {
-        const lastFence = candidate.lastIndexOf('```')
-        if (lastFence > -1) candidate = candidate.slice(0, lastFence).replace(/\s*$/, '')
+    // 若当前片段出现不成对的围栏，临时闭合以避免渲染错乱
+    const balanceFences = (text) => {
+      const fenceCount = (text.match(/```/g) || []).length
+      if (fenceCount % 2 === 1) {
+        return text.replace(/\s*$/, '') + '\n```\n'
       }
-      return candidate
+      return text
     }
     
     // 清理定时器
@@ -151,11 +152,72 @@ export default {
     
     // 渲染markdown内容
     const renderMarkdown = (content) => {
-      if (!content) {
-        renderedHtml.value = ''
-        return
+      const safe = normalizeGfmForRender(content || '')
+      const fixed = balanceFences(safe)
+      const html = fixed ? md.render(fixed) : ''
+      renderedHtml.value = DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'rel'] })
+      nextTick(() => postProcessDom())
+    }
+
+    // 渲染后对DOM进行一次纠偏：
+    // 1) 移除空标题（只剩锚点符号的）
+    // 2) 表格列宽对齐：
+    //    - 若表头首列以#开头（如"# XXX"），提取为caption并移除该列
+    //    - 对齐每行单元格数量，不足补空单元格
+    const postProcessDom = () => {
+      const root = containerRef.value
+      if (!root) return
+      try {
+        // 1) 移除空标题
+        const headings = root.querySelectorAll('h1, h2, h3, h4, h5, h6')
+        headings.forEach(h => {
+          const text = (h.textContent || '').replace('🔗', '').trim()
+          if (!text) {
+            h.remove()
+          }
+        })
+
+        // 2) 表格修正
+        const tables = root.querySelectorAll('table')
+        tables.forEach(table => {
+          const thead = table.querySelector('thead')
+          const headerRow = thead ? thead.querySelector('tr') : null
+          let headerCount = headerRow ? headerRow.cells.length : 0
+
+          // 2.1 若表头首单元为"# XXX"，转为caption
+          if (headerRow && headerRow.cells.length > 0) {
+            const first = headerRow.cells[0]
+            const firstText = (first.textContent || '').trim()
+            if (/^#+\s*/.test(firstText)) {
+              const captionText = firstText.replace(/^#+\s*/, '').trim()
+              if (captionText) {
+                const cap = document.createElement('caption')
+                cap.textContent = captionText
+                table.insertBefore(cap, table.firstChild)
+              }
+              headerRow.deleteCell(0)
+              headerCount = headerRow.cells.length
+            }
+          }
+
+          // 2.2 若没有thead或headerCount为0，则以第一行作为基准列数
+          if (!thead || headerCount === 0) {
+            const firstBodyRow = table.querySelector('tbody tr') || table.querySelector('tr')
+            if (firstBodyRow) headerCount = firstBodyRow.cells.length
+          }
+
+          // 2.3 对齐每一行单元格数至headerCount
+          const allRows = table.querySelectorAll('tr')
+          allRows.forEach(row => {
+            while (headerCount > 0 && row.cells.length < headerCount) {
+              const td = row.insertCell(-1)
+              td.textContent = ''
+            }
+          })
+        })
+      } catch (e) {
+        // ignore post-fix errors
       }
-      renderedHtml.value = md.render(content)
     }
 
     // 不再逐字符渲染，改为按段落渲染（稳定块）
@@ -170,14 +232,38 @@ export default {
       }
     }
     
-    // 监听内容变化：按段落渲染
+    // 打字机：逐字符展示，同时在渲染前做最小纠偏与围栏闭合
+    const tick = () => {
+      if (!props.enableTypewriter) return
+      if (typedIndex.value >= fullText.value.length) {
+        clearTypewriterTimer()
+        isTyping.value = false
+        emit('typing-complete')
+        return
+      }
+      isTyping.value = true
+      typedIndex.value = Math.min(typedIndex.value + Math.max(1, Math.floor(props.speed / 10)), fullText.value.length)
+      const view = fullText.value.slice(0, typedIndex.value)
+      renderMarkdown(view)
+      typewriterTimer.value = setTimeout(tick, props.speed)
+    }
+
+    // 监听内容变化：恢复打字机效果
     watch(() => props.content, (newContent) => {
-      if (props.enableTypewriter) {
-        const stable = sliceStableContent(newContent)
-        renderMarkdown(stable)
+      const incoming = String(newContent || '')
+      // 累积目标文本（SSE增量到达时继续往后打字）
+      if (incoming.length > fullText.value.length) {
+        fullText.value = incoming
       } else {
-        // 结束时对 GFM 进行一次规范化，仅用于渲染，不写回消息内容
-        renderMarkdown(normalizeGfmFinal(newContent))
+        fullText.value = incoming
+        typedIndex.value = Math.min(typedIndex.value, fullText.value.length)
+      }
+      if (props.enableTypewriter) {
+        if (!typewriterTimer.value) tick()
+      } else {
+        // 非打字机模式立即渲染完整内容
+        typedIndex.value = fullText.value.length
+        renderMarkdown(fullText.value)
         isTyping.value = false
         emit('typing-complete')
       }

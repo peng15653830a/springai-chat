@@ -33,7 +33,7 @@ public class WebSearchTool {
 
 
     @Tool(description = "执行网络搜索获取最新信息")
-    public String searchWeb(
+    public java.util.List<SearchResult> searchWeb(
             @ToolParam(description = "搜索查询内容，用于查找相关信息") String query,
             ToolContext toolContext
     ) {
@@ -100,10 +100,8 @@ public class WebSearchTool {
             sseEventPublisher.publishSearchComplete(conversationId);
 
             // 格式化搜索结果返回给AI模型
-            String formattedResults = formatSearchResultsForAi(results);
-            log.info("✅ 搜索完成，返回{}条结果给AI模型", results.size());
-
-            return formattedResults;
+            log.info("✅ 搜索完成，返回{}条结果给AI模型（结构化）", results.size());
+            return results;
 
         } catch (Exception e) {
             log.error("❌ 搜索执行失败，异常类型: {}, 异常信息: {}", e.getClass().getSimpleName(), e.getMessage(), e);
@@ -119,47 +117,8 @@ public class WebSearchTool {
             if (conversationId != null) {
                 sseEventPublisher.publishSearchError(conversationId, "搜索服务暂时不可用，请稍后重试");
             }
-            return "搜索服务暂时不可用，请稍后重试。";
+            return java.util.Collections.emptyList();
         }
     }
 
-
-    /**
-     * 格式化搜索结果给AI模型使用
-     */
-    private String formatSearchResultsForAi(List<SearchResult> results) {
-        if (results == null || results.isEmpty()) {
-            log.warn("⚠️ 搜索结果为空或null");
-            return "没有找到相关搜索结果。";
-        }
-
-        log.info("📋 开始格式化搜索结果，共{}条", results.size());
-        StringBuilder formatted = new StringBuilder();
-        formatted.append("以下是搜索到的相关信息：\n\n");
-
-        for (int i = 0; i < results.size(); i++) {
-            SearchResult result = results.get(i);
-            log.info("📄 处理第{}条结果: 标题=[{}], 内容长度=[{}], URL=[{}]", 
-                i + 1, 
-                result.getTitle() != null ? result.getTitle().substring(0, Math.min(50, result.getTitle().length())) + "..." : "无",
-                result.getContent() != null ? result.getContent().length() : 0,
-                result.getUrl() != null ? result.getUrl() : "无");
-                
-            formatted.append(String.format("%d. 标题：%s\n", i + 1, 
-                result.getTitle() != null ? result.getTitle() : ""));
-            formatted.append(String.format("   内容：%s\n", 
-                result.getContent() != null ? result.getContent() : ""));
-            if (result.getUrl() != null && !result.getUrl().isEmpty()) {
-                formatted.append(String.format("   来源：%s\n", result.getUrl()));
-            }
-            formatted.append("\n");
-        }
-
-        String formattedResult = formatted.toString();
-        log.info("✅ 搜索结果格式化完成，总长度: {}", formattedResult.length());
-        log.debug("🔍 格式化后的内容预览: {}", 
-            formattedResult.length() > 200 ? formattedResult.substring(0, 200) + "..." : formattedResult);
-        
-        return formattedResult;
-    }
 }

@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 
 /**
  * 多模型配置属性类
@@ -44,6 +46,9 @@ public class MultiModelProperties {
      * 提供者配置映射
      */
     private Map<String, ProviderConfig> providers = new HashMap<>();
+
+    @Autowired(required = false)
+    private Environment environment;
 
     /**
      * 全局默认配置
@@ -210,20 +215,18 @@ public class MultiModelProperties {
             return false;
         }
         
-        // 在开发环境中，即使没有API密钥也认为可用
         String apiKey = getApiKey(providerName);
         if (apiKey != null && !apiKey.trim().isEmpty()) {
             return true;
         }
-        
-        // 检查是否为开发环境（根据Spring的默认profile判断）
-        // 简化处理，实际应该从Spring环境中获取
-        String[] activeProfiles = {"default"};
-        boolean isDevEnvironment = Arrays.asList(activeProfiles).contains("dev") || 
-                                  Arrays.asList(activeProfiles).contains("development") ||
-                                  Arrays.asList(activeProfiles).contains("default");
-        
-        // 在开发环境中，允许没有API密钥
-        return isDevEnvironment;
+
+        // 在开发环境中允许无 key（由 spring.profiles.active 判定）
+        if (environment != null) {
+            List<String> profiles = Arrays.asList(environment.getActiveProfiles());
+            boolean isDev = profiles.contains("dev") || profiles.contains("development") || profiles.isEmpty();
+            return isDev;
+        }
+        // 无环境上下文时，按历史行为默认可用（便于单元测试）
+        return true;
     }
 }

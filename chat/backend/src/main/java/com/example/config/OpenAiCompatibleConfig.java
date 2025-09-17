@@ -33,19 +33,6 @@ public class OpenAiCompatibleConfig {
         return createOpenAiCompatibleModel("openai", multiModelProperties);
     }
     
-    /**
-     * 创建自定义OpenAI ChatClient Bean
-     */
-    @Bean
-    @ConditionalOnProperty(name = "ai.models.providers.openai.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(name = "customOpenAiChatClient")
-    public ChatClient customOpenAiChatClient(@Qualifier("customOpenAiChatModel") ChatModel customOpenAiChatModel) {
-        log.info("🏗️ 创建自定义OpenAI ChatClient Bean");
-        
-        return ChatClient.builder(customOpenAiChatModel)
-                .defaultSystem("你是一个有用的AI助手。")
-                .build();
-    }
 
     /**
      * 创建通义千问 ChatModel Bean
@@ -58,19 +45,6 @@ public class OpenAiCompatibleConfig {
         return createOpenAiCompatibleModel("qwen", multiModelProperties);
     }
     
-    /**
-     * 创建通义千问 ChatClient Bean
-     */
-    @Bean
-    @ConditionalOnProperty(name = "ai.models.providers.qwen.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(name = "qwenChatClient")
-    public ChatClient qwenChatClient(@Qualifier("qwenChatModel") ChatModel qwenChatModel) {
-        log.info("🏗️ 创建通义千问 ChatClient Bean");
-        
-        return ChatClient.builder(qwenChatModel)
-                .defaultSystem("你是一个有用的AI助手。")
-                .build();
-    }
     
     /**
      * 创建Kimi2 ChatModel Bean
@@ -83,19 +57,6 @@ public class OpenAiCompatibleConfig {
         return createOpenAiCompatibleModel("kimi2", multiModelProperties);
     }
     
-    /**
-     * 创建Kimi2 ChatClient Bean
-     */
-    @Bean
-    @ConditionalOnProperty(name = "ai.models.providers.kimi2.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(name = "kimi2ChatClient")
-    public ChatClient kimi2ChatClient(@Qualifier("kimi2ChatModel") ChatModel kimi2ChatModel) {
-        log.info("🏗️ 创建Kimi2 ChatClient Bean");
-        
-        return ChatClient.builder(kimi2ChatModel)
-                .defaultSystem("你是一个有用的AI助手。")
-                .build();
-    }
     
     /**
      * 创建OpenAI兼容的ChatModel

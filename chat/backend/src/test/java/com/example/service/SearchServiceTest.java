@@ -32,8 +32,8 @@ public class SearchServiceTest {
 
   @BeforeEach
   void setUp() {
-    // 创建SearchServiceImpl实例，使用mock的依赖
-    searchService = new SearchServiceImpl(searchProperties, objectMapper);
+    // 创建SearchServiceImpl实例，使用mock的依赖（显式注入 WebClient.Builder）
+    searchService = new SearchServiceImpl(searchProperties, objectMapper, org.springframework.web.reactive.function.client.WebClient.builder());
   }
 
 }
