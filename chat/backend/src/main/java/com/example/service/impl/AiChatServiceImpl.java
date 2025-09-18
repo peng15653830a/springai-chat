@@ -184,7 +184,7 @@ public class AiChatServiceImpl implements AiChatService {
         Long conversationId = request.getConversationId();
         String conversationIdStr = conversationId.toString();
 
-        // 先创建一个占位的助手消息以便在工具调用期即可记录到具体messageId
+        // 先创建一个占位的助手消息以便在工具调用期即可记录到具体messageId（若mock未配置返回null则降级为不预创建）
         return Mono.fromCallable(() -> {
                 com.example.entity.Message draft = messageService.saveMessage(
                     com.example.dto.request.MessageSaveRequest.builder()
@@ -193,8 +193,13 @@ public class AiChatServiceImpl implements AiChatService {
                         .content("[draft]")
                         .build()
                 );
-                log.info("📝 已创建占位助手消息，messageId: {}", draft.getId());
-                return draft.getId();
+                if (draft != null && draft.getId() != null) {
+                    log.info("📝 已创建占位助手消息，messageId: {}", draft.getId());
+                    return draft.getId();
+                } else {
+                    log.debug("⚠️ 未预创建助手消息（mock或存储未返回ID），将跳过内容更新");
+                    return -1L;
+                }
             })
             .flatMapMany(assistantMessageId -> {
                 java.util.concurrent.atomic.AtomicBoolean updated = new java.util.concurrent.atomic.AtomicBoolean(false);
@@ -234,14 +239,19 @@ public class AiChatServiceImpl implements AiChatService {
                             .flatMap(sb -> Mono.fromCallable(() -> {
                                 String finalContent = sb.toString();
                                 try {
-                                    messageService.updateMessageContent(assistantMessageId, finalContent, null);
-                                    log.info("✅ 助手消息内容已更新，messageId: {}，长度: {}", assistantMessageId, finalContent.length());
-                                    updated.set(true);
+                                    if (assistantMessageId != null && assistantMessageId > 0) {
+                                        messageService.updateMessageContent(assistantMessageId, finalContent, null);
+                                        log.info("✅ 助手消息内容已更新，messageId: {}，长度: {}", assistantMessageId, finalContent.length());
+                                        updated.set(true);
+                                    } else {
+                                        log.debug("🛈 未预创建助手消息，跳过内容落库，仅推送事件");
+                                    }
                                 } catch (Exception e) {
                                     log.warn("更新助手消息内容失败，messageId: {}，错误: {}", assistantMessageId, e.getMessage());
                                     throw e;
                                 }
-                                return ChatEvent.end(assistantMessageId);
+                                Long endId = (assistantMessageId != null && assistantMessageId > 0) ? assistantMessageId : null;
+                                return ChatEvent.end(endId);
                             }))
                     );
                 }));
@@ -259,18 +269,55 @@ public class AiChatServiceImpl implements AiChatService {
         });
     }
 
+    /**
+     * 提取 <think>...</think> 或 <thinking>...</thinking> 片段，返回分离后的正文与thinking。
+     * 简化实现：在最终聚合内容时一次性提取，避免流式解析带来的复杂度。
+     */
+    private static ThinkingParts extractThinkingParts(String content) {
+        if (content == null || content.isBlank()) {
+            return new ThinkingParts(null, content);
+        }
+        String regex = "(?is)<think(?:ing)?>[\\s\\S]*?</think(?:ing)?>";
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile(regex);
+        java.util.regex.Matcher m = p.matcher(content);
+        StringBuilder thinking = new StringBuilder();
+        int lastEnd = 0;
+        StringBuilder cleaned = new StringBuilder();
+        while (m.find()) {
+            // 追加前一段正文
+            cleaned.append(content, lastEnd, m.start());
+            // 提取thinking内容（去掉标签）
+            String raw = m.group();
+            String inner = raw.replaceAll("(?is)</?think(?:ing)?>", "").trim();
+            if (!inner.isBlank()) {
+                if (!thinking.isEmpty()) thinking.append("\n\n");
+                thinking.append(inner);
+            }
+            lastEnd = m.end();
+        }
+        // 追加最后的正文
+        cleaned.append(content.substring(lastEnd));
+        String thinkingStr = thinking.isEmpty() ? null : thinking.toString();
+        String cleanedStr = cleaned.toString().trim();
+        return new ThinkingParts(thinkingStr, cleanedStr);
+    }
+
+    private record ThinkingParts(String thinking, String content) {}
+
     private Flux<ChatEvent> handleStreamError(Long conversationId,
                                               Long assistantMessageId,
                                               java.util.concurrent.atomic.AtomicBoolean updated,
                                               Throwable ex) {
         if (!updated.get()) {
             try {
-                try {
-                    messageToolResultService.deleteMessageToolResults(assistantMessageId);
-                } catch (Exception ignore) {
-                    // ignore
+                if (assistantMessageId != null && assistantMessageId > 0) {
+                    try {
+                        messageToolResultService.deleteMessageToolResults(assistantMessageId);
+                    } catch (Exception ignore) {
+                        // ignore
+                    }
+                    messageService.deleteMessage(assistantMessageId);
                 }
-                messageService.deleteMessage(assistantMessageId);
                 log.info("🧹 已清理失败对话产生的占位消息及其相关工具记录，messageId: {}", assistantMessageId);
             } catch (Exception cleanEx) {
                 log.warn("清理占位消息失败，messageId: {}，错误: {}", assistantMessageId, cleanEx.getMessage());

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -45,11 +46,13 @@ class ChatControllerTest {
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ServerSentEvent<Object>> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
-                .expectNext(eventResponse)
+                .expectNextMatches(ev -> {
+                    return "chunk".equals(ev.event()) && ev.data() instanceof ChatEvent.ChunkPayload cp && "Hello".equals(cp.getContent());
+                })
                 .verifyComplete();
         
         verify(aiChatService).streamChat(streamChatRequest);
@@ -62,7 +65,7 @@ class ChatControllerTest {
         streamChatRequest.setMessage(null);
 
         // When
-        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ServerSentEvent<Object>> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -76,7 +79,7 @@ class ChatControllerTest {
         streamChatRequest.setMessage("   ");
 
         // When
-        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ServerSentEvent<Object>> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
@@ -115,11 +118,11 @@ class ChatControllerTest {
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ServerSentEvent<Object>> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
-                .expectNext(eventResponse)
+                .expectNextMatches(ev -> "chunk".equals(ev.event()))
                 .verifyComplete();
         
         verify(aiChatService).streamChat(streamChatRequest);
@@ -137,11 +140,11 @@ class ChatControllerTest {
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ServerSentEvent<Object>> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
-                .expectNext(eventResponse)
+                .expectNextMatches(ev -> "chunk".equals(ev.event()))
                 .verifyComplete();
         
         verify(aiChatService).streamChat(streamChatRequest);
@@ -160,11 +163,11 @@ class ChatControllerTest {
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ServerSentEvent<Object>> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
-                .expectNext(eventResponse)
+                .expectNextMatches(ev -> "chunk".equals(ev.event()))
                 .verifyComplete();
         
         verify(aiChatService).streamChat(streamChatRequest);
@@ -186,11 +189,11 @@ class ChatControllerTest {
         when(aiChatService.streamChat(streamChatRequest)).thenReturn(responseFlux);
 
         // When
-        Flux<ChatEvent> result = chatController.streamChat(conversationId, streamChatRequest);
+        Flux<ServerSentEvent<Object>> result = chatController.streamChat(conversationId, streamChatRequest);
 
         // Then
         StepVerifier.create(result)
-                .expectNext(eventResponse)
+                .expectNextMatches(ev -> "chunk".equals(ev.event()))
                 .verifyComplete();
         
         verify(aiChatService).streamChat(streamChatRequest);

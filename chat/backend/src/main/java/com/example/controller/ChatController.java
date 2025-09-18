@@ -6,6 +6,7 @@ import com.example.service.AiChatService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
@@ -30,7 +31,8 @@ public class ChatController {
    * @return 响应式SSE事件流
    */
   @GetMapping(value = "/stream/{conversationId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public Flux<ChatEvent> streamChat(@PathVariable Long conversationId, StreamChatRequest request) {
+  public Flux<ServerSentEvent<Object>> streamChat(
+      @PathVariable Long conversationId, StreamChatRequest request) {
     // 设置路径参数到请求对象中
     request.setConversationId(conversationId);
     
@@ -50,21 +52,38 @@ public class ChatController {
         request.isDeepThinking(), request.getUserId(), request.getProvider(), request.getModel());
     
     return aiChatService.streamChat(request)
+        .map(this::toServerSentEvent)
         .doOnNext(event -> {
           if (log.isDebugEnabled()) {
-            if (event.getPayload() instanceof ChatEvent.ChunkPayload data) {
+            Object payload = event.data();
+            if (payload instanceof ChatEvent.ChunkPayload data) {
               String content = data.getContent();
               String escaped = content != null ? content.replace("\n", "\\n") : "";
-              log.debug("发送SSE事件: {} - chunk(len={}, preview={})", event.getType(),
+              log.debug("发送SSE事件: {} - chunk(len={}, preview={})", event.event(),
                   content != null ? content.length() : 0,
                   escaped.length() > 200 ? escaped.substring(0, 200) + "..." : escaped);
             } else {
-              log.debug("发送SSE事件: {} - {}", event.getType(), event.getPayload());
+              log.debug("发送SSE事件: {} - {}", event.event(), payload);
             }
           }
         })
         .doOnError(error -> log.error("流式聊天发生错误，会话ID: {}", request.getConversationId(), error))
         .doOnComplete(() -> log.info("流式聊天完成，会话ID: {}", request.getConversationId()));
+  }
+
+  private ServerSentEvent<Object> toServerSentEvent(ChatEvent event) {
+    String name = switch (event.getType()) {
+      case START -> "start";
+      case CHUNK -> "chunk";
+      case THINKING -> "thinking";
+      case SEARCH -> "search";
+      case SEARCH_RESULTS -> "search_results";
+      case END -> "end";
+      case ERROR -> "error";
+    };
+    return ServerSentEvent.builder(event.getPayload())
+        .event(name)
+        .build();
   }
 
 }

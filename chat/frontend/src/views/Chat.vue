@@ -311,9 +311,10 @@ export default {
     })
     
     // 使用useEventSource - 配置为按需连接，减少服务停止后的重连
-    const { data: sseData, status: sseStatus, error: sseError, close: closeSSE } = useEventSource(
+    const { event: sseEvent, data: sseData, status: sseStatus, error: sseError, close: closeSSE } = useEventSource(
       sseUrl,
-      [],
+      // 使用标准SSE命名事件
+      ['start', 'chunk', 'thinking', 'search', 'search_results', 'end', 'error'],
       {
         immediate: false, // 不立即连接
         autoReconnect: {
@@ -334,30 +335,20 @@ export default {
       }
     )
     
-    // 监听SSE数据（兼容后端事件字段变更：type 大小写、data|payload 等差异）
-    watch(sseData, (newData) => {
-      console.log('🔧 DEBUG: sseData变化检测到:', newData)
-      if (!newData) return
-
+    // 监听SSE命名事件与数据（后端采用ServerSentEvent.event + data）
+    watch([sseEvent, sseData], ([evt, newData]) => {
+      if (!evt || !newData) return
       try {
-        const raw = JSON.parse(newData)
-        console.log('🔧 DEBUG: SSE事件解析成功:', raw)
-
-        // 统一事件类型为小写字符串，兼容 START/CHUNK/SEARCH_RESULTS 等枚举形式
-        const rawType = raw?.type ?? raw?.event
-        const type = typeof rawType === 'string' ? rawType.toLowerCase() : String(rawType || '')
-
-        // 统一负载字段为 data，兼容 payload
-        let data = raw?.data ?? raw?.payload ?? null
-
-        // 兼容搜索事件负载：后端为 { status: 'start|complete' }，旧前端为 { type: 'start|complete' }
-        if (type === 'search' && data && typeof data === 'object' && !('type' in data) && ('status' in data)) {
-          data = { type: data.status, ...data }
-        }
-
-        handleSSEEvent({ type, data })
-      } catch (error) {
-        console.error('❌ 解析SSE事件失败:', error, newData)
+        const data = JSON.parse(newData)
+        const type = String(evt).toLowerCase()
+        // 兼容搜索事件负载：{ status: 'start|complete' }
+        const normalized = (type === 'search' && data && typeof data === 'object' && !('type' in data) && ('status' in data))
+          ? { type: data.status, ...data }
+          : data
+        handleSSEEvent({ type, data: normalized })
+      } catch (e) {
+        // 如果不是JSON，直接作为字符串透传
+        handleSSEEvent({ type: String(evt).toLowerCase(), data: newData })
       }
     })
     
