@@ -1,11 +1,10 @@
 package com.example.config;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Duration;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * ChatStreamingProperties测试类
@@ -330,10 +329,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setMaxHistorySize(20);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setMaxHistorySize(30);
-    
+
     // Then
     assertNotEquals(props1, props2);
   }
@@ -343,10 +342,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setResponseTimeout(Duration.ofSeconds(300));
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setResponseTimeout(Duration.ofSeconds(600));
-    
+
     // Then
     assertNotEquals(props1, props2);
   }
@@ -356,10 +355,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setResponseTimeout(null);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setResponseTimeout(null);
-    
+
     // Then
     assertEquals(props1, props2);
   }
@@ -369,10 +368,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setSseTimeout(Duration.ofSeconds(300));
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setSseTimeout(Duration.ofSeconds(600));
-    
+
     // Then
     assertNotEquals(props1, props2);
   }
@@ -382,10 +381,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setSseTimeout(null);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setSseTimeout(null);
-    
+
     // Then
     assertEquals(props1, props2);
   }
@@ -395,16 +394,16 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setChunkSize(100);
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setChunkSize(200);
-    
+
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setStreaming(streaming1);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setStreaming(streaming2);
-    
+
     // Then
     assertNotEquals(props1, props2);
   }
@@ -414,10 +413,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setStreaming(null);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setStreaming(null);
-    
+
     // Then
     assertEquals(props1, props2);
   }
@@ -427,16 +426,16 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Error error1 = new ChatStreamingProperties.Error();
     error1.setRetryAttempts(3);
-    
+
     ChatStreamingProperties.Error error2 = new ChatStreamingProperties.Error();
     error2.setRetryAttempts(5);
-    
+
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setError(error1);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setError(error2);
-    
+
     // Then
     assertNotEquals(props1, props2);
   }
@@ -446,10 +445,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setError(null);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setError(null);
-    
+
     // Then
     assertEquals(props1, props2);
   }
@@ -459,10 +458,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setChunkSize(50);
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setChunkSize(100);
-    
+
     // Then
     assertNotEquals(streaming1, streaming2);
   }
@@ -472,10 +471,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setBufferTimeout(Duration.ofMillis(100));
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setBufferTimeout(Duration.ofMillis(200));
-    
+
     // Then
     assertNotEquals(streaming1, streaming2);
   }
@@ -485,10 +484,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setBufferTimeout(null);
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setBufferTimeout(null);
-    
+
     // Then
     assertEquals(streaming1, streaming2);
   }
@@ -498,10 +497,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setHeartbeatInterval(Duration.ofSeconds(30));
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setHeartbeatInterval(Duration.ofSeconds(60));
-    
+
     // Then
     assertNotEquals(streaming1, streaming2);
   }
@@ -511,10 +510,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setHeartbeatInterval(null);
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setHeartbeatInterval(null);
-    
+
     // Then
     assertEquals(streaming1, streaming2);
   }
@@ -524,10 +523,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Error error1 = new ChatStreamingProperties.Error();
     error1.setRetryAttempts(3);
-    
+
     ChatStreamingProperties.Error error2 = new ChatStreamingProperties.Error();
     error2.setRetryAttempts(5);
-    
+
     // Then
     assertNotEquals(error1, error2);
   }
@@ -537,10 +536,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Error error1 = new ChatStreamingProperties.Error();
     error1.setRetryDelay(Duration.ofMillis(1000));
-    
+
     ChatStreamingProperties.Error error2 = new ChatStreamingProperties.Error();
     error2.setRetryDelay(Duration.ofMillis(2000));
-    
+
     // Then
     assertNotEquals(error1, error2);
   }
@@ -550,10 +549,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Error error1 = new ChatStreamingProperties.Error();
     error1.setRetryDelay(null);
-    
+
     ChatStreamingProperties.Error error2 = new ChatStreamingProperties.Error();
     error2.setRetryDelay(null);
-    
+
     // Then
     assertEquals(error1, error2);
   }
@@ -563,10 +562,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props = new ChatStreamingProperties();
     props.setMaxHistorySize(25);
-    
+
     int hashCode1 = props.hashCode();
     int hashCode2 = props.hashCode();
-    
+
     // Then
     assertEquals(hashCode1, hashCode2);
   }
@@ -576,10 +575,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Streaming streaming = new ChatStreamingProperties.Streaming();
     streaming.setChunkSize(75);
-    
+
     int hashCode1 = streaming.hashCode();
     int hashCode2 = streaming.hashCode();
-    
+
     // Then
     assertEquals(hashCode1, hashCode2);
   }
@@ -589,10 +588,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties.Error error = new ChatStreamingProperties.Error();
     error.setRetryAttempts(5);
-    
+
     int hashCode1 = error.hashCode();
     int hashCode2 = error.hashCode();
-    
+
     // Then
     assertEquals(hashCode1, hashCode2);
   }
@@ -601,7 +600,7 @@ class ChatStreamingPropertiesTest {
   void shouldTestPropertiesEqualsWithItself() {
     // Given
     ChatStreamingProperties props = new ChatStreamingProperties();
-    
+
     // Then
     assertEquals(props, props);
   }
@@ -610,7 +609,7 @@ class ChatStreamingPropertiesTest {
   void shouldTestStreamingEqualsWithItself() {
     // Given
     ChatStreamingProperties.Streaming streaming = new ChatStreamingProperties.Streaming();
-    
+
     // Then
     assertEquals(streaming, streaming);
   }
@@ -619,7 +618,7 @@ class ChatStreamingPropertiesTest {
   void shouldTestErrorEqualsWithItself() {
     // Given
     ChatStreamingProperties.Error error = new ChatStreamingProperties.Error();
-    
+
     // Then
     assertEquals(error, error);
   }
@@ -628,10 +627,10 @@ class ChatStreamingPropertiesTest {
   void shouldHandleVeryLargeValues() {
     // Given
     ChatStreamingProperties props = new ChatStreamingProperties();
-    
+
     // When
     props.setMaxHistorySize(Integer.MAX_VALUE);
-    
+
     // Then
     assertEquals(Integer.MAX_VALUE, props.getMaxHistorySize());
   }
@@ -641,10 +640,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props = new ChatStreamingProperties();
     Duration verySmall = Duration.ofNanos(1);
-    
+
     // When
     props.setResponseTimeout(verySmall);
-    
+
     // Then
     assertEquals(verySmall, props.getResponseTimeout());
   }
@@ -654,10 +653,10 @@ class ChatStreamingPropertiesTest {
     // Given
     ChatStreamingProperties props = new ChatStreamingProperties();
     Duration veryLarge = Duration.ofDays(365);
-    
+
     // When
     props.setSseTimeout(veryLarge);
-    
+
     // Then
     assertEquals(veryLarge, props.getSseTimeout());
   }
@@ -666,10 +665,10 @@ class ChatStreamingPropertiesTest {
   void shouldSetStreamingWithNullBufferTimeout() {
     // Given
     ChatStreamingProperties.Streaming streaming = new ChatStreamingProperties.Streaming();
-    
+
     // When
     streaming.setBufferTimeout(null);
-    
+
     // Then
     assertNull(streaming.getBufferTimeout());
   }
@@ -678,10 +677,10 @@ class ChatStreamingPropertiesTest {
   void shouldSetStreamingWithNullHeartbeatInterval() {
     // Given
     ChatStreamingProperties.Streaming streaming = new ChatStreamingProperties.Streaming();
-    
+
     // When
     streaming.setHeartbeatInterval(null);
-    
+
     // Then
     assertNull(streaming.getHeartbeatInterval());
   }
@@ -690,10 +689,10 @@ class ChatStreamingPropertiesTest {
   void shouldSetErrorWithNullRetryDelay() {
     // Given
     ChatStreamingProperties.Error error = new ChatStreamingProperties.Error();
-    
+
     // When
     error.setRetryDelay(null);
-    
+
     // Then
     assertNull(error.getRetryDelay());
   }
@@ -714,16 +713,17 @@ class ChatStreamingPropertiesTest {
   void shouldTestChatStreamingPropertiesEqualsWithCanEqualFalse() {
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setMaxHistorySize(20);
-    
+
     // Anonymous subclass that overrides canEqual to return false
-    ChatStreamingProperties props2 = new ChatStreamingProperties() {
-      @Override
-      public boolean canEqual(Object other) {
-        return false;
-      }
-    };
+    ChatStreamingProperties props2 =
+        new ChatStreamingProperties() {
+          @Override
+          public boolean canEqual(Object other) {
+            return false;
+          }
+        };
     props2.setMaxHistorySize(20);
-    
+
     assertNotEquals(props1, props2); // canEqual returns false
   }
 
@@ -743,16 +743,17 @@ class ChatStreamingPropertiesTest {
   void shouldTestStreamingEqualsWithCanEqualFalse() {
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setChunkSize(50);
-    
+
     // Anonymous subclass that overrides canEqual to return false
-    ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming() {
-      @Override
-      public boolean canEqual(Object other) {
-        return false;
-      }
-    };
+    ChatStreamingProperties.Streaming streaming2 =
+        new ChatStreamingProperties.Streaming() {
+          @Override
+          public boolean canEqual(Object other) {
+            return false;
+          }
+        };
     streaming2.setChunkSize(50);
-    
+
     assertNotEquals(streaming1, streaming2); // canEqual returns false
   }
 
@@ -772,16 +773,17 @@ class ChatStreamingPropertiesTest {
   void shouldTestErrorEqualsWithCanEqualFalse() {
     ChatStreamingProperties.Error error1 = new ChatStreamingProperties.Error();
     error1.setRetryAttempts(3);
-    
+
     // Anonymous subclass that overrides canEqual to return false
-    ChatStreamingProperties.Error error2 = new ChatStreamingProperties.Error() {
-      @Override
-      public boolean canEqual(Object other) {
-        return false;
-      }
-    };
+    ChatStreamingProperties.Error error2 =
+        new ChatStreamingProperties.Error() {
+          @Override
+          public boolean canEqual(Object other) {
+            return false;
+          }
+        };
     error2.setRetryAttempts(3);
-    
+
     assertNotEquals(error1, error2); // canEqual returns false
   }
 
@@ -789,10 +791,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestPropertiesEqualsWithOneNullResponseTimeoutField() {
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setResponseTimeout(Duration.ofSeconds(300));
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setResponseTimeout(null);
-    
+
     assertNotEquals(props1, props2); // One has null responseTimeout, other doesn't
   }
 
@@ -800,10 +802,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestPropertiesEqualsWithOneNullSseTimeoutField() {
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setSseTimeout(Duration.ofSeconds(300));
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setSseTimeout(null);
-    
+
     assertNotEquals(props1, props2); // One has null sseTimeout, other doesn't
   }
 
@@ -811,10 +813,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestPropertiesEqualsWithOneNullStreamingField() {
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setStreaming(new ChatStreamingProperties.Streaming());
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setStreaming(null);
-    
+
     assertNotEquals(props1, props2); // One has null streaming, other doesn't
   }
 
@@ -822,10 +824,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestPropertiesEqualsWithOneNullErrorField() {
     ChatStreamingProperties props1 = new ChatStreamingProperties();
     props1.setError(new ChatStreamingProperties.Error());
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setError(null);
-    
+
     assertNotEquals(props1, props2); // One has null error, other doesn't
   }
 
@@ -833,10 +835,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestStreamingEqualsWithOneNullBufferTimeoutField() {
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setBufferTimeout(Duration.ofMillis(100));
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setBufferTimeout(null);
-    
+
     assertNotEquals(streaming1, streaming2); // One has null bufferTimeout, other doesn't
   }
 
@@ -844,10 +846,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestStreamingEqualsWithOneNullHeartbeatIntervalField() {
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setHeartbeatInterval(Duration.ofSeconds(30));
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setHeartbeatInterval(null);
-    
+
     assertNotEquals(streaming1, streaming2); // One has null heartbeatInterval, other doesn't
   }
 
@@ -855,10 +857,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestErrorEqualsWithOneNullRetryDelayField() {
     ChatStreamingProperties.Error error1 = new ChatStreamingProperties.Error();
     error1.setRetryDelay(Duration.ofMillis(1000));
-    
+
     ChatStreamingProperties.Error error2 = new ChatStreamingProperties.Error();
     error2.setRetryDelay(null);
-    
+
     assertNotEquals(error1, error2); // One has null retryDelay, other doesn't
   }
 
@@ -869,13 +871,13 @@ class ChatStreamingPropertiesTest {
     props1.setSseTimeout(null);
     props1.setStreaming(null);
     props1.setError(null);
-    
+
     ChatStreamingProperties props2 = new ChatStreamingProperties();
     props2.setResponseTimeout(null);
     props2.setSseTimeout(null);
     props2.setStreaming(null);
     props2.setError(null);
-    
+
     assertEquals(props1.hashCode(), props2.hashCode()); // Both have all null fields
   }
 
@@ -884,11 +886,11 @@ class ChatStreamingPropertiesTest {
     ChatStreamingProperties.Streaming streaming1 = new ChatStreamingProperties.Streaming();
     streaming1.setBufferTimeout(null);
     streaming1.setHeartbeatInterval(null);
-    
+
     ChatStreamingProperties.Streaming streaming2 = new ChatStreamingProperties.Streaming();
     streaming2.setBufferTimeout(null);
     streaming2.setHeartbeatInterval(null);
-    
+
     assertEquals(streaming1.hashCode(), streaming2.hashCode()); // Both have null fields
   }
 
@@ -896,10 +898,10 @@ class ChatStreamingPropertiesTest {
   void shouldTestErrorHashCodeWithAllNullFields() {
     ChatStreamingProperties.Error error1 = new ChatStreamingProperties.Error();
     error1.setRetryDelay(null);
-    
+
     ChatStreamingProperties.Error error2 = new ChatStreamingProperties.Error();
     error2.setRetryDelay(null);
-    
+
     assertEquals(error1.hashCode(), error2.hashCode()); // Both have null retryDelay
   }
 }

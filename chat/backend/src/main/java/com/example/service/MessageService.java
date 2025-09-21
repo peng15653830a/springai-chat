@@ -2,9 +2,8 @@ package com.example.service;
 
 import com.example.dto.stream.ChatEvent;
 import com.example.entity.Message;
-import reactor.core.publisher.Mono;
-
 import java.util.List;
+import reactor.core.publisher.Mono;
 
 /**
  * 消息服务接口
@@ -20,7 +19,6 @@ public interface MessageService {
    * @return 消息实体
    */
   Message saveMessage(com.example.dto.request.MessageSaveRequest request);
-
 
   /**
    * 根据ID获取消息
@@ -55,7 +53,7 @@ public interface MessageService {
   void updateMessageContent(Long messageId, String content, String thinking);
 
   // ========================= 响应式方法 =========================
-  
+
   /**
    * 异步保存用户消息
    *
@@ -74,7 +72,6 @@ public interface MessageService {
    * @return 保存的AI消息和结束事件
    */
   Mono<ChatEvent> saveAiMessageAsync(Long conversationId, String content, String thinking);
-
 
   /**
    * 异步获取会话历史消息

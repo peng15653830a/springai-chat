@@ -1,12 +1,12 @@
 package com.example.config;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.ActiveProfiles;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * JacksonConfig配置测试 - 单元测试
@@ -35,8 +35,8 @@ class JacksonConfigTest {
   @Test
   void shouldUseLowerCamelCaseNaming() {
     // Then
-    assertEquals(PropertyNamingStrategies.LOWER_CAMEL_CASE, 
-                 objectMapper.getPropertyNamingStrategy());
+    assertEquals(
+        PropertyNamingStrategies.LOWER_CAMEL_CASE, objectMapper.getPropertyNamingStrategy());
   }
 
   @Test
@@ -84,7 +84,7 @@ class JacksonConfigTest {
     assertTrue(json.contains("firstName"));
     assertTrue(json.contains("lastName"));
     assertTrue(json.contains("Doe"));
-    
+
     // 验证JSON格式正确
     assertTrue(json.startsWith("{"));
     assertTrue(json.endsWith("}"));
@@ -99,8 +99,7 @@ class JacksonConfigTest {
     // Then
     assertNotNull(config);
     assertNotNull(mapper);
-    assertEquals(PropertyNamingStrategies.LOWER_CAMEL_CASE, 
-                 mapper.getPropertyNamingStrategy());
+    assertEquals(PropertyNamingStrategies.LOWER_CAMEL_CASE, mapper.getPropertyNamingStrategy());
   }
 
   @Test
@@ -112,15 +111,17 @@ class JacksonConfigTest {
   @Test
   void shouldDisableWriteDatesAsTimestamps() {
     // Then
-    assertFalse(objectMapper.isEnabled(
-        com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS));
+    assertFalse(
+        objectMapper.isEnabled(
+            com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS));
   }
 
   @Test
   void shouldIgnoreUnknownProperties() {
     // Then
-    assertFalse(objectMapper.isEnabled(
-        com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES));
+    assertFalse(
+        objectMapper.isEnabled(
+            com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES));
   }
 
   // 测试用的简单对象

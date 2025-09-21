@@ -13,7 +13,8 @@
       "mcp__semgrep__security_check",
       "Bash(find:*)",
       "mcp__exa__web_search_exa",
-      "mcp__exa__crawling_exa"
+      "mcp__exa__crawling_exa",
+      "mcp__filesystem__read_multiple_files"
     ],
     "deny": [],
     "ask": []

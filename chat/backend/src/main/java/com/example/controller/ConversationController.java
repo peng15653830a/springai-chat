@@ -7,11 +7,10 @@ import com.example.entity.Conversation;
 import com.example.entity.Message;
 import com.example.service.ConversationService;
 import com.example.service.MessageService;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 对话控制器，处理对话相关的HTTP请求
@@ -65,7 +64,7 @@ public class ConversationController {
     }
 
     String title = request.getTitle();
-    
+
     // 如果标题为空，使用默认标题"新对话"，后续会在发送第一条消息时自动生成
     if (title == null || title.trim().isEmpty()) {
       title = DEFAULT_CONVERSATION_TITLE;
@@ -135,8 +134,9 @@ public class ConversationController {
   @PostMapping("/{id}/messages")
   public ApiResponse<Message> sendMessage(
       @PathVariable Long id, @RequestBody MessageRequest request) {
-    Message userMessage = messageService.saveMessage(
-        com.example.dto.request.MessageSaveRequest.forUser(id, request.getContent()));
+    Message userMessage =
+        messageService.saveMessage(
+            com.example.dto.request.MessageSaveRequest.forUser(id, request.getContent()));
     return ApiResponse.success("消息发送成功", userMessage);
   }
 }

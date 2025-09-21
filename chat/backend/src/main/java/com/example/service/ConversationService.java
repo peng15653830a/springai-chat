@@ -2,9 +2,8 @@ package com.example.service;
 
 import com.example.entity.Conversation;
 import com.example.entity.Message;
-import reactor.core.publisher.Mono;
-
 import java.util.List;
+import reactor.core.publisher.Mono;
 
 /**
  * 对话服务接口
@@ -80,7 +79,7 @@ public interface ConversationService {
   List<Message> getRecentMessages(Long conversationId, int limit);
 
   // ========================= 标题管理方法 =========================
-  
+
   /**
    * 异步生成对话标题（如果需要）
    *

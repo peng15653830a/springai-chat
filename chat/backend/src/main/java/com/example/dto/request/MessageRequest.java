@@ -11,7 +11,7 @@ import lombok.Data;
 public class MessageRequest {
   /** 消息内容 */
   private String content;
-  
+
   /** 搜索开关，默认开启 */
   private Boolean searchEnabled = true;
 }

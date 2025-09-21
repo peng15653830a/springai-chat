@@ -5,8 +5,7 @@ import com.example.dto.stream.ChatEvent;
 import reactor.core.publisher.Flux;
 
 /**
- * AI聊天服务接口（响应式架构）
- * 简化后的接口，只保留核心的流式聊天功能
+ * AI聊天服务接口（响应式架构） 简化后的接口，只保留核心的流式聊天功能
  *
  * @author xupeng
  */
@@ -19,5 +18,4 @@ public interface AiChatService {
    * @return 响应式SSE事件流
    */
   Flux<ChatEvent> streamChat(StreamChatRequest request);
-
 }

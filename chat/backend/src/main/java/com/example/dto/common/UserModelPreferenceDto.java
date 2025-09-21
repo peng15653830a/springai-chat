@@ -9,12 +9,12 @@ import lombok.Data;
  */
 @Data
 public class UserModelPreferenceDto {
-    private Long userId;
-    private String providerName;
-    private String modelName;
-    private String providerDisplayName;
-    private String modelDisplayName;
-    private Boolean isDefault;
-    private Boolean supportsThinking;
-    private Boolean supportsStreaming;
+  private Long userId;
+  private String providerName;
+  private String modelName;
+  private String providerDisplayName;
+  private String modelDisplayName;
+  private Boolean isDefault;
+  private Boolean supportsThinking;
+  private Boolean supportsStreaming;
 }

@@ -1,10 +1,19 @@
 package com.example.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.example.dto.request.ConversationRequest;
 import com.example.entity.Conversation;
 import com.example.entity.Message;
 import com.example.service.ConversationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,16 +25,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 @WebMvcTest(ConversationController.class)
@@ -133,8 +132,7 @@ public class ConversationControllerTest {
   void testCreateConversation_EmptyTitle() throws Exception {
     // Given
     conversationRequest.setTitle("");
-    when(conversationService.createConversation(1L, "新对话"))
-        .thenReturn(testConversation);
+    when(conversationService.createConversation(1L, "新对话")).thenReturn(testConversation);
 
     // When & Then - 空标题应该成功创建，使用默认标题"新对话"
     mockMvc
@@ -146,7 +144,7 @@ public class ConversationControllerTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.id").value(1))
         .andExpect(jsonPath("$.data.title").value("Test Conversation"));
-        
+
     verify(conversationService).createConversation(1L, "新对话");
   }
 
@@ -154,7 +152,7 @@ public class ConversationControllerTest {
   void testCreateConversation_InvalidUserId() throws Exception {
     // Given
     conversationRequest.setUserId(0L);
-    
+
     // When & Then
     mockMvc
         .perform(
@@ -252,8 +250,7 @@ public class ConversationControllerTest {
   void testCreateConversation_NullTitle() throws Exception {
     // Given
     conversationRequest.setTitle(null);
-    when(conversationService.createConversation(1L, "新对话"))
-        .thenReturn(testConversation);
+    when(conversationService.createConversation(1L, "新对话")).thenReturn(testConversation);
 
     // When & Then - null标题应该成功创建，使用默认标题"新对话"
     mockMvc
@@ -265,7 +262,7 @@ public class ConversationControllerTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.id").value(1))
         .andExpect(jsonPath("$.data.title").value("Test Conversation"));
-        
+
     verify(conversationService).createConversation(1L, "新对话");
   }
 
@@ -273,8 +270,7 @@ public class ConversationControllerTest {
   void testCreateConversation_WhitespaceTitle() throws Exception {
     // Given
     conversationRequest.setTitle("   ");
-    when(conversationService.createConversation(1L, "新对话"))
-        .thenReturn(testConversation);
+    when(conversationService.createConversation(1L, "新对话")).thenReturn(testConversation);
 
     // When & Then - 空白标题应该成功创建，使用默认标题"新对话"
     mockMvc
@@ -286,7 +282,7 @@ public class ConversationControllerTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.id").value(1))
         .andExpect(jsonPath("$.data.title").value("Test Conversation"));
-        
+
     verify(conversationService).createConversation(1L, "新对话");
   }
 
@@ -330,7 +326,7 @@ public class ConversationControllerTest {
   void testCreateConversation_NegativeUserId() throws Exception {
     // Given
     conversationRequest.setUserId(-1L);
-    
+
     // When & Then
     mockMvc
         .perform(
@@ -375,10 +371,12 @@ public class ConversationControllerTest {
   @Test
   void testSendMessage_Success() throws Exception {
     // Given
-    com.example.dto.request.MessageRequest messageRequest = new com.example.dto.request.MessageRequest();
+    com.example.dto.request.MessageRequest messageRequest =
+        new com.example.dto.request.MessageRequest();
     messageRequest.setContent("Test message content");
 
-    when(messageService.saveMessage(any(com.example.dto.request.MessageSaveRequest.class))).thenReturn(testMessage);
+    when(messageService.saveMessage(any(com.example.dto.request.MessageSaveRequest.class)))
+        .thenReturn(testMessage);
 
     // When & Then
     mockMvc
@@ -398,7 +396,8 @@ public class ConversationControllerTest {
   @Test
   void testSendMessage_ServiceException() throws Exception {
     // Given
-    com.example.dto.request.MessageRequest messageRequest = new com.example.dto.request.MessageRequest();
+    com.example.dto.request.MessageRequest messageRequest =
+        new com.example.dto.request.MessageRequest();
     messageRequest.setContent("Test message content");
 
     when(messageService.saveMessage(any(com.example.dto.request.MessageSaveRequest.class)))
@@ -425,7 +424,7 @@ public class ConversationControllerTest {
   void testCreateConversation_NullUserId() throws Exception {
     // Given
     conversationRequest.setUserId(null);
-    
+
     // When & Then - 当userId为null时，应该返回400错误
     mockMvc
         .perform(
@@ -483,7 +482,7 @@ public class ConversationControllerTest {
     } catch (Exception e) {
       // 忽略反射异常
     }
-    
+
     // 设置request的userId为null
     conversationRequest.setUserId(null);
 

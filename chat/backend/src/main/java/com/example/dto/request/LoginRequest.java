@@ -11,7 +11,7 @@ import lombok.Data;
 public class LoginRequest {
   /** 用户名 */
   private String username;
-  
+
   /** 用户昵称 */
   private String nickname;
 }

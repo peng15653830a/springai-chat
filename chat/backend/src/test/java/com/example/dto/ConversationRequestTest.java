@@ -1,9 +1,9 @@
 package com.example.dto;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.example.dto.request.ConversationRequest;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class ConversationRequestTest {
 
@@ -80,7 +80,6 @@ class ConversationRequestTest {
     // Test equals with same object
     assertEquals(request1, request1);
 
-    
     // Test with null title
     ConversationRequest requestNull1 = new ConversationRequest();
     requestNull1.setTitle(null);
@@ -159,5 +158,4 @@ class ConversationRequestTest {
     // Then
     assertEquals(whitespaceTitle, request.getTitle());
   }
-
-  }
+}

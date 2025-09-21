@@ -2,15 +2,15 @@ package com.example.dto.stream;
 
 import com.example.dto.response.SearchResult;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 /**
- * 聊天流事件（强类型，替代 SseEventResponse）。
- * 通过枚举区分事件类型，payload 承载事件数据。
+ * 聊天流事件（强类型，替代 SseEventResponse）。 通过枚举区分事件类型，payload 承载事件数据。
+ *
+ * @author xupeng
  */
 @Data
 @NoArgsConstructor
@@ -22,7 +22,20 @@ public class ChatEvent {
   private Object payload;
 
   public enum ChatEventType {
-    START, CHUNK, THINKING, SEARCH, SEARCH_RESULTS, END, ERROR
+    /** 开始事件 */
+    START,
+    /** 文本块事件 */
+    CHUNK,
+    /** 深度思考事件 */
+    THINKING,
+    /** 搜索事件 */
+    SEARCH,
+    /** 搜索结果事件 */
+    SEARCH_RESULTS,
+    /** 结束事件 */
+    END,
+    /** 错误事件 */
+    ERROR
   }
 
   public static ChatEvent of(ChatEventType type, Object payload) {
@@ -93,4 +106,3 @@ public class ChatEvent {
     private String message;
   }
 }
-

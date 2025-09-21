@@ -1,20 +1,19 @@
 package com.example.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import com.example.entity.User;
 import com.example.mapper.UserMapper;
 import com.example.service.impl.UserServiceImpl;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -371,7 +370,7 @@ class UserServiceTest {
     specialUser.setNickname("特殊字符用户");
     specialUser.setCreatedAt(LocalDateTime.now());
     specialUser.setUpdatedAt(LocalDateTime.now());
-    
+
     when(userMapper.selectByUsername(username)).thenReturn(specialUser);
 
     // When
@@ -393,14 +392,14 @@ class UserServiceTest {
       longUsername.append("longusername");
     }
     String username = longUsername.toString();
-    
+
     User longUser = new User();
     longUser.setId(3L);
     longUser.setUsername(username);
     longUser.setNickname("长用户名用户");
     longUser.setCreatedAt(LocalDateTime.now());
     longUser.setUpdatedAt(LocalDateTime.now());
-    
+
     when(userMapper.selectByUsername(username)).thenReturn(longUser);
 
     // When
@@ -424,7 +423,7 @@ class UserServiceTest {
     unicodeUser.setNickname("Unicode用户");
     unicodeUser.setCreatedAt(LocalDateTime.now());
     unicodeUser.setUpdatedAt(LocalDateTime.now());
-    
+
     when(userMapper.selectByUsername(username)).thenReturn(unicodeUser);
 
     // When
@@ -582,7 +581,7 @@ class UserServiceTest {
     }
     String username = longUsername.toString();
     String nickname = longNickname.toString();
-    
+
     when(userMapper.selectByUsername(username)).thenReturn(null);
 
     doAnswer(
@@ -695,14 +694,14 @@ class UserServiceTest {
     // Given
     String username = "existing🌟user";
     String nickname = "现有用户";
-    
+
     User existingUser = new User();
     existingUser.setId(5L);
     existingUser.setUsername(username);
     existingUser.setNickname(nickname);
     existingUser.setCreatedAt(LocalDateTime.now());
     existingUser.setUpdatedAt(LocalDateTime.now());
-    
+
     when(userMapper.selectByUsername(username)).thenReturn(existingUser);
 
     // When
@@ -723,9 +722,7 @@ class UserServiceTest {
     String username = "newuser";
     String nickname = "新用户";
 
-    doThrow(new RuntimeException("Database error"))
-        .when(userMapper)
-        .insert(any(User.class));
+    doThrow(new RuntimeException("Database error")).when(userMapper).insert(any(User.class));
 
     // When & Then
     assertDoesNotThrow(() -> userService.createUser(username, nickname));
@@ -830,7 +827,7 @@ class UserServiceTest {
       longUsername.append("longusername");
       longNickname.append("longnickname");
     }
-    
+
     User userToUpdate = new User();
     userToUpdate.setId(1L);
     userToUpdate.setUsername(longUsername.toString());
@@ -866,9 +863,7 @@ class UserServiceTest {
     userToUpdate.setUsername("updateduser");
     userToUpdate.setNickname("更新用户");
 
-    doThrow(new RuntimeException("Database error"))
-        .when(userMapper)
-        .updateById(userToUpdate);
+    doThrow(new RuntimeException("Database error")).when(userMapper).updateById(userToUpdate);
 
     // When & Then
     assertDoesNotThrow(() -> userService.updateUser(userToUpdate));

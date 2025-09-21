@@ -1,9 +1,9 @@
 package com.example.dto;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.example.dto.request.LoginRequest;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class LoginRequestTest {
 
@@ -92,7 +92,6 @@ class LoginRequestTest {
     // Test equals with same object
     assertEquals(request1, request1);
 
-    
     // Test with null username
     LoginRequest requestNullUsername1 = new LoginRequest();
     requestNullUsername1.setUsername(null);
@@ -194,5 +193,4 @@ class LoginRequestTest {
     assertEquals(specialUsername, request.getUsername());
     assertEquals(specialNickname, request.getNickname());
   }
-
-  }
+}

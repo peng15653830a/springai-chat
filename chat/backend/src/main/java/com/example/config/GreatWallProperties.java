@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 长城大模型特有配置属性
- * 
+ *
  * @author xupeng
  */
 @Data
@@ -14,16 +14,12 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "greatwall")
 public class GreatWallProperties {
 
-    /**
-     * SSL配置
-     */
-    private Ssl ssl = new Ssl();
+  /** SSL配置 */
+  private Ssl ssl = new Ssl();
 
-    @Data
-    public static class Ssl {
-        /**
-         * 是否跳过SSL证书验证
-         */
-        private boolean skipVerification = true;
-    }
+  @Data
+  public static class Ssl {
+    /** 是否跳过SSL证书验证 */
+    private boolean skipVerification = true;
+  }
 }

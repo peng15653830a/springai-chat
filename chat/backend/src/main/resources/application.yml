@@ -119,7 +119,7 @@ ai:
             sort-order: 1
       
       # DeepSeek配置
-      DeepSeek:
+      deepseek:
         enabled: ${DEEPSEEK_ENABLED:true}
         display-name: "DeepSeek"
         api-key: ${DEEPSEEK_API_KEY:your_api_key}
@@ -211,3 +211,20 @@ app:
     error:
       retry-attempts: 3
       retry-delay: 1000ms
+
+  # 统一重试和超时策略配置
+  retry-timeout:
+    ai-chat:
+      connect-timeout-seconds: 30
+      response-timeout-seconds: 120
+      max-retries: 2
+      retry-backoff-ms: 1000
+    search:
+      connect-timeout-seconds: 10
+      response-timeout-seconds: 20
+      max-retries: 2
+      retry-backoff-ms: 500
+    database:
+      query-timeout-seconds: 15
+      max-retries: 1
+      retry-backoff-ms: 200

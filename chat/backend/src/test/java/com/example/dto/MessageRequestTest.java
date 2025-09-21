@@ -1,9 +1,9 @@
 package com.example.dto;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.example.dto.request.MessageRequest;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class MessageRequestTest {
 
@@ -83,7 +83,6 @@ class MessageRequestTest {
     // Test equals with same object
     assertEquals(request1, request1);
 
-    
     // Test with different searchEnabled
     MessageRequest requestDiffSearch = new MessageRequest();
     requestDiffSearch.setContent("test content");
@@ -182,5 +181,4 @@ class MessageRequestTest {
     // Then
     assertEquals(emptyContent, request.getContent());
   }
-
-  }
+}

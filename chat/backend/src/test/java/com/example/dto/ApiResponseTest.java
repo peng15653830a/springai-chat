@@ -1,9 +1,9 @@
 package com.example.dto;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.example.dto.response.ApiResponse;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class ApiResponseTest {
 
@@ -129,7 +129,6 @@ class ApiResponseTest {
     // Test equals with same object
     assertEquals(response1, response1);
 
-    
     // Test with different success values
     ApiResponse<String> responseDiffSuccess = new ApiResponse<>();
     responseDiffSuccess.setSuccess(false);
@@ -237,7 +236,6 @@ class ApiResponseTest {
     assertEquals(Boolean.TRUE, boolResponse.getData());
   }
 
-  
   @Test
   void testHashCodeWithNullSuccess() {
     // Test hashCode with null success field (edge case)

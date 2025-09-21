@@ -12,10 +12,10 @@ import lombok.Data;
 public class ApiResponse<T> {
   /** 是否成功 */
   private boolean success;
-  
+
   /** 响应消息 */
   private String message;
-  
+
   /** 响应数据 */
   private T data;
 
