@@ -11,7 +11,6 @@ import com.example.service.*;
 import com.example.strategy.model.ModelSelector;
 import com.example.strategy.prompt.PromptBuilder;
 import com.example.tool.WebSearchTool;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -22,9 +21,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * 重构后的AI聊天服务实现类 按照同一抽象层次原则重新组织：准备→执行→完成
- *
- * @author xupeng
+ * AI 聊天主服务（精简版）
+ * 目标：主线清晰、日志简洁、便于维护。
+ * 流程：准备 → 执行 → 完成
  */
 @Slf4j
 @Service
@@ -32,8 +31,6 @@ import reactor.core.publisher.Mono;
 public class AiChatServiceImpl implements AiChatService {
 
   private static final String PROVIDER_GREATWALL = "greatwall";
-
-  // 去除 ModelStreamContext，采用“流式优先”并发支路聚合方案
 
   private final ChatStreamingProperties streamingProperties;
   private final ConversationService conversationService;
@@ -47,10 +44,19 @@ public class AiChatServiceImpl implements AiChatService {
   private final MultiModelProperties multiModelProperties;
   private final WebSearchTool webSearchTool;
 
+  /**
+   * 每次对话执行所需的上下文。
+   */
+  private record InteractionContext(
+      Long conversationId,
+      String conversationIdStr,
+      ModelSelector.ModelSelection model,
+      Long assistantMessageId) {}
+
   @Override
   public Flux<ChatEvent> streamChat(StreamChatRequest request) {
     log.info(
-        "开始流式聊天，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}",
+        "chat start cid={}, len={}, search={}, think={}, user={}, model={}->{}",
         request.getConversationId(),
         request.getMessage() != null ? request.getMessage().length() : 0,
         request.isSearchEnabled(),
@@ -74,10 +80,7 @@ public class AiChatServiceImpl implements AiChatService {
                 // 完成阶段：保存结果
                 finishChat(request)))
         .doFinally(
-            signalType -> {
-              sseEventPublisher.removeConversation(request.getConversationId());
-              log.debug("🧹 清理SseEventPublisher事件发射器，会话ID: {}", request.getConversationId());
-            })
+            signalType -> sseEventPublisher.removeConversation(request.getConversationId()))
         .onErrorResume(errorHandler::handleChatError);
   }
 
@@ -85,52 +88,29 @@ public class AiChatServiceImpl implements AiChatService {
 
   /** 准备阶段：处理输入和上下文 */
   private Flux<ChatEvent> prepareContext(StreamChatRequest request) {
-    log.debug("开始准备聊天上下文，会话ID: {}", request.getConversationId());
-
-    return Flux.concat(
-        // 生成标题（异步）
-        generateTitleAsync(request));
-  }
-
-  /** 执行阶段：与AI模型交互 */
-  private Flux<ChatEvent> processChat(StreamChatRequest request) {
-    log.debug("开始处理AI聊天，会话ID: {}", request.getConversationId());
-
-    String userMessage = request.getMessage();
-    return Flux.defer(
-        () -> {
-          ModelSelector.ModelSelection modelSelection = selectModel(request);
-
-          // 先保存用户消息获取真实messageId，用于工具调用关联
-          return messageService
-              .saveUserMessageAsync(request.getConversationId(), userMessage)
-              .flatMapMany(
-                  savedUserMessage -> {
-                    Long realMessageId = savedUserMessage.getId();
-                    log.info("✅ 已保存用户消息，获得真实messageId: {}", realMessageId);
-                    return streamFromAi(modelSelection, request, realMessageId);
-                  });
-        });
-  }
-
-  /** 完成阶段：保存结果 */
-  private Flux<ChatEvent> finishChat(StreamChatRequest request) {
-    log.debug("完成聊天处理，会话ID: {}", request.getConversationId());
-
-    // 在processChat阶段已经处理了响应保存，这里返回空流
-    return Flux.empty();
-  }
-
-  // ========================= 第二层：各阶段具体实现 =========================
-
-  /** 生成标题（异步执行） */
-  private Flux<ChatEvent> generateTitleAsync(StreamChatRequest request) {
     // 异步生成标题，不阻塞主流程
     conversationService
         .generateTitleIfNeededAsync(request.getConversationId(), request.getMessage())
         .subscribe();
     return Flux.empty();
   }
+
+  /** 执行阶段：与AI模型交互 */
+  private Flux<ChatEvent> processChat(StreamChatRequest request) {
+    String userMessage = request.getMessage();
+    return Flux.defer(
+        () -> {
+          ModelSelector.ModelSelection selected = selectModel(request);
+          return messageService
+              .saveUserMessageAsync(request.getConversationId(), userMessage)
+              .flatMapMany(saved -> streamFromAi(selected, request, saved.getId()));
+        });
+  }
+
+  /** 完成阶段：保存结果 */
+  private Flux<ChatEvent> finishChat(StreamChatRequest request) { return Flux.empty(); }
+
+  // ========================= 第二层：各阶段具体实现 =========================
 
   /** 构建提示词 */
   private Mono<String> buildPrompt(StreamChatRequest request) {
@@ -155,176 +135,96 @@ public class AiChatServiceImpl implements AiChatService {
 
   /** 从AI模型流式获取响应 - 使用Spring AI 1.0标准ToolContext传递消息ID */
   private Flux<ChatEvent> streamFromAi(
-      ModelSelector.ModelSelection modelSelection, StreamChatRequest request, Long userMessageId) {
-    log.info(
-        "🚀 使用{}提供者，模型: {}, 深度思考: {}, userMessageId: {}",
-        modelSelection.providerName(),
-        modelSelection.modelName(),
-        request.isDeepThinking(),
-        userMessageId);
+      ModelSelector.ModelSelection selection, StreamChatRequest request, Long userMessageId) {
+    Long cid = request.getConversationId();
+    String cidStr = String.valueOf(cid);
 
-    Long conversationId = request.getConversationId();
-    String conversationIdStr = conversationId.toString();
-
-    // 先创建一个占位的助手消息以便在工具调用期即可记录到具体messageId（若mock未配置返回null则降级为不预创建）
-    return Mono.fromCallable(
-            () -> {
-              com.example.entity.Message draft =
-                  messageService.saveMessage(
-                      com.example.dto.request.MessageSaveRequest.builder()
-                          .conversationId(conversationId)
-                          .role(com.example.constant.AiChatConstants.ROLE_ASSISTANT)
-                          .content("[draft]")
-                          .build());
-              if (draft != null && draft.getId() != null) {
-                log.info("📝 已创建占位助手消息，messageId: {}", draft.getId());
-                return draft.getId();
-              } else {
-                log.debug("⚠️ 未预创建助手消息（mock或存储未返回ID），将跳过内容更新");
-                return -1L;
-              }
-            })
+    return Mono.fromCallable(() -> createAssistantDraft(cid))
         .flatMapMany(
-            assistantMessageId -> {
-              java.util.concurrent.atomic.AtomicBoolean updated =
-                  new java.util.concurrent.atomic.AtomicBoolean(false);
+            assistantId -> {
+              var ctx = new InteractionContext(cid, cidStr, selection, assistantId);
+              var updated = new java.util.concurrent.atomic.AtomicBoolean(false);
 
-              org.reactivestreams.Publisher<ChatEvent> streamPublisher =
+              var streamPublisher =
                   Flux.defer(
                       () ->
                           buildPrompt(request)
-                              .flatMapMany(
-                                  prompt -> {
-                                    // 根据搜索开启状态动态注入工具
-                                    var promptSpec =
-                                        getChatClientForModel(modelSelection)
-                                            .prompt()
-                                            .user(prompt)
-                                            .options(buildChatOptions(modelSelection, request))
-                                            .advisors(
-                                                advisorSpec ->
-                                                    advisorSpec.param(
-                                                        ChatMemory.CONVERSATION_ID,
-                                                        conversationIdStr))
-                                            .toolContext(
-                                                java.util.Map.of(
-                                                    "conversationId",
-                                                    conversationId,
-                                                    "messageId",
-                                                    assistantMessageId));
+                              .flatMapMany(prompt -> buildAndStream(ctx, prompt, request, updated)));
 
-                                    // 仅在启用搜索时注入搜索工具
-                                    if (request.isSearchEnabled()) {
-                                      promptSpec = promptSpec.tools(webSearchTool);
-                                    }
-
-                                    Flux<String> source =
-                                        promptSpec.stream()
-                                            .chatResponse()
-                                            .mapNotNull(
-                                                chatResponse -> {
-                                                  var result = chatResponse.getResult();
-                                                  if (result != null
-                                                      && result.getOutput() != null) {
-                                                    String content = result.getOutput().getText();
-                                                    if (content != null
-                                                        && !content.trim().isEmpty()) {
-                                                      if (log.isDebugEnabled()) {
-                                                        String escaped =
-                                                            content.replace("\n", "\\n");
-                                                        log.debug(
-                                                            "📦 Chunk(escaped) preview: {}",
-                                                            escaped.length() > 200
-                                                                ? escaped.substring(0, 200) + "..."
-                                                                : escaped);
-                                                      }
-                                                      return content;
-                                                    }
-                                                  }
-                                                  return null;
-                                                })
-                                            .filter(Objects::nonNull);
-
-                                    Flux<String> hot = source.replay().autoConnect(2);
-
-                                    return Flux.merge(
-                                        hot.map(ChatEvent::chunk),
-                                        hot.scanWith(
-                                                StringBuilder::new,
-                                                (sb, c) -> {
-                                                  sb.append(c);
-                                                  return sb;
-                                                })
-                                            .takeLast(1)
-                                            .flatMap(
-                                                sb ->
-                                                    Mono.fromCallable(
-                                                        () -> {
-                                                          String finalContent = sb.toString();
-                                                          try {
-                                                            if (assistantMessageId != null
-                                                                && assistantMessageId > 0) {
-                                                              // 提取thinking内容和清理后的内容
-                                                              ThinkingParts parts =
-                                                                  extractThinkingParts(
-                                                                      finalContent);
-
-                                                              // 更新消息内容，包含thinking部分
-                                                              messageService.updateMessageContent(
-                                                                  assistantMessageId,
-                                                                  parts.content(),
-                                                                  parts.thinking());
-                                                              log.info(
-                                                                  "✅ 助手消息内容已更新，messageId: {}，内容长度: {}，thinking长度: {}",
-                                                                  assistantMessageId,
-                                                                  parts.content() != null
-                                                                      ? parts.content().length()
-                                                                      : 0,
-                                                                  parts.thinking() != null
-                                                                      ? parts.thinking().length()
-                                                                      : 0);
-                                                              updated.set(true);
-
-                                                              // 如果有thinking内容，发送thinking事件
-                                                              if (parts.thinking() != null
-                                                                  && !parts
-                                                                      .thinking()
-                                                                      .trim()
-                                                                      .isEmpty()) {
-                                                                sseEventPublisher.publishThinking(
-                                                                    conversationId,
-                                                                    parts.thinking());
-                                                              }
-                                                            } else {
-                                                              log.debug("🛈 未预创建助手消息，跳过内容落库，仅推送事件");
-                                                            }
-                                                          } catch (Exception e) {
-                                                            log.warn(
-                                                                "更新助手消息内容失败，messageId: {}，错误: {}",
-                                                                assistantMessageId,
-                                                                e.getMessage());
-                                                            throw e;
-                                                          }
-                                                          Long endId =
-                                                              (assistantMessageId != null
-                                                                      && assistantMessageId > 0)
-                                                                  ? assistantMessageId
-                                                                  : null;
-                                                          return ChatEvent.end(endId);
-                                                        })));
-                                  }));
-
-              return Flux.concat(
-                      Mono.just(ChatEvent.start("AI正在思考中...")), Flux.from(streamPublisher))
+              return Flux.concat(Mono.just(ChatEvent.start("processing")), streamPublisher)
                   .timeout(streamingProperties.getResponseTimeout())
-                  .onErrorResume(
-                      ex -> handleStreamError(conversationId, assistantMessageId, updated, ex));
+                  .onErrorResume(ex -> handleStreamError(cid, assistantId, updated, ex));
             })
-        .onErrorResume(errorHandler::handleChatError)
-        .doFinally(
-            signalType -> {
-              log.debug("🧹 聊天请求处理完成");
-            });
+        .onErrorResume(errorHandler::handleChatError);
+  }
+
+  private Long createAssistantDraft(Long conversationId) {
+    com.example.entity.Message draft =
+        messageService.saveMessage(
+            com.example.dto.request.MessageSaveRequest.builder()
+                .conversationId(conversationId)
+                .role(com.example.constant.AiChatConstants.ROLE_ASSISTANT)
+                .content("[draft]")
+                .build());
+    return draft != null ? draft.getId() : -1L;
+  }
+
+  private Flux<ChatEvent> buildAndStream(
+      InteractionContext ctx, String prompt, StreamChatRequest request, java.util.concurrent.atomic.AtomicBoolean updated) {
+    var promptSpec =
+        getChatClientForModel(ctx.model())
+            .prompt()
+            .user(prompt)
+            .options(buildChatOptions(ctx.model(), request))
+            .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, ctx.conversationIdStr()))
+            .toolContext(
+                java.util.Map.of(
+                    "conversationId", ctx.conversationId(),
+                    "messageId", ctx.assistantMessageId(),
+                    "searchEnabled", request.isSearchEnabled()));
+
+    if (request.isSearchEnabled()) {
+      log.info("tool injected provider={}, model={}", ctx.model().providerName(), ctx.model().modelName());
+      promptSpec = promptSpec.tools(webSearchTool);
+    }
+
+    var source =
+        promptSpec.stream()
+            .chatResponse()
+            .mapNotNull(resp -> resp.getResult() != null ? resp.getResult().getOutput() : null)
+            .mapNotNull(out -> out.getText())
+            .filter(s -> s != null && !s.trim().isEmpty());
+
+    var hot = source.replay().autoConnect(2);
+
+    return Flux.merge(
+        hot.map(text -> ChatEvent.chunk(ctx.assistantMessageId(), text)),
+        hot.scanWith(StringBuilder::new, (sb, c) -> sb.append(c))
+            .takeLast(1)
+            .flatMap(sb -> finalizeMessage(ctx, sb.toString(), updated)));
+  }
+
+  private Mono<ChatEvent> finalizeMessage(
+      InteractionContext ctx, String finalText, java.util.concurrent.atomic.AtomicBoolean updated) {
+    // Normalize first, then extract thinking/content once for both DB and client replacement
+    String normalized = com.example.util.MarkdownNormalizer.normalize(finalText);
+    var parts = extractThinkingParts(normalized);
+
+    try {
+      if (ctx.assistantMessageId() != null && ctx.assistantMessageId() > 0) {
+        messageService.updateMessageContent(ctx.assistantMessageId(), parts.content(), parts.thinking());
+        updated.set(true);
+        if (parts.thinking() != null && !parts.thinking().isBlank()) {
+          sseEventPublisher.publishThinking(
+              ctx.conversationId(), ctx.assistantMessageId(), parts.thinking());
+        }
+      }
+    } catch (Exception e) {
+      log.warn("update message failed, id={}, err={}", ctx.assistantMessageId(), e.getMessage());
+      throw e;
+    }
+    Long endId = ctx.assistantMessageId() != null && ctx.assistantMessageId() > 0 ? ctx.assistantMessageId() : null;
+    return Mono.just(ChatEvent.end(endId, parts.content()));
   }
 
   /**
@@ -425,10 +325,44 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     // 其他 OpenAI 兼容模型（openai/qwen/kimi2/deepseek 等）
-    return OpenAiChatOptions.builder()
+    var builder = OpenAiChatOptions.builder()
         .model(model)
         .temperature(temperature)
-        .maxTokens(maxTokens)
-        .build();
+        .maxTokens(maxTokens);
+
+    // 当模型声明 supports-tools 且开启联网搜索时，启用工具调用（auto 模式避免死循环）
+    boolean modelSupportsTools = m != null && m.isSupportsTools();
+    if (modelSupportsTools && request.isSearchEnabled()) {
+      try {
+        // 兼容不同版本Spring AI的写法：优先尝试 toolChoice(String) 方法
+        java.lang.reflect.Method toolChoiceMethod = null;
+        for (var method : builder.getClass().getMethods()) {
+          if (method.getName().equals("toolChoice") && method.getParameterCount() == 1) {
+            toolChoiceMethod = method; break;
+          }
+        }
+        if (toolChoiceMethod != null) {
+          String paramType = toolChoiceMethod.getParameterTypes()[0].getName();
+          if (paramType.equals("java.lang.String")) {
+            toolChoiceMethod.invoke(builder, "auto");
+            log.info("✅ 已开启 tool_choice=auto（模型支持工具调用）");
+          } else {
+            // 对于枚举或对象类型，尝试传入字符串，若失败则忽略（不同版本签名差异）
+            try {
+              toolChoiceMethod.invoke(builder, "auto");
+              log.info("✅ 已开启 tool_choice=auto（兼容形式）");
+            } catch (Exception ignore) {
+              log.warn("⚠️ 未能以反射方式设置 tool_choice，当前Spring AI版本签名不匹配");
+            }
+          }
+        } else {
+          log.warn("⚠️ 当前 OpenAiChatOptions.builder 未暴露 toolChoice 方法，跳过强制设置");
+        }
+      } catch (Exception e) {
+        log.warn("⚠️ 设置 tool_choice=required 失败: {}", e.getMessage());
+      }
+    }
+
+    return builder.build();
   }
 }

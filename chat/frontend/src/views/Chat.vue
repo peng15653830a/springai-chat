@@ -604,17 +604,24 @@ export default {
       try {
         // 从标准SSE事件数据中获取内容
         const chunkContent = data?.content || ''
+        const targetMessageId = data?.messageId ?? null
         console.log('📦 Chunk content:', chunkContent.substring(0, 100))
         
         if (!chunkContent) return
         
-        // 获取最后一条消息
-        let lastMessage = chatStore.messages[chatStore.messages.length - 1]
+        // 锁定目标消息（优先使用服务端提供的 messageId）
+        let lastMessage = null
+        if (targetMessageId) {
+          lastMessage = chatStore.messages.find(m => String(m.id) === String(targetMessageId))
+        }
+        if (!lastMessage) {
+          lastMessage = chatStore.messages[chatStore.messages.length - 1]
+        }
         
         // 如果不是assistant消息，创建新的
         if (!lastMessage || lastMessage.role !== 'assistant') {
           const newMessage = {
-            id: 'temp-' + Date.now(),
+            id: targetMessageId || ('temp-' + Date.now()),
             role: 'assistant',
             content: '',
             thinking: '',  // 确保有thinking字段
@@ -640,23 +647,29 @@ export default {
     const handleEndEvent = (data) => {
       console.log('🏁 SSE end event received:', data)
       try {
-        // 更新消息ID（如果提供）
-        if (chatStore.messages.length > 0 && data?.messageId) {
-          const lastMessage = chatStore.messages[chatStore.messages.length - 1]
-          if (lastMessage.role === 'assistant') {
-            const oldId = lastMessage.id
-            const newId = data.messageId
-            
-            // 更新消息ID
-            lastMessage.id = newId
-            
-            // 如果旧ID在expandedThinking中，需要更新为新ID
-            if (expandedThinking.value.has(oldId)) {
-              expandedThinking.value.delete(oldId)
-              expandedThinking.value.add(newId)
-              console.log('✅ 更新推理过程展开状态:', oldId, '->', newId)
+        // 优先按 messageId 定位目标消息，并在有最终规范化内容时替换之
+        const endId = data?.messageId
+        const finalContent = data?.content
+        let target = null
+        if (endId) {
+          target = chatStore.messages.find(m => String(m.id) === String(endId))
+          if (!target) {
+            // 若不存在，则将最后一条assistant的id改为endId
+            const lastAssistant = chatStore.messages.slice().reverse().find(m => m.role === 'assistant')
+            if (lastAssistant) {
+              const oldId = lastAssistant.id
+              lastAssistant.id = endId
+              target = lastAssistant
+              if (expandedThinking.value.has(oldId)) {
+                expandedThinking.value.delete(oldId)
+                expandedThinking.value.add(endId)
+              }
             }
           }
+        }
+        if (target && typeof finalContent === 'string' && finalContent.trim()) {
+          target.content = finalContent
+          chatStore.messages = [...chatStore.messages]
         }
         
         chatStore.setLoading(false)
@@ -693,7 +706,26 @@ export default {
         // 处理搜索结果数据 - 更新当前正在构建的assistant消息
         if (data && data.results) {
           console.log('🔧 DEBUG: 搜索结果数据验证通过，开始处理')
-          const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+          const targetMessageId = data?.messageId ?? null
+          let lastMessage = null
+          if (targetMessageId) {
+            lastMessage = chatStore.messages.find(m => String(m.id) === String(targetMessageId))
+            if (!lastMessage) {
+              console.log('🔧 未找到messageId匹配的消息，创建承载结果的新assistant消息。messageId=', targetMessageId)
+              // 主动创建一条承载搜索结果的assistant消息，ID使用服务端的messageId，确保归属精准
+              lastMessage = {
+                id: targetMessageId,
+                role: 'assistant',
+                content: '',
+                thinking: '',
+                searchResults: [],
+                createdAt: new Date()
+              }
+              chatStore.addMessage(lastMessage)
+            }
+          } else {
+            lastMessage = chatStore.messages.slice().reverse().find(m => m.role === 'assistant')
+          }
           console.log('🔧 DEBUG: 最后一条消息:', lastMessage)
           console.log('🔧 DEBUG: 最后一条消息角色:', lastMessage?.role)
           
@@ -766,15 +798,22 @@ export default {
       try {
         // 从标准SSE事件数据中获取thinking内容
         const thinkingContent = data?.content || ''
+        const targetMessageId = data?.messageId ?? null
         
         if (thinkingContent) {
-          // 获取最后一条消息
-          let lastMessage = chatStore.messages[chatStore.messages.length - 1]
+          // 锁定目标消息（优先使用服务端提供的 messageId）
+          let lastMessage = null
+          if (targetMessageId) {
+            lastMessage = chatStore.messages.find(m => String(m.id) === String(targetMessageId))
+          }
+          if (!lastMessage) {
+            lastMessage = chatStore.messages[chatStore.messages.length - 1]
+          }
           
           // 如果不是assistant消息，创建新的
           if (!lastMessage || lastMessage.role !== 'assistant') {
             const newMessage = {
-              id: 'temp-' + Date.now(),
+              id: targetMessageId || ('temp-' + Date.now()),
               role: 'assistant',
               content: '',
               thinking: '',

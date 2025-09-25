@@ -104,6 +104,9 @@ public class MultiModelProperties {
     /** 是否支持流式输出 */
     private boolean supportsStreaming = true;
 
+    /** 是否支持工具调用（OpenAI function calling / tools） */
+    private boolean supportsTools = false;
+
     /** 是否启用 */
     private boolean enabled = true;
 

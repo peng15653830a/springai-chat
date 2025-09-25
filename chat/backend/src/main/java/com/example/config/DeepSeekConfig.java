@@ -17,21 +17,21 @@ import org.springframework.context.annotation.Configuration;
  */
 @Slf4j
 @Configuration
-@ConditionalOnProperty(name = "ai.models.providers.DeepSeek.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "ai.models.providers.deepseek.enabled", havingValue = "true")
 public class DeepSeekConfig {
 
   /** 创建DeepSeek ChatModel Bean - 使用OpenAI兼容实现 */
   @Bean
-  @ConditionalOnMissingBean(name = "deepSeekChatModel")
-  public ChatModel deepSeekChatModel(MultiModelProperties multiModelProperties) {
+  @ConditionalOnMissingBean(name = "deepseekChatModel")
+  public ChatModel deepseekChatModel(MultiModelProperties multiModelProperties) {
     log.info("🏗️ 创建DeepSeek ChatModel Bean（基于OpenAI兼容API）");
 
     // 获取DeepSeek配置
     MultiModelProperties.ProviderConfig providerConfig =
-        multiModelProperties.getProviders().get("DeepSeek");
-    String apiKey = multiModelProperties.getApiKey("DeepSeek");
+        multiModelProperties.getProviders().get("deepseek");
+    String apiKey = multiModelProperties.getApiKey("deepseek");
     MultiModelProperties.ModelConfig modelConfig =
-        getDefaultModelConfig(multiModelProperties, "DeepSeek");
+        getDefaultModelConfig(multiModelProperties, "deepseek");
 
     // 如果模型未找到，返回null而不是抛出异常
     if (modelConfig == null) {

@@ -1,5 +1,6 @@
 package com.example.manager;
 
+import com.example.config.ChatStreamingProperties;
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
 import com.example.service.factory.ModelProviderFactory;
@@ -27,6 +28,7 @@ public class ChatClientManager {
   @Autowired private MultiModelProperties properties;
 
   @Autowired private ModelProviderFactory modelProviderFactory;
+  @Autowired private ChatStreamingProperties chatStreamingProperties;
 
   @Autowired
   private org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor
@@ -55,10 +57,22 @@ public class ChatClientManager {
 
     log.info("🔧 开始为 {} 创建ChatClient", provider);
 
-    ChatClient client =
-        ChatClient.builder(chatModel)
-            .defaultSystem(
-                """
+    int maxToolCalls = chatStreamingProperties.getSearch().getMaxToolCalls();
+
+    // 针对 deepseek 移除任何输出“格式”限制，保留能力说明，避免渲染被提示词干扰
+    String systemPrompt;
+    if ("deepseek".equalsIgnoreCase(provider)) {
+      systemPrompt = (
+          """
+你是一个智能AI助手。直接、准确回答用户问题。
+
+说明：
+- 如需最新信息，可调用可用的搜索工具（每条用户消息最多调用 %d 次）。
+- 不要对输出施加固定格式要求（例如不要强制使用 Markdown/HTML 等），按内容自然表达即可。
+          """.formatted(maxToolCalls)).trim();
+    } else {
+      systemPrompt = (
+          """
 你是一个智能AI助手。请以清晰、可读的 Markdown 作答（无需 HTML）。
 
 原则：
@@ -68,11 +82,16 @@ public class ChatClientManager {
 - 不确定时优先用自然段清晰表述，再视需要添加简单小节或列表。
 
 能力：
-- 🔍 需要最新信息时调用搜索工具。
+- 🔍 需要最新信息时调用搜索工具（每条用户消息最多调用 %d 次）。
 - 💭 准确理解问题并给出有用答案。
 
 风格：准确、有用、友好；必要时在结尾列出参考来源。
-                    """)
+          """.formatted(maxToolCalls)).trim();
+    }
+
+    ChatClient client =
+        ChatClient.builder(chatModel)
+            .defaultSystem(systemPrompt)
             .defaultAdvisors(messageChatMemoryAdvisor)
             .build();
 

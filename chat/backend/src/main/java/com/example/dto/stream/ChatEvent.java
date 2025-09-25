@@ -47,11 +47,19 @@ public class ChatEvent {
   }
 
   public static ChatEvent chunk(String content) {
-    return of(ChatEventType.CHUNK, new ChunkPayload(content));
+    return of(ChatEventType.CHUNK, new ChunkPayload(null, content));
+  }
+
+  public static ChatEvent chunk(Long messageId, String content) {
+    return of(ChatEventType.CHUNK, new ChunkPayload(messageId, content));
   }
 
   public static ChatEvent thinking(String content) {
-    return of(ChatEventType.THINKING, new ChunkPayload(content));
+    return of(ChatEventType.THINKING, new ChunkPayload(null, content));
+  }
+
+  public static ChatEvent thinking(Long messageId, String content) {
+    return of(ChatEventType.THINKING, new ChunkPayload(messageId, content));
   }
 
   public static ChatEvent search(String status) {
@@ -59,11 +67,19 @@ public class ChatEvent {
   }
 
   public static ChatEvent searchResults(List<SearchResult> results) {
-    return of(ChatEventType.SEARCH_RESULTS, new SearchResultsPayload(results));
+    return of(ChatEventType.SEARCH_RESULTS, new SearchResultsPayload(null, results));
+  }
+
+  public static ChatEvent searchResults(Long messageId, List<SearchResult> results) {
+    return of(ChatEventType.SEARCH_RESULTS, new SearchResultsPayload(messageId, results));
   }
 
   public static ChatEvent end(Long messageId) {
-    return of(ChatEventType.END, new EndPayload(messageId));
+    return of(ChatEventType.END, new EndPayload(messageId, null));
+  }
+
+  public static ChatEvent end(Long messageId, String content) {
+    return of(ChatEventType.END, new EndPayload(messageId, content));
   }
 
   public static ChatEvent error(String message) {
@@ -79,6 +95,7 @@ public class ChatEvent {
   @Data
   @AllArgsConstructor
   public static class ChunkPayload {
+    private Long messageId;
     private String content;
   }
 
@@ -91,6 +108,7 @@ public class ChatEvent {
   @Data
   @AllArgsConstructor
   public static class SearchResultsPayload {
+    private Long messageId;
     private List<SearchResult> results;
   }
 
@@ -98,6 +116,7 @@ public class ChatEvent {
   @AllArgsConstructor
   public static class EndPayload {
     private Long messageId;
+    private String content; // normalized final content for client-side replacement
   }
 
   @Data

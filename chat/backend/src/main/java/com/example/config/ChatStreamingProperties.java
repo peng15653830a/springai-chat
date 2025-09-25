@@ -30,6 +30,9 @@ public class ChatStreamingProperties {
   /** 错误处理配置 */
   private Error error = new Error();
 
+  /** 搜索相关配置 */
+  private Search search = new Search();
+
   @Data
   public static class Streaming {
     /** 流式传输块大小 */
@@ -49,5 +52,11 @@ public class ChatStreamingProperties {
 
     /** 重试延迟 */
     private Duration retryDelay = Duration.ofMillis(1000);
+  }
+
+  @Data
+  public static class Search {
+    /** 每条消息允许触发搜索工具的最大次数 */
+    private int maxToolCalls = 3;
   }
 }

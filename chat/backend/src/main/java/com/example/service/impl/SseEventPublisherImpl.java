@@ -23,8 +23,12 @@ public class SseEventPublisherImpl implements SseEventPublisher {
   private final ConcurrentHashMap<Long, Sinks.Many<ChatEvent>> conversationSinks =
       new ConcurrentHashMap<>();
 
-  /** 跨线程存储每个会话的搜索结果 */
+  /** 跨线程存储每个会话的搜索结果（向后兼容） */
   private final ConcurrentHashMap<Long, List<SearchResult>> conversationSearchResults =
+      new ConcurrentHashMap<>();
+
+  /** 跨线程存储每条消息的搜索结果（精准关联到消息，避免混淆） */
+  private final ConcurrentHashMap<Long, List<SearchResult>> messageSearchResults =
       new ConcurrentHashMap<>();
 
   @Override
@@ -43,6 +47,22 @@ public class SseEventPublisherImpl implements SseEventPublisher {
 
       publishEvent(conversationId, ChatEvent.searchResults(results));
       log.info("🔍 发布搜索结果事件，会话ID: {}, 结果数量: {}", conversationId, results.size());
+    }
+  }
+
+  @Override
+  public void publishSearchResults(Long conversationId, Long messageId, List<SearchResult> results) {
+    if (messageId != null && results != null && !results.isEmpty()) {
+      messageSearchResults.put(messageId, results);
+    }
+    // 同时仍然发布到会话级SSE（payload 中带上 messageId，前端可做精准归属）
+    if (conversationId != null && results != null && !results.isEmpty()) {
+      publishEvent(conversationId, ChatEvent.searchResults(messageId, results));
+      log.info(
+          "🔍 发布搜索结果事件，会话ID: {}, 消息ID: {}, 结果数量: {}",
+          conversationId,
+          messageId,
+          results.size());
     }
   }
 
@@ -67,6 +87,18 @@ public class SseEventPublisherImpl implements SseEventPublisher {
     if (conversationId != null && thinking != null && !thinking.trim().isEmpty()) {
       publishEvent(conversationId, ChatEvent.thinking(thinking));
       log.debug("发布深度思考事件，会话ID: {}, thinking长度: {}", conversationId, thinking.length());
+    }
+  }
+
+  @Override
+  public void publishThinking(Long conversationId, Long messageId, String thinking) {
+    if (conversationId != null && thinking != null && !thinking.trim().isEmpty()) {
+      publishEvent(conversationId, ChatEvent.thinking(messageId, thinking));
+      log.debug(
+          "发布深度思考事件，会话ID: {}, 消息ID: {}, thinking长度: {}",
+          conversationId,
+          messageId,
+          thinking.length());
     }
   }
 
@@ -150,11 +182,20 @@ public class SseEventPublisherImpl implements SseEventPublisher {
     return conversationSearchResults.get(conversationId);
   }
 
+  @Override
+  public List<SearchResult> getSearchResultsByMessageId(Long messageId) {
+    if (messageId == null) {
+      return null;
+    }
+    return messageSearchResults.get(messageId);
+  }
+
   /** 应用关闭时清理ThreadLocal，防止内存泄漏 这是针对Spring AI框架限制的合理工作区域的安全保护 */
   @PreDestroy
   public void cleanup() {
     try {
       conversationSearchResults.clear();
+      messageSearchResults.clear();
       // 清理所有事件发射器
       conversationSinks
           .values()

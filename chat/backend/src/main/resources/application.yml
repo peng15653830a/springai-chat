@@ -128,11 +128,12 @@ ai:
         read-timeout-ms: 30000
         models:
           - name: "deepseek-chat"
-            display-name: "DeepSeek-V3.1"
+            display-name: "DeepSeek Chat"
             max-tokens: 4192
             temperature: 0.7
             supports-thinking: false
             supports-streaming: true
+            supports-tools: true
             enabled: true
             sort-order: 1
       
@@ -204,6 +205,9 @@ app:
     max-history-size: 20
     response-timeout: 300s
     sse-timeout: 300s
+    search:
+      # 每条消息允许触发搜索工具的最大次数
+      max-tool-calls: ${APP_CHAT_SEARCH_MAX_TOOL_CALLS:3}
     streaming:
       chunk-size: 50
       buffer-timeout: 100ms

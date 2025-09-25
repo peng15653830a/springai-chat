@@ -124,3 +124,7 @@ Thumbs.db
 node_modules
 /.qoder/
 /.claude/
+/chat/.claude/
+/chat/.codex/
+/chat/.specify/
+/chat/scripts/
