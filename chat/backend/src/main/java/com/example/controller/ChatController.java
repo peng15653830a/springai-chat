@@ -35,30 +35,11 @@ public class ChatController {
     // 设置路径参数到请求对象中
     request.setConversationId(conversationId);
 
-    log.info(
-        "SSE连接请求，会话ID: {}, 是否有消息: {}, 用户ID: {}, 指定模型: {}-{}",
-        request.getConversationId(),
-        request.getMessage() != null,
-        request.getUserId(),
-        request.getProvider(),
-        request.getModel());
-
     if (request.getMessage() == null || request.getMessage().trim().isEmpty()) {
       // 无消息时返回空流，连接会自然结束
       log.debug("无消息内容，返回空流");
       return Flux.empty();
     }
-
-    // 有消息时，执行完整的AI聊天流
-    log.info(
-        "开始处理聊天消息，会话ID: {}, 消息长度: {}, 搜索开启: {}, 深度思考: {}, 用户ID: {}, 指定模型: {}-{}",
-        request.getConversationId(),
-        request.getMessage().length(),
-        request.isSearchEnabled(),
-        request.isDeepThinking(),
-        request.getUserId(),
-        request.getProvider(),
-        request.getModel());
 
     return aiChatService
         .streamChat(request)
