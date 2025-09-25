@@ -324,7 +324,7 @@ public class AiChatServiceImpl implements AiChatService {
       return opts;
     }
 
-    // 其他 OpenAI 兼容模型（openai/qwen/kimi2/deepseek 等）
+    // 其他 OpenAI 兼容模型（如 deepseek 等）
     var builder = OpenAiChatOptions.builder()
         .model(model)
         .temperature(temperature)

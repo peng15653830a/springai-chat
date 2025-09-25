@@ -27,7 +27,7 @@ public class ChatExecutionParams {
   /** 是否启用深度思考 */
   private boolean deepThinking;
 
-  /** 模型提供者名称（如qwen、openai等） */
+  /** 模型提供者名称 */
   private String providerName;
 
   /** 模型名称 */

@@ -22,8 +22,8 @@ public class GreatWallConfig {
 
   /** 创建GreatWall ChatModel Bean */
   @Bean
-  @ConditionalOnMissingBean(name = "greatWallChatModel")
-  public ChatModel greatWallChatModel(
+  @ConditionalOnMissingBean(name = "greatwallChatModel")
+  public ChatModel greatwallChatModel(
       GreatWallChatApi greatWallChatApi, MultiModelProperties multiModelProperties) {
     log.info("🏗️ 创建长城大模型 ChatModel Bean");
 

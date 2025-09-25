@@ -25,10 +25,10 @@ public class MultiModelProperties {
   private boolean enabled = true;
 
   /** 默认提供者名称 */
-  private String defaultProvider = "qwen";
+  private String defaultProvider = "deepseek";
 
   /** 默认模型名称 */
-  private String defaultModel = "Qwen/Qwen3-235B-A22B-Thinking-2507";
+  private String defaultModel = "deepseek-chat";
 
   /** 全局默认配置 */
   private GlobalDefaults defaults = new GlobalDefaults();

@@ -25,7 +25,7 @@ public class StreamChatRequest {
   /** 用户ID（来自查询参数 userId，可选，用于获取用户模型偏好） */
   private Long userId;
 
-  /** 指定的模型提供者（来自查询参数 provider，可选，如qwen、openai等） */
+  /** 指定的模型提供者（来自查询参数 provider，可选） */
   private String provider;
 
   /** 指定的模型名称（来自查询参数 model，可选） */
