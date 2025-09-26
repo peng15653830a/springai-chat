@@ -1,216 +1,416 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
-        <relativePath/> <!-- lookup parent from repository -->
-    </parent>
-    <groupId>com.example</groupId>
-    <artifactId>ai-chat</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>ai-chat</name>
-    <description>AI Chat Application with Search Capability</description>
-    
-    <properties>
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
-        
-        <!-- Dependency versions -->
-        <mybatis-spring-boot-starter.version>3.0.4</mybatis-spring-boot-starter.version>
-        
-        
-        <lombok.version>1.18.30</lombok.version>
-        <spring-ai.version>1.0.0</spring-ai.version>
-
-        <!-- Plugin versions -->
-        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-        <jacoco-maven-plugin.version>0.8.11</jacoco-maven-plugin.version>
-        <p3c-pmd-plugin.version>2.1.1</p3c-pmd-plugin.version>
-        <maven-pmd-plugin.version>3.17.0</maven-pmd-plugin.version>
-        <spotless-plugin.version>2.27.2</spotless-plugin.version>
-    </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-    <dependencies>
+﻿<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+
+        <groupId>org.springframework.boot</groupId>
+
+        <artifactId>spring-boot-starter-parent</artifactId>
+
+        <version>3.4.2</version>
+
+        <relativePath/> <!-- lookup parent from repository -->
+
+    </parent>
+
+    <groupId>com.example</groupId>
+
+    <artifactId>ai-chat</artifactId>
+
+    <version>0.0.1-SNAPSHOT</version>
+
+    <name>ai-chat</name>
+
+    <description>AI Chat Application with Search Capability</description>
+
+    
+
+    <properties>
+
+        <java.version>17</java.version>
+
+        <maven.compiler.source>17</maven.compiler.source>
+
+        <maven.compiler.target>17</maven.compiler.target>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
+
+        
+
+        <!-- Dependency versions -->
+
+        <mybatis-spring-boot-starter.version>3.0.4</mybatis-spring-boot-starter.version>
+
+        
+
+        
+
+        <lombok.version>1.18.30</lombok.version>
+
+        <spring-ai.version>1.0.0</spring-ai.version>
+
+
+
+        <!-- Plugin versions -->
+
+        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+
+        <jacoco-maven-plugin.version>0.8.11</jacoco-maven-plugin.version>
+
+        <p3c-pmd-plugin.version>2.1.1</p3c-pmd-plugin.version>
+
+        <maven-pmd-plugin.version>3.17.0</maven-pmd-plugin.version>
+
+        <spotless-plugin.version>2.27.2</spotless-plugin.version>
+
+    </properties>
+
+
+
+    <dependencyManagement>
+
+        <dependencies>
+
+            <dependency>
+
+                <groupId>org.springframework.ai</groupId>
+
+                <artifactId>spring-ai-bom</artifactId>
+
+                <version>${spring-ai.version}</version>
+
+                <type>pom</type>
+
+                <scope>import</scope>
+
+            </dependency>
+
+        </dependencies>
+
+    </dependencyManagement>
+
+
+
+    <dependencies>
+
         <!-- Spring Boot WebFlux for reactive SSE streaming -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
-
-        <!-- Spring AI OpenAI Starter (鍖呭惈ChatClient銆丮emory銆乀ool Calling绛夋牳蹇冨姛鑳? -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
-        </dependency>
-
+
+
+        <!-- Spring AI OpenAI Starter (鍖呭惈ChatClient銆丮emory銆乀ool Calling绛夋牳蹇冨姛鑳? -->
+
+        <dependency>
+
+            <groupId>org.springframework.ai</groupId>
+
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+
+        </dependency>
+
+
+
         <!-- 缁熶竴浣跨敤 WebClient锛岀Щ闄?Apache HttpClient 渚濊禆 -->
-        
-        <!-- MyBatis Spring Boot Starter -->
-        <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>${mybatis-spring-boot-starter.version}</version>
-        </dependency>
-        
-        <!-- Database -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+        
+
+        <!-- MyBatis Spring Boot Starter -->
+
+        <dependency>
+
+            <groupId>org.mybatis.spring.boot</groupId>
+
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+
+            <version>${mybatis-spring-boot-starter.version}</version>
+
+        </dependency>
+
+        
+
+        <!-- Database -->
+
+        <dependency>
+
+            <groupId>org.postgresql</groupId>
+
+            <artifactId>postgresql</artifactId>
+
+            <scope>runtime</scope>
+
+        </dependency>
+
+        <dependency>
+
+            <groupId>com.h2database</groupId>
+
+            <artifactId>h2</artifactId>
+
+            <scope>runtime</scope>
+
+        </dependency>
+
         <!-- 榛樿浣跨敤 PostgreSQL/H2锛岀Щ闄?MySQL 杩愯鏃朵緷璧?-->
-        
-        <!-- Jackson for JSON processing -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        
-        <!-- Java EE 娉ㄨВ (PostConstruct绛? -->
-        
-        <!-- Development Tools -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-        
-        <!-- Actuator -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        
-        <!-- Test -->
-        
-        <!-- Reactor Test for reactive stream testing -->
-        
-    </dependencies>
+        
+
+        <!-- Jackson for JSON processing -->
+
+        <dependency>
+
+            <groupId>com.fasterxml.jackson.core</groupId>
+
+            <artifactId>jackson-databind</artifactId>
+
+        </dependency>
+
+
+
+        <!-- Lombok -->
+
+        <dependency>
+
+            <groupId>org.projectlombok</groupId>
+
+            <artifactId>lombok</artifactId>
+
+            <version>${lombok.version}</version>
+
+            <scope>provided</scope>
+
+        </dependency>
+
+        
+
+        <!-- Java EE 娉ㄨВ (PostConstruct绛? -->
+
+        
+
+        <!-- Development Tools -->
+
+        <dependency>
+
+            <groupId>org.springframework.boot</groupId>
+
+            <artifactId>spring-boot-devtools</artifactId>
+
+            <scope>runtime</scope>
+
+            <optional>true</optional>
+
+        </dependency>
+
+        
+
+        <!-- Actuator -->
+
+        <dependency>
+
+            <groupId>org.springframework.boot</groupId>
+
+            <artifactId>spring-boot-starter-actuator</artifactId>
+
+        </dependency>
+
+        
+
+        <!-- Test -->
+
+        
+
+        <!-- Reactor Test for reactive stream testing -->
+
+        
+
+    </dependencies>
+
     <build>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>false</filtering>
             </resource>
-        </resources>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-                <configuration>
-                    <release>${java.version}</release>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <jvmArguments>
-                        -Xdebug
-                    </jvmArguments>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-            <!-- JaCoCo Test Coverage Plugin -->
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco-maven-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>report</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                    <!-- 闄嶄綆瑕嗙洊鐜囨鏌ヨ姹備互渚挎祴璇曢€氳繃 -->
-<!--                    <execution>-->
-<!--                        <id>check</id>-->
-<!--                        <phase>test</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>check</goal>-->
-<!--                        </goals>-->
-<!--                        <configuration>-->
-<!--                            <rules>-->
-<!--                                <rule>-->
-<!--                                    <element>BUNDLE</element>-->
-<!--                                    <limits>-->
-<!--                                        <limit>-->
-<!--                                            <counter>INSTRUCTION</counter>-->
-<!--                                            <value>COVEREDRATIO</value>-->
-<!--                                            <minimum>0.50</minimum> &lt;!&ndash; 浠?.85闄嶄綆鍒?.50 &ndash;&gt;-->
-<!--                                        </limit>-->
-<!--                                        <limit>-->
-<!--                                            <counter>BRANCH</counter>-->
-<!--                                            <value>COVEREDRATIO</value>-->
-<!--                                            <minimum>0.30</minimum> &lt;!&ndash; 浠?.85闄嶄綆鍒?.30 &ndash;&gt;-->
-<!--                                        </limit>-->
-<!--                                        <limit>-->
-<!--                                            <counter>LINE</counter>-->
-<!--                                            <value>COVEREDRATIO</value>-->
-<!--                                            <minimum>0.50</minimum> &lt;!&ndash; 浠?.85闄嶄綆鍒?.50 &ndash;&gt;-->
-<!--                                        </limit>-->
-<!--                                    </limits>-->
-<!--                                </rule>-->
-<!--                            </rules>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-                </executions>
-            </plugin>
-            
-            <!-- 闃块噷宸村反P3C浠ｇ爜瑙勮寖妫€鏌?(閫氳繃PMD鎻掍欢) -->
+        </resources>
+
+        <plugins>
+
+            <plugin>
+
+                <groupId>org.apache.maven.plugins</groupId>
+
+                <artifactId>maven-compiler-plugin</artifactId>
+
+                <version>${maven-compiler-plugin.version}</version>
+
+                <configuration>
+
+                    <release>${java.version}</release>
+
+                    <annotationProcessorPaths>
+
+                        <path>
+
+                            <groupId>org.projectlombok</groupId>
+
+                            <artifactId>lombok</artifactId>
+
+                            <version>${lombok.version}</version>
+
+                        </path>
+
+                    </annotationProcessorPaths>
+
+                </configuration>
+
+            </plugin>
+
+            <plugin>
+
+                <groupId>org.springframework.boot</groupId>
+
+                <artifactId>spring-boot-maven-plugin</artifactId>
+
+                <configuration>
+
+                    <jvmArguments>
+
+                        -Xdebug
+
+                    </jvmArguments>
+
+                    <excludes>
+
+                        <exclude>
+
+                            <groupId>org.projectlombok</groupId>
+
+                            <artifactId>lombok</artifactId>
+
+                        </exclude>
+
+                    </excludes>
+
+                </configuration>
+
+            </plugin>
+
+            <!-- JaCoCo Test Coverage Plugin -->
+
+            <plugin>
+
+                <groupId>org.jacoco</groupId>
+
+                <artifactId>jacoco-maven-plugin</artifactId>
+
+                <version>${jacoco-maven-plugin.version}</version>
+
+                <executions>
+
+                    <execution>
+
+                        <goals>
+
+                            <goal>prepare-agent</goal>
+
+                        </goals>
+
+                    </execution>
+
+                    <execution>
+
+                        <id>report</id>
+
+                        <phase>test</phase>
+
+                        <goals>
+
+                            <goal>report</goal>
+
+                        </goals>
+
+                    </execution>
+
+                    <!-- 闄嶄綆瑕嗙洊鐜囨鏌ヨ姹備互渚挎祴璇曢€氳繃 -->
+
+<!--                    <execution>-->
+
+<!--                        <id>check</id>-->
+
+<!--                        <phase>test</phase>-->
+
+<!--                        <goals>-->
+
+<!--                            <goal>check</goal>-->
+
+<!--                        </goals>-->
+
+<!--                        <configuration>-->
+
+<!--                            <rules>-->
+
+<!--                                <rule>-->
+
+<!--                                    <element>BUNDLE</element>-->
+
+<!--                                    <limits>-->
+
+<!--                                        <limit>-->
+
+<!--                                            <counter>INSTRUCTION</counter>-->
+
+<!--                                            <value>COVEREDRATIO</value>-->
+
+<!--                                            <minimum>0.50</minimum> &lt;!&ndash; 浠?.85闄嶄綆鍒?.50 &ndash;&gt;-->
+
+<!--                                        </limit>-->
+
+<!--                                        <limit>-->
+
+<!--                                            <counter>BRANCH</counter>-->
+
+<!--                                            <value>COVEREDRATIO</value>-->
+
+<!--                                            <minimum>0.30</minimum> &lt;!&ndash; 浠?.85闄嶄綆鍒?.30 &ndash;&gt;-->
+
+<!--                                        </limit>-->
+
+<!--                                        <limit>-->
+
+<!--                                            <counter>LINE</counter>-->
+
+<!--                                            <value>COVEREDRATIO</value>-->
+
+<!--                                            <minimum>0.50</minimum> &lt;!&ndash; 浠?.85闄嶄綆鍒?.50 &ndash;&gt;-->
+
+<!--                                        </limit>-->
+
+<!--                                    </limits>-->
+
+<!--                                </rule>-->
+
+<!--                            </rules>-->
+
+<!--                        </configuration>-->
+
+<!--                    </execution>-->
+
+                </executions>
+
+            </plugin>
+
+            
+
+            <!-- 闃块噷宸村反P3C浠ｇ爜瑙勮寖妫€鏌?(閫氳繃PMD鎻掍欢) -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
@@ -222,89 +422,169 @@
                         <ruleset>rulesets/java/ali-concurrent.xml</ruleset>
                         <ruleset>rulesets/java/ali-constant.xml</ruleset>
                         <ruleset>rulesets/java/ali-exception.xml</ruleset>
-                        <ruleset>rulesets/java/ali-flowcontrol.xml</ruleset>
-                        <ruleset>rulesets/java/ali-naming.xml</ruleset>
-                        <ruleset>rulesets/java/ali-oop.xml</ruleset>
-                        <ruleset>rulesets/java/ali-orm.xml</ruleset>
-                        <ruleset>rulesets/java/ali-other.xml</ruleset>
-                        <ruleset>rulesets/java/ali-set.xml</ruleset>
-                    </rulesets>
+                        <ruleset>rulesets/java/ali-flowcontrol.xml</ruleset>
+
+                        <ruleset>rulesets/java/ali-naming.xml</ruleset>
+
+                        <ruleset>rulesets/java/ali-oop.xml</ruleset>
+
+                        <ruleset>rulesets/java/ali-orm.xml</ruleset>
+
+                        <ruleset>rulesets/java/ali-other.xml</ruleset>
+
+                        <ruleset>rulesets/java/ali-set.xml</ruleset>
+
+                    </rulesets>
+
                     <printFailingErrors>true</printFailingErrors>
                     <failOnViolation>false</failOnViolation>
-                    <excludes>
-                        <exclude>**/target/**</exclude>
-                        <exclude>**/generated-sources/**</exclude>
-                    </excludes>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.alibaba.p3c</groupId>
-                        <artifactId>p3c-pmd</artifactId>
-                        <version>${p3c-pmd-plugin.version}</version>
-                    </dependency>
-                </dependencies>
-                <!-- P3C妫€鏌ヤ笉缁戝畾鍒扮敓鍛藉懆鏈燂紝鍙墜鍔ㄦ墽琛?-->
-                <executions>
-                    <execution>
-                        <id>p3c-check</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            
-            <!-- Spotless浠ｇ爜鏍煎紡鍖栨彃浠?-->
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <version>${spotless-plugin.version}</version>
-                <configuration>
-                    <java>
-                        <googleJavaFormat/>
-                        <removeUnusedImports/>
-                        <trimTrailingWhitespace/>
-                        <endWithNewline/>
-                    </java>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-
-    <repositories>
-        <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>spring-snapshots</id>
-            <name>Spring Snapshots</name>
-            <url>https://repo.spring.io/snapshot</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-        </repository>
-        <!-- for spring ai alibaba nacos snapshot dependencies-->
-        <repository>
-            <id>sonatype-nexus-snapshots</id>
-            <name>Sonatype Nexus Snapshots</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
+                    <excludes>
+
+                        <exclude>**/target/**</exclude>
+
+                        <exclude>**/generated-sources/**</exclude>
+
+                    </excludes>
+
+                </configuration>
+
+                <dependencies>
+
+                    <dependency>
+
+                        <groupId>com.alibaba.p3c</groupId>
+
+                        <artifactId>p3c-pmd</artifactId>
+
+                        <version>${p3c-pmd-plugin.version}</version>
+
+                    </dependency>
+
+                </dependencies>
+
+                <!-- P3C妫€鏌ヤ笉缁戝畾鍒扮敓鍛藉懆鏈燂紝鍙墜鍔ㄦ墽琛?-->
+
+<!--                <executions>-->
+
+<!--                    <execution>-->
+
+<!--                        <id>p3c-check</id>-->
+
+<!--                        <phase>validate</phase>-->
+
+<!--                        <goals>-->
+
+<!--                            <goal>check</goal>-->
+
+<!--                        </goals>-->
+
+<!--                    </execution>-->
+
+<!--                </executions>-->
+
+            </plugin>
+
+            
+
+            <!-- Spotless浠ｇ爜鏍煎紡鍖栨彃浠?-->
+
+            <plugin>
+
+                <groupId>com.diffplug.spotless</groupId>
+
+                <artifactId>spotless-maven-plugin</artifactId>
+
+                <version>${spotless-plugin.version}</version>
+
+                <configuration>
+
+                    <java>
+
+                        <googleJavaFormat/>
+
+                        <removeUnusedImports/>
+
+                        <trimTrailingWhitespace/>
+
+                        <endWithNewline/>
+
+                    </java>
+
+                </configuration>
+
+            </plugin>
+
+        </plugins>
+
+    </build>
+
+
+
+    <repositories>
+
+        <repository>
+
+            <id>spring-milestones</id>
+
+            <name>Spring Milestones</name>
+
+            <url>https://repo.spring.io/milestone</url>
+
+            <snapshots>
+
+                <enabled>false</enabled>
+
+            </snapshots>
+
+        </repository>
+
+        <repository>
+
+            <id>spring-snapshots</id>
+
+            <name>Spring Snapshots</name>
+
+            <url>https://repo.spring.io/snapshot</url>
+
+            <releases>
+
+                <enabled>false</enabled>
+
+            </releases>
+
+        </repository>
+
+        <!-- for spring ai alibaba nacos snapshot dependencies-->
+
+        <repository>
+
+            <id>sonatype-nexus-snapshots</id>
+
+            <name>Sonatype Nexus Snapshots</name>
+
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+
+            <releases>
+
+                <enabled>false</enabled>
+
+            </releases>
+
+            <snapshots>
+
+                <enabled>true</enabled>
+
+            </snapshots>
+
+        </repository>
+
+    </repositories>
+
 </project>
-
-
+
+
+
+
 
 
 

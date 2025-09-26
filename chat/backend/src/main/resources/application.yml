@@ -2,8 +2,32 @@ server:
   port: 8080
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   application:
     name: ai-chat
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        enabled: false
+      image:
+        enabled: false
+      audio:
+        transcription:
+          enabled: false
+        speech:
+          enabled: false
+      moderations:
+        enabled: false
+      embedding:
+        enabled: false
   datasource:
     driver-class-name: org.postgresql.Driver
     url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_chat}
@@ -46,14 +70,14 @@ ai:
             sort-order: 1
       greatwall:
         enabled: ${GREATWALL_ENABLED:false}
-        display-name: "³¤³Ç´óÄ£ÐÍ"
+        display-name: "ï¿½ï¿½ï¿½Ç´ï¿½Ä£ï¿½ï¿½"
         api-key: ${GREATWALL_API_KEY:}
         base-url: ${GREATWALL_BASE_URL:}
         connect-timeout-ms: 15000
         read-timeout-ms: 60000
         models:
           - name: "greatwall-deepseek-v3"
-            display-name: "³¤³Ç¡¤DeepSeek-V3"
+            display-name: "ï¿½ï¿½ï¿½Ç¡ï¿½DeepSeek-V3"
             max-tokens: 4096
             temperature: 0.7
             supports-thinking: false
