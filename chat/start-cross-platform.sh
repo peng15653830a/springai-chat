@@ -63,7 +63,7 @@ check_port() {
 
 echo "🔍 检查端口占用..."
 check_port 8080 "后端"
-check_port 3000 "前端"
+check_port 5174 "前端"
 
 # 启动后端服务
 echo "📦 启动后端服务..."
@@ -174,7 +174,7 @@ wait_for_backend
 
 # 启动前端服务
 echo "🌐 启动前端服务..."
-cd frontend
+cd ../apps/portal-frontend
 
 if [ ! -d "node_modules" ]; then
     echo "安装前端依赖..."
@@ -191,7 +191,7 @@ fi
 
 # 启动前端开发服务器
 echo "启动前端开发服务器..."
-npm run dev > ../frontend.log 2>&1 &
+npm run dev > ../../frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo "前端服务PID: $FRONTEND_PID"
 
@@ -206,7 +206,7 @@ wait_for_frontend() {
     
     # 使用业界标准的curl重试机制检查前端
     echo "检查前端服务状态..."
-    if curl --silent --fail --retry 8 --retry-delay 2 --retry-connrefused --connect-timeout 3 --max-time 8 http://localhost:3000 >/dev/null 2>&1; then
+    if curl --silent --fail --retry 8 --retry-delay 2 --retry-connrefused --connect-timeout 3 --max-time 8 http://localhost:5174 >/dev/null 2>&1; then
         echo ""
         echo "✅ 前端服务启动成功 (http://localhost:3000)"
         return 0
@@ -230,18 +230,18 @@ wait_for_frontend() {
         
         # 检查端口是否开放
         if command -v nc >/dev/null 2>&1; then
-            if nc -z localhost 3000 2>/dev/null; then
+            if nc -z localhost 5174 2>/dev/null; then
                 echo ""
-                echo "✅ 前端端口3000已打开，Vite服务正在运行"
-                echo "   访问地址: http://localhost:3000"
+                echo "✅ 前端端口5174已打开，Vite服务正在运行"
+                echo "   访问地址: http://localhost:5174"
                 return 0
             fi
         else
             # 降级使用ss检查端口
-            if ss -ln | grep -q ":3000 "; then
+            if ss -ln | grep -q ":5174 "; then
                 echo ""
-                echo "✅ 前端端口3000已打开，Vite服务正在运行" 
-                echo "   访问地址: http://localhost:3000"
+                echo "✅ 前端端口5174已打开，Vite服务正在运行" 
+                echo "   访问地址: http://localhost:5174"
                 return 0
             fi
         fi

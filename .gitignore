@@ -128,3 +128,11 @@ node_modules
 /chat/.codex/
 /chat/.specify/
 /chat/scripts/
+/AGENTS.md
+/chat/.playwright-mcp/
+/chat/.claude/
+/.qoder/
+/.claude/
+/.codex/
+/.qoder/
+/.specify/
