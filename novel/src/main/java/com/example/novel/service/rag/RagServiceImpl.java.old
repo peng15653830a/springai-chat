@@ -1,0 +1,604 @@
+package com.example.novel.service.rag;
+
+import com.example.novel.dto.request.RagCrawlRequest;
+import com.example.novel.dto.request.RagImportRequest;
+import com.example.novel.dto.request.RagSearchRequest;
+import com.example.novel.dto.response.RagCrawlResponse;
+import com.example.novel.dto.response.RagImportResponse;
+import com.example.novel.dto.response.RagSearchResponse;
+import com.example.novel.dto.response.RagMaterialsResponse;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+@Slf4j
+@Service
+public class RagServiceImpl implements RagService {
+
+    @Value("${novel.rag.chunk-size:500}")
+    private int chunkSize;
+
+    @Value("${novel.rag.chunk-overlap:50}")
+    private int chunkOverlap;
+
+    @Value("${novel.rag.material-path:./materials}")
+    private String materialPath;
+
+    private final Map<String, List<DocumentChunk>> documentStore = new ConcurrentHashMap<>();
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired(required = false)
+    private com.example.novel.mapper.NovelReferenceMapper novelReferenceMapper;
+
+    private final WebClient webClient = WebClient.builder()
+        .defaultHeader(HttpHeaders.USER_AGENT,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
+        .codecs(c -> c.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+        .build();
+    @jakarta.annotation.PostConstruct
+    public void preloadMaterials() {
+        try {
+            Path root = Paths.get(materialPath);
+            if (Files.exists(root)) {
+                RagImportRequest req = new RagImportRequest();
+                req.setPath(root.toString());
+                req.setRecursive(true);
+                req.setFilePattern("*.txt");
+                importMaterials(req).block();
+                log.info("预加载RAG素材完成: {}", root);
+            }
+        } catch (Exception e) {
+            log.warn("预加载RAG素材失败: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    public Mono<RagImportResponse> importMaterials(RagImportRequest request) {
+        return Mono.fromCallable(() -> {
+            RagImportResponse response = new RagImportResponse();
+            List<String> errors = new ArrayList<>();
+            AtomicInteger totalFiles = new AtomicInteger(0);
+            AtomicInteger processedFiles = new AtomicInteger(0);
+            AtomicInteger totalChunks = new AtomicInteger(0);
+
+            try {
+                Path rootPath = Paths.get(request.getPath());
+                if (!Files.exists(rootPath)) {
+                    response.setSuccess(false);
+                    response.setMessage("指定路径不存在: " + request.getPath());
+                    return response;
+                }
+
+                List<String> patterns = Arrays.asList(request.getFilePattern().split(","));
+
+                Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        if (shouldProcessFile(file, patterns)) {
+                            totalFiles.incrementAndGet();
+                            try {
+                                List<DocumentChunk> chunks = processFile(file);
+                                documentStore.put(file.toString(), chunks);
+                                totalChunks.addAndGet(chunks.size());
+                                processedFiles.incrementAndGet();
+                                log.debug("处理文件: {}, 分块数: {}", file, chunks.size());
+                            } catch (Exception e) {
+                                errors.add("处理文件失败 " + file + ": " + e.getMessage());
+                                log.error("处理文件失败: {}", file, e);
+                            }
+                        }
+                        return request.getRecursive() ? FileVisitResult.CONTINUE : FileVisitResult.SKIP_SUBTREE;
+                    }
+                });
+
+                response.setSuccess(true);
+                response.setMessage("素材导入完成");
+                response.setTotalFiles(totalFiles.get());
+                response.setProcessedFiles(processedFiles.get());
+                response.setTotalChunks(totalChunks.get());
+                response.setErrors(errors);
+
+            } catch (Exception e) {
+                log.error("导入素材失败", e);
+                response.setSuccess(false);
+                response.setMessage("导入失败: " + e.getMessage());
+                response.setErrors(Arrays.asList(e.getMessage()));
+            }
+
+            return response;
+        });
+    }
+
+    private boolean shouldProcessFile(Path file, List<String> patterns) {
+        String fileName = file.getFileName().toString().toLowerCase();
+        return patterns.stream().anyMatch(pattern -> {
+            String cleanPattern = pattern.trim().toLowerCase().replace("*", "");
+            return fileName.endsWith(cleanPattern);
+        });
+    }
+
+    private List<DocumentChunk> processFile(Path file) throws IOException {
+        String content = Files.readString(file);
+        String fileName = file.getFileName().toString();
+
+        List<DocumentChunk> chunks = new ArrayList<>();
+        for (int i = 0; i < content.length(); i += chunkSize - chunkOverlap) {
+            int end = Math.min(i + chunkSize, content.length());
+            String chunkContent = content.substring(i, end);
+
+            DocumentChunk chunk = new DocumentChunk();
+            chunk.setContent(chunkContent);
+            chunk.setSource(file.toString());
+            chunk.setTitle(fileName);
+            chunk.setChunkIndex(chunks.size());
+            chunks.add(chunk);
+
+            if (end >= content.length()) break;
+        }
+
+        return chunks;
+    }
+
+    @Override
+    public Mono<RagSearchResponse> searchMaterials(RagSearchRequest request) {
+        return Mono.fromCallable(() -> {
+            RagSearchResponse response = new RagSearchResponse();
+
+            try {
+                List<RagSearchResponse.RagSearchResult> results = documentStore.values().stream()
+                        .flatMap(List::stream)
+                        .filter(chunk -> calculateSimilarity(request.getQuery(), chunk.getContent()) >= request.getMinSimilarity())
+                        .sorted((a, b) -> Double.compare(
+                                calculateSimilarity(request.getQuery(), b.getContent()),
+                                calculateSimilarity(request.getQuery(), a.getContent())
+                        ))
+                        .limit(request.getTopK())
+                        .map(this::toSearchResult)
+                        .collect(Collectors.toList());
+
+                response.setSuccess(true);
+                response.setMessage("搜索完成");
+                response.setResults(results);
+
+                if (novelReferenceMapper != null && (request.getSessionId() != null || request.getMessageId() != null)) {
+                    for (RagSearchResponse.RagSearchResult r : results) {
+                        com.example.novel.entity.NovelReference ref = new com.example.novel.entity.NovelReference();
+                        ref.setSessionId(request.getSessionId());
+                        ref.setMessageId(request.getMessageId());
+                        ref.setSource(r.getSource());
+                        ref.setTitle(r.getTitle());
+                        ref.setExcerpt(r.getExcerpt());
+                        ref.setSimilarity(r.getSimilarity());
+                        ref.setUrl(r.getSource());
+                        try { novelReferenceMapper.insert(ref); } catch (Exception ignore) {}
+                    }
+                }
+
+            } catch (Exception e) {
+                log.error("搜索素材失败", e);
+                response.setSuccess(false);
+                response.setMessage("搜索失败: " + e.getMessage());
+                response.setResults(new ArrayList<>());
+            }
+
+            return response;
+        });
+    }
+
+    @Override
+    public Mono<RagMaterialsResponse> listMaterials() {
+        return Mono.fromCallable(() -> {
+            RagMaterialsResponse resp = new RagMaterialsResponse();
+            try {
+                java.util.List<RagMaterialsResponse.Item> items = new java.util.ArrayList<>();
+                int totalChunks = 0;
+                for (Map.Entry<String, List<DocumentChunk>> e : documentStore.entrySet()) {
+                    RagMaterialsResponse.Item it = new RagMaterialsResponse.Item();
+                    it.setSource(e.getKey());
+                    List<DocumentChunk> chunks = e.getValue();
+                    it.setChunks(chunks != null ? chunks.size() : 0);
+                    totalChunks += it.getChunks();
+                    String title = null;
+                    if (chunks != null && !chunks.isEmpty()) {
+                        title = chunks.get(0).getTitle();
+                    }
+                    it.setTitle(title);
+                    items.add(it);
+                }
+                // 排序：按来源名
+                items.sort(java.util.Comparator.comparing(RagMaterialsResponse.Item::getSource));
+                resp.setSuccess(true);
+                resp.setMessage("OK");
+                resp.setItems(items);
+                resp.setTotalFiles(items.size());
+                resp.setTotalChunks(totalChunks);
+            } catch (Exception e) {
+                resp.setSuccess(false);
+                resp.setMessage("列表获取失败: " + e.getMessage());
+                resp.setItems(java.util.Collections.emptyList());
+                resp.setTotalFiles(0);
+                resp.setTotalChunks(0);
+            }
+            return resp;
+        });
+    }
+
+    @Override
+    public Mono<RagCrawlResponse> crawlAndImport(RagCrawlRequest request) {
+        return Mono.fromCallable(() -> {
+            RagCrawlResponse resp = new RagCrawlResponse();
+            List<String> errors = new ArrayList<>();
+            int pages = 0;
+            int chunks = 0;
+
+            try {
+                URI start = URI.create(request.getUrl());
+                String host = start.getHost() == null ? "site" : start.getHost();
+                String baseDirName = host + "_" + System.currentTimeMillis();
+                Path baseDir = Paths.get(materialPath, baseDirName);
+                Files.createDirectories(baseDir);
+
+                // 优先尝试：Blogger 标签 Feed 发现与导入
+                try {
+                    if (isBloggerLabelPage(start)) {
+                        int fetched = fetchFromBloggerFeed(start, request, baseDir, errors);
+                        pages += fetched;
+                    }
+                } catch (Exception e) {
+                    errors.add("Blogger Feed 抓取失败: " + e.getMessage());
+                }
+
+                Set<String> visited = new HashSet<>();
+                Deque<String> queue = new ArrayDeque<>();
+                queue.add(start.toString());
+
+                Pattern include = compileOrNull(request.getIncludePatterns());
+                Pattern exclude = compileOrNull(request.getExcludePatterns());
+
+                while (!queue.isEmpty() && pages < request.getMaxPages()) {
+                    String url = queue.poll();
+                    if (url == null || visited.contains(url)) continue;
+                    if (request.getSameDomainOnly() && !sameDomain(start, URI.create(url))) continue;
+                    if (exclude != null && exclude.matcher(url).find()) continue;
+                    if (include != null && !include.matcher(url).find()) {
+                        // 如果设置了 include，需要匹配；否则跳过采集但仍可用于发现链接
+                    }
+
+                    String html;
+                    try {
+                        html = webClient.get().uri(url)
+                            .accept(MediaType.TEXT_HTML)
+                            .headers(h -> { h.set(HttpHeaders.REFERER, start.toString()); h.set(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en;q=0.8"); })
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .timeout(Duration.ofSeconds(15))
+                            .block();
+                    } catch (Exception e) {
+                        errors.add("抓取失败: " + url + " => " + e.getMessage());
+                        continue;
+                    }
+                    if (html == null || html.isBlank()) continue;
+
+                    visited.add(url);
+                    pages++;
+
+                    Document doc = Jsoup.parse(html, url);
+                    String title = extractTitle(doc, request.getTitleSelector());
+                    String text = extractContent(doc, request.getContentSelector());
+                    if (text != null && text.trim().length() > 0) {
+                        String safe = sanitizeFileName(title != null ? title : "page_" + pages);
+                        Path file = baseDir.resolve(String.format("%03d_%s.txt", pages, safe));
+                        Files.writeString(file, text, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    }
+
+                    // 发现更多链接（目录页/章节列表）
+                    Elements links = doc.select("a[href]");
+                    for (Element a : links) {
+                        String abs = a.absUrl("href");
+                        if (abs == null || abs.isBlank()) continue;
+                        if (request.getSameDomainOnly() && !sameDomain(start, URI.create(abs))) continue;
+                        if (exclude != null && exclude.matcher(abs).find()) continue;
+                        if (!visited.contains(abs)) queue.add(abs);
+                    }
+
+                    // 限速
+                    try { Thread.sleep(Math.max(0, request.getRateLimitMs())); } catch (InterruptedException ignore) {}
+                }
+
+                // 写入完成后，调用已有的目录导入
+                RagImportRequest importReq = new RagImportRequest();
+                importReq.setPath(baseDir.toString());
+                importReq.setRecursive(true);
+                importReq.setFilePattern("*.txt");
+                RagImportResponse importResp = importMaterials(importReq).block();
+                chunks = importResp != null ? importResp.getTotalChunks() : 0;
+
+                // 可选：生成文风画像（保存到 baseDir/style_profile.md）
+                if (Boolean.TRUE.equals(request.getAnalyzeStyle())) {
+                    Path stylePath = baseDir.resolve("style_profile.md");
+                    Files.writeString(stylePath,
+                        "# 文风画像\n\n(此处可通过模型生成风格总结，当前占位)\n",
+                        StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    resp.setStyleProfilePath(stylePath.toString());
+                }
+
+                resp.setSuccess(true);
+                resp.setMessage("抓取并导入完成");
+                resp.setPagesFetched(pages);
+                resp.setTotalChunks(chunks);
+                resp.setErrors(errors);
+
+            } catch (Exception e) {
+                log.error("网页抓取失败", e);
+                resp.setSuccess(false);
+                resp.setMessage("抓取失败: " + e.getMessage());
+                resp.setPagesFetched(pages);
+                resp.setTotalChunks(chunks);
+                resp.setErrors(Collections.singletonList(e.getMessage()));
+            }
+
+            return resp;
+        });
+    }
+
+    private boolean isBloggerLabelPage(URI uri) {
+        String path = uri.getPath() == null ? "" : uri.getPath();
+        return path.startsWith("/search/label/") || path.startsWith("/feeds/posts/default");
+    }
+
+    private String extractLabelFromSearchPath(String path) {
+        if (path == null) return null;
+        String prefix = "/search/label/";
+        int idx = path.indexOf(prefix);
+        if (idx < 0) return null;
+        String remain = path.substring(idx + prefix.length());
+        int slash = remain.indexOf('/');
+        String enc = slash >= 0 ? remain.substring(0, slash) : remain;
+        try {
+            return URLDecoder.decode(enc, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception ignore) {
+            return enc;
+        }
+    }
+
+    /**
+     * 使用 Blogger JSON Feed 抓取文章；若 Feed 只含摘要，则回退抓取正文页。
+     * 返回写入的页数。
+     */
+    private int fetchFromBloggerFeed(URI start, com.example.novel.dto.request.RagCrawlRequest request, Path baseDir, List<String> errors) throws Exception {
+        String label = extractLabelFromSearchPath(start.getPath());
+        int fetchedPages = 0;
+        int startIndex = 1; // Blogger 起始下标
+        int pageSize = Math.min(100, Math.max(1, request.getMaxPages()));
+
+        while (fetchedPages < request.getMaxPages()) {
+            String feedUrl = buildFeedUrl(start, label, pageSize, startIndex);
+            String json;
+            try {
+                json = webClient.get().uri(feedUrl)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .headers(h -> { h.set(HttpHeaders.REFERER, start.toString()); h.set(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en;q=0.8"); })
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(15))
+                    .block();
+            } catch (Exception e) {
+                errors.add("读取Feed失败: " + e.getMessage());
+                break;
+            }
+            if (json == null || json.isBlank()) break;
+
+            com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(json);
+            com.fasterxml.jackson.databind.JsonNode feed = root.get("feed");
+            if (feed == null) break;
+            com.fasterxml.jackson.databind.JsonNode entries = feed.get("entry");
+            if (entries == null || !entries.isArray() || entries.size() == 0) break;
+
+            for (com.fasterxml.jackson.databind.JsonNode entry : entries) {
+                if (fetchedPages >= request.getMaxPages()) break;
+                String title = getJsonText(entry, "title", "$t");
+                String contentHtml = getJsonText(entry, "content", "$t");
+                if (contentHtml == null) contentHtml = getJsonText(entry, "summary", "$t");
+                String altLink = getAlternateLink(entry);
+
+                String text = null;
+                if (contentHtml != null && !contentHtml.isBlank()) {
+                    text = org.jsoup.Jsoup.parse(contentHtml).text();
+                }
+                if ((text == null || text.isBlank()) && altLink != null) {
+                    try {
+                        String html = webClient.get().uri(altLink)
+                            .accept(MediaType.TEXT_HTML)
+                            .headers(h -> { h.set(HttpHeaders.REFERER, start.toString()); h.set(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en;q=0.8"); })
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .timeout(Duration.ofSeconds(15))
+                            .block();
+                        if (html != null && !html.isBlank()) {
+                            org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(html, altLink);
+                            text = extractContent(doc, null);
+                            if (title == null || title.isBlank()) {
+                                title = extractTitle(doc, null);
+                            }
+                        }
+                    } catch (Exception e) {
+                        errors.add("正文抓取失败: " + altLink + " => " + e.getMessage());
+                    }
+                }
+
+                if (text != null && !text.isBlank()) {
+                    fetchedPages++;
+                    String safe = sanitizeFileName(title != null ? title : (label != null ? label : "post") + "_" + fetchedPages);
+                    Path file = baseDir.resolve(String.format("%03d_%s.txt", fetchedPages, safe));
+                    try {
+                        Files.writeString(file, text, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    } catch (Exception e) {
+                        errors.add("写入文件失败: " + file + " => " + e.getMessage());
+                    }
+                }
+            }
+
+            startIndex += entries.size();
+            if (entries.size() < pageSize) break;
+        }
+
+        return fetchedPages;
+    }
+
+    private String buildFeedUrl(URI start, String label, int maxResults, int startIndex) {
+        String base = start.getScheme() + "://" + start.getHost();
+        StringBuilder sb = new StringBuilder();
+        if (label != null && !label.isBlank()) {
+            String enc;
+            try { enc = URLEncoder.encode(label, java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { enc = label; }
+            sb.append(base).append("/feeds/posts/default/-/").append(enc).append("?alt=json");
+        } else {
+            sb.append(base).append("/feeds/posts/default?alt=json");
+        }
+        sb.append("&max-results=").append(maxResults);
+        if (startIndex > 1) sb.append("&start-index=").append(startIndex);
+        return sb.toString();
+    }
+
+    private String getJsonText(com.fasterxml.jackson.databind.JsonNode node, String field, String subfield) {
+        if (node == null) return null;
+        com.fasterxml.jackson.databind.JsonNode f = node.get(field);
+        if (f == null) return null;
+        com.fasterxml.jackson.databind.JsonNode s = f.get(subfield);
+        return s != null ? s.asText() : null;
+    }
+
+    private String getAlternateLink(com.fasterxml.jackson.databind.JsonNode entry) {
+        com.fasterxml.jackson.databind.JsonNode links = entry.get("link");
+        if (links != null && links.isArray()) {
+            for (com.fasterxml.jackson.databind.JsonNode l : links) {
+                String rel = l.has("rel") ? l.get("rel").asText() : null;
+                if ("alternate".equals(rel)) {
+                    return l.has("href") ? l.get("href").asText() : null;
+                }
+            }
+        }
+        return null;
+    }
+
+    private Pattern compileOrNull(List<String> patterns) {
+        if (patterns == null || patterns.isEmpty()) return null;
+        String joined = String.join("|", patterns);
+        try { return Pattern.compile(joined, Pattern.CASE_INSENSITIVE); } catch (Exception e) { return null; }
+    }
+
+    private boolean sameDomain(URI a, URI b) {
+        return Objects.equals(a.getHost(), b.getHost());
+    }
+
+    private String extractTitle(Document doc, String selector) {
+        if (selector != null && !selector.isBlank()) {
+            Element el = doc.selectFirst(selector);
+            if (el != null) return el.text();
+        }
+        String t = doc.title();
+        return t != null ? t.replaceAll("\\s+", " ").trim() : null;
+    }
+
+    private String extractContent(Document doc, String selector) {
+        if (selector != null && !selector.isBlank()) {
+            Element el = doc.selectFirst(selector);
+            if (el != null) return cleanText(el);
+        }
+        // 常见正文容器回退
+        String[] selectors = new String[] {
+            "#content", "div.content", "article", "#chaptercontent", ".read-content", "#contentTxt", "#BookText"
+        };
+        for (String sel : selectors) {
+            Element el = doc.selectFirst(sel);
+            if (el != null) return cleanText(el);
+        }
+        // 退化为全文文本
+        return doc.text();
+    }
+
+    private String cleanText(Element el) {
+        el.select("script,style,nav,header,footer,ins,iframe").remove();
+        String text = el.text();
+        return text.replace('\u00A0', ' ').replaceAll("\r?\n+", "\n").trim();
+    }
+
+    private double calculateSimilarity(String query, String content) {
+        String normalizedQuery = query.toLowerCase();
+        String normalizedContent = content.toLowerCase();
+
+        if (normalizedContent.contains(normalizedQuery)) {
+            return 1.0;
+        }
+
+        String[] queryWords = normalizedQuery.split("\\s+");
+        long matchingWords = Arrays.stream(queryWords)
+                .mapToLong(word -> normalizedContent.contains(word) ? 1 : 0)
+                .sum();
+
+        return (double) matchingWords / Math.max(1, queryWords.length);
+    }
+
+    private RagSearchResponse.RagSearchResult toSearchResult(DocumentChunk chunk) {
+        RagSearchResponse.RagSearchResult result = new RagSearchResponse.RagSearchResult();
+        result.setContent(chunk.getContent());
+        result.setSource(chunk.getSource());
+        result.setTitle(chunk.getTitle());
+        result.setExcerpt(chunk.getContent().length() > 200 ?
+                chunk.getContent().substring(0, 200) + "..." : chunk.getContent());
+        result.setSimilarity(0.8);
+        return result;
+    }
+
+    private static class DocumentChunk {
+        private String content;
+        private String source;
+        private String title;
+        private int chunkIndex;
+
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+        public String getSource() { return source; }
+        public void setSource(String source) { this.source = source; }
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public int getChunkIndex() { return chunkIndex; }
+        public void setChunkIndex(int chunkIndex) { this.chunkIndex = chunkIndex; }
+    }
+
+    private String sanitizeFileName(String name) {
+        if (name == null || name.isBlank()) return "untitled";
+        String cleaned = name.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        cleaned = cleaned.replaceAll("\r?\n", " ");
+        if (cleaned.length() > 80) cleaned = cleaned.substring(0, 80);
+        return cleaned.isBlank() ? "untitled" : cleaned;
+    }
+}
+
+

@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const mcp = axios.create({
-  baseURL: '/mcp-api',
+  baseURL: '/api/mcp-server',
   timeout: 15000,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json;charset=UTF-8' }

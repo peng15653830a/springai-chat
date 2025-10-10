@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.novel.mapper.NovelSessionMapper">
+
+  <resultMap id="sessionMap" type="com.example.novel.entity.NovelSession">
+    <id property="id" column="id"/>
+    <result property="title" column="title"/>
+    <result property="model" column="model"/>
+    <result property="temperature" column="temperature"/>
+    <result property="maxTokens" column="max_tokens"/>
+    <result property="topP" column="top_p"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="com.example.novel.entity.NovelSession" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO novel_sessions (title, model, temperature, max_tokens, top_p, created_at, updated_at)
+    VALUES (#{title}, #{model}, #{temperature}, #{maxTokens}, #{topP}, NOW(), NOW())
+  </insert>
+
+  <update id="update" parameterType="com.example.novel.entity.NovelSession">
+    UPDATE novel_sessions
+    SET title = #{title},
+        model = #{model},
+        temperature = #{temperature},
+        max_tokens = #{maxTokens},
+        top_p = #{topP},
+        updated_at = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <select id="selectById" resultMap="sessionMap">
+    SELECT * FROM novel_sessions WHERE id = #{id}
+  </select>
+
+  <select id="selectRecent" resultMap="sessionMap">
+    SELECT * FROM novel_sessions ORDER BY created_at DESC LIMIT #{limit}
+  </select>
+
+</mapper>
+

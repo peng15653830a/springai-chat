@@ -10,6 +10,10 @@
         <h3>MCP 工具</h3>
         <p>示例工具调用与自动化集成</p>
       </div>
+      <div class="card" @click="go('/novel')">
+        <h3>Novel 创作</h3>
+        <p>专业长文本创作工作台</p>
+      </div>
     </div>
   </div>
 </template>

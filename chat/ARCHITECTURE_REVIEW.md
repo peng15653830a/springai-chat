@@ -1,10 +1,10 @@
 # 后端架构与设计评审报告（Spring AI / WebFlux / MyBatis）
 
-本文面向本仓库 backend（Spring Boot 3 + Java 17），聚焦架构、软件设计、Spring AI 使用方式与可运维性，识别关键问题并提出循序渐进的改进建议。评审以“降低复杂性”为核心原则，尽量在不引入不必要抽象的前提下提升一致性、稳定性与可观测性。
+本文面向本仓库 chat 模块（Spring Boot 3 + Java 17），聚焦架构、软件设计、Spring AI 使用方式与可运维性，识别关键问题并提出循序渐进的改进建议。评审以"降低复杂性"为核心原则，尽量在不引入不必要抽象的前提下提升一致性、稳定性与可观测性。
 
-- 评审对象：`backend/`（Spring Boot 3、Spring AI 1.0、WebFlux、MyBatis）
+- 评审对象：`chat/`（Spring Boot 3、Spring AI 1.0、WebFlux、MyBatis）
 - 代码入口与关键文件：
-  - 配置：`backend/src/main/resources/application.yml`
+  - 配置：`src/main/resources/application.yml`
   - Spring AI 管理：`com.example.manager.ChatClientManager`
   - 模型装配：`com.example.config.OpenAiCompatibleConfig`、`DeepSeekConfig`、`GreatWallConfig`
   - 聊天主流程：`com.example.service.impl.AiChatServiceImpl`
@@ -175,7 +175,7 @@
 - 错误处理：`com.example.handler.*`
 - 长城模型：`com.example.integration.ai.greatwall.*`
 - 搜索服务：`com.example.service.impl.SearchServiceImpl`，`com.example.config.SearchProperties`
-- 测试：`backend/src/test/java`（覆盖控制器、服务与错误处理等）
+- 测试：`src/test/java`（覆盖控制器、服务与错误处理等）
 
 ---
 

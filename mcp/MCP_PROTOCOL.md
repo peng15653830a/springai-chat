@@ -208,6 +208,6 @@ const createOrder = async (product, quantity) => {
 
 1. 所有请求都需要通过POST方法发送到`/mcp/execute`端点
 2. 请求体必须是有效的JSON格式
-3. 每个请求必须包含[method](file:///Users/pengxu/IdeaProjects/order-system/backend/src/main/java/com/example/ordersystem/mcp/MCPProtocolHandler.java#L37-L37)字段
-4. [params](file:///Users/pengxu/IdeaProjects/order-system/backend/src/main/java/com/example/ordersystem/mcp/MCPProtocolHandler.java#L40-L40)字段是可选的，根据方法需求提供
-5. 响应总是包含[status](file:///Users/pengxu/IdeaProjects/order-system/backend/src/main/java/com/example/ordersystem/mcp/MCPProtocolHandler.java#L115-L115)字段，值为"success"或"error"
+3. 每个请求必须包含method字段
+4. params字段是可选的，根据方法需求提供
+5. 响应总是包含status字段，值为"success"或"error"

@@ -2,64 +2,64 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.example</groupId>
-  <artifactId>agent-core</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <name>agent-core</name>
-  <packaging>jar</packaging>
+    <!-- 继承父POM -->
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>springai-chat-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
 
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.4.2</version>
-    <relativePath/>
-  </parent>
+    <artifactId>agent-core</artifactId>
+    <name>Agent Core</name>
+    <packaging>jar</packaging>
+    <description>Shared core module for all agents</description>
 
-  <properties>
-    <java.version>17</java.version>
-    <spring-ai.version>1.0.0</spring-ai.version>
-    <lombok.version>1.18.30</lombok.version>
-  </properties>
-
-  <dependencyManagement>
+    <!-- Agent Core模块的依赖 -->
     <dependencies>
-      <dependency>
-        <groupId>org.springframework.ai</groupId>
-        <artifactId>spring-ai-bom</artifactId>
-        <version>${spring-ai.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
+        <!-- Reactor Core for Flux/Mono APIs -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+
+        <!-- Spring WebFlux for ServerSentEvent mapping -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- Spring Context -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <!-- Spring Boot AutoConfigure -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- Spring AI OpenAI Starter (provided scope for compilation) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Spring AI Core types are provided transitively by the starter above -->
     </dependencies>
-  </dependencyManagement>
 
-  <dependencies>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-context</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-autoconfigure</artifactId>
-    </dependency>
-
-    <!-- Use starter to pull ChatModel API for compilation (align with app) -->
-    <dependency>
-      <groupId>org.springframework.ai</groupId>
-      <artifactId>spring-ai-starter-model-openai</artifactId>
-      <version>${spring-ai.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>${lombok.version}</version>
-      <scope>provided</scope>
-    </dependency>
-  </dependencies>
-
+    <build>
+        <plugins>
+            <!-- 不需要Spring Boot插件，因为这是一个库模块 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>
-

@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Spring Boot Parent -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.2</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>springai-chat-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>SpringAI Chat Parent</name>
+    <description>Multi-module project for AI chat applications with MCP and Novel features</description>
+
+    <!-- 子模块 -->
+    <modules>
+        <module>common/agent-core</module>
+        <module>chat</module>
+        <module>novel</module>
+        <module>mcp</module>
+    </modules>
+
+    <!-- 公共属性 -->
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
+
+        <!-- 依赖版本统一管理 -->
+        <spring-ai.version>1.0.3</spring-ai.version>
+        <lombok.version>1.18.30</lombok.version>
+        <mybatis-spring-boot-starter.version>3.0.4</mybatis-spring-boot-starter.version>
+
+        <!-- 插件版本 -->
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <jacoco-maven-plugin.version>0.8.11</jacoco-maven-plugin.version>
+        <p3c-pmd-plugin.version>2.1.1</p3c-pmd-plugin.version>
+        <maven-pmd-plugin.version>3.17.0</maven-pmd-plugin.version>
+        <spotless-plugin.version>2.27.2</spotless-plugin.version>
+    </properties>
+
+    <!-- 依赖版本管理 -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring AI BOM -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- 内部模块依赖 -->
+            <dependency>
+                <groupId>com.example</groupId>
+                <artifactId>agent-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- 第三方依赖版本管理 -->
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>${mybatis-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- 公共依赖（所有子模块都会继承） -->
+    <dependencies>
+        <!-- Lombok - 所有模块都需要 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Spring Boot Test - 所有模块测试都需要 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- 构建配置 -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Maven编译器插件 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+
+                <!-- Spring Boot插件 -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+
+                <!-- JaCoCo测试覆盖率 -->
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco-maven-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- P3C代码规范检查 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-pmd-plugin</artifactId>
+                    <version>${maven-pmd-plugin.version}</version>
+                    <configuration>
+                        <targetJdk>17</targetJdk>
+                        <rulesets>
+                            <ruleset>rulesets/java/ali-comment.xml</ruleset>
+                            <ruleset>rulesets/java/ali-concurrent.xml</ruleset>
+                            <ruleset>rulesets/java/ali-constant.xml</ruleset>
+                            <ruleset>rulesets/java/ali-exception.xml</ruleset>
+                            <ruleset>rulesets/java/ali-flowcontrol.xml</ruleset>
+                            <ruleset>rulesets/java/ali-naming.xml</ruleset>
+                            <ruleset>rulesets/java/ali-oop.xml</ruleset>
+                            <ruleset>rulesets/java/ali-orm.xml</ruleset>
+                            <ruleset>rulesets/java/ali-other.xml</ruleset>
+                            <ruleset>rulesets/java/ali-set.xml</ruleset>
+                        </rulesets>
+                        <printFailingErrors>true</printFailingErrors>
+                        <failOnViolation>false</failOnViolation>
+                        <excludes>
+                            <exclude>**/target/**</exclude>
+                            <exclude>**/generated-sources/**</exclude>
+                        </excludes>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.alibaba.p3c</groupId>
+                            <artifactId>p3c-pmd</artifactId>
+                            <version>${p3c-pmd-plugin.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+
+                <!-- Spotless代码格式化 -->
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless-plugin.version}</version>
+                    <configuration>
+                        <java>
+                            <googleJavaFormat/>
+                            <removeUnusedImports/>
+                            <trimTrailingWhitespace/>
+                            <endWithNewline/>
+                        </java>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <!-- 所有子模块都应用的插件 -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- Maven仓库配置 -->
+    <repositories>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>spring-snapshots</id>
+            <name>Spring Snapshots</name>
+            <url>https://repo.spring.io/snapshot</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </repository>
+        <repository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <!-- 代码检查Profile -->
+    <profiles>
+        <profile>
+            <id>code-quality</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-pmd-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>p3c-check</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

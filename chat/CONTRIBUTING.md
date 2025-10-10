@@ -20,7 +20,7 @@
 - 提交前自检：`scripts/code-review.sh`（编译、PMD、格式检查）。
 
 ## 测试
-- 后端：`mvn clean verify` 或 `mvn test`（JaCoCo 覆盖率报告：`backend/target/site/jacoco/index.html`）。
+- 后端：`mvn clean verify` 或 `mvn test`（JaCoCo 覆盖率报告：`target/site/jacoco/index.html`）。
 - 前端：尚未集成测试框架，建议将复杂逻辑下沉为函数以便后续补测。
 
 ## Pull Request 流程
@@ -31,7 +31,7 @@
 - PR 必须包含：变更摘要、关联 Issue、测试步骤/结果，UI 变更请附截图；如涉及配置或接口，更新相应文档。
 
 ## 安全与配置
-- 禁止提交真实密钥。使用环境变量覆盖 `backend/src/main/resources/application.yml` 中的占位：如 `OPENAI_API_KEY`、`TAVILY_API_KEY`、数据库凭据等。
+- 禁止提交真实密钥。使用环境变量覆盖 `src/main/resources/application.yml` 中的占位：如 `OPENAI_API_KEY`、`TAVILY_API_KEY`、数据库凭据等。
 - 避免在前端代码中硬编码敏感信息。
 
 ## 参考

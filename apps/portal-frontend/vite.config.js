@@ -6,19 +6,28 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
+      // 具体路径优先匹配
+      // Novel API - 端口8083
+      '/api/novel': {
+        target: 'http://localhost:8083',
+        changeOrigin: true
+      },
+      // MCP Server API - 端口8082
+      '/api/mcp-server': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/mcp-server/, '/api')
+      },
+      // MCP Client API - 端口8081
+      '/api/mcp-client': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/mcp-client/, '/api')
+      },
+      // Chat API - 端口8080 (默认，最后匹配)
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true
-      },
-      '/mcp-api': {
-        target: 'http://127.0.0.1:8082',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/mcp-api/, '')
-      },
-      '/mcp-client-api': {
-        target: 'http://127.0.0.1:8081',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/mcp-client-api/, '')
       }
     }
   }

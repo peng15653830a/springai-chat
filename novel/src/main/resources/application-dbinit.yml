@@ -1,0 +1,6 @@
+spring:
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      schema-locations: classpath:database/novel-init.sql

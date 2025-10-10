@@ -1,0 +1,70 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: novel-backend
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        table-name: novel_embeddings
+        distance-type: cosine-distance
+        schema-validation: false
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: jimscard/adult-film-screenwriter-nsfw:latest
+          temperature: 0.7
+      embedding:
+        # 建议选择与维度匹配的embedding模型，例如 bge / nomic-embed
+        # 如果未指定，VectorStore 将使用已配置的 EmbeddingModel 默认值
+        options:
+          model: nomic-embed-text
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_chat}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+  sql:
+    init:
+      # 启用SQL初始化以创建Novel模块所需的表
+      mode: always
+      schema-locations: classpath:database/novel-init.sql
+
+novel:
+  rag:
+    # token 级分块优先，其次字符分块
+    chunk-tokens: 400
+    chunk-token-overlap: 40
+    chunk-size: 500
+    chunk-overlap: 50
+    material-path: ./materials
+    # 语义检索与抓取上限
+    max-topk-cap: 50
+    crawl:
+      max-pages-cap: 500
+      rate-limit-max-ms: 2000
+  mcp:
+    config-path: ~/.codex/config.toml
+
+logging:
+  level:
+    com.example.novel: DEBUG
+    root: INFO
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.example.novel.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

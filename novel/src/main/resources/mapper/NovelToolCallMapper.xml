@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.novel.mapper.NovelToolCallMapper">
+
+  <resultMap id="callMap" type="com.example.novel.entity.NovelToolCall">
+    <id property="id" column="id"/>
+    <result property="sessionId" column="session_id"/>
+    <result property="messageId" column="message_id"/>
+    <result property="toolName" column="tool_name"/>
+    <result property="inputJson" column="input_json"/>
+    <result property="resultJson" column="result_json"/>
+    <result property="status" column="status"/>
+    <result property="errorMessage" column="error_message"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="com.example.novel.entity.NovelToolCall" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO novel_tool_calls (session_id, message_id, tool_name, input_json, result_json, status, error_message, created_at, updated_at)
+    VALUES (#{sessionId}, #{messageId}, #{toolName}, #{inputJson}, #{resultJson}, #{status}, #{errorMessage}, NOW(), NOW())
+  </insert>
+
+  <update id="update" parameterType="com.example.novel.entity.NovelToolCall">
+    UPDATE novel_tool_calls
+    SET result_json = #{resultJson},
+        status = #{status},
+        error_message = #{errorMessage},
+        updated_at = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <select id="selectBySessionId" resultMap="callMap">
+    SELECT * FROM novel_tool_calls WHERE session_id = #{sessionId} ORDER BY created_at DESC
+  </select>
+
+  <select id="selectByMessageId" resultMap="callMap">
+    SELECT * FROM novel_tool_calls WHERE message_id = #{messageId} ORDER BY created_at DESC
+  </select>
+
+</mapper>
+

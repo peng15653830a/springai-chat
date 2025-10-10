@@ -1,0 +1,142 @@
+server:
+  port: 8080
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+  application:
+    name: ai-chat
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        enabled: false
+      image:
+        enabled: false
+      audio:
+        transcription:
+          enabled: false
+        speech:
+          enabled: false
+      moderations:
+        enabled: false
+      embedding:
+        enabled: false
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_chat}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      schema-locations: classpath:database/init.sql
+
+ai:
+  models:
+    enabled: ${MULTI_MODEL_ENABLED:true}
+    default-provider: ${DEFAULT_PROVIDER:deepseek}
+    default-model: ${DEFAULT_MODEL:deepseek-chat}
+    defaults:
+      temperature: 0.7
+      max-tokens: 4096
+      timeout-ms: 30000
+      thinking-budget: 50000
+      stream-enabled: true
+    providers:
+      deepseek:
+        enabled: ${DEEPSEEK_ENABLED:true}
+        display-name: "DeepSeek"
+        api-key: ${DEEPSEEK_API_KEY:}
+        base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+        connect-timeout-ms: 10000
+        read-timeout-ms: 30000
+        models:
+          - name: "deepseek-chat"
+            display-name: "DeepSeek Chat"
+            max-tokens: 4096
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            supports-tools: true
+            enabled: true
+            sort-order: 1
+      greatwall:
+        enabled: ${GREATWALL_ENABLED:false}
+        display-name: "���Ǵ�ģ��"
+        api-key: ${GREATWALL_API_KEY:}
+        base-url: ${GREATWALL_BASE_URL:}
+        connect-timeout-ms: 15000
+        read-timeout-ms: 60000
+        models:
+          - name: "greatwall-deepseek-v3"
+            display-name: "���ǡ�DeepSeek-V3"
+            max-tokens: 4096
+            temperature: 0.7
+            supports-thinking: false
+            supports-streaming: true
+            enabled: true
+            sort-order: 1
+            non-standard-api: true
+            tpuid-prefix: "guest"
+
+greatwall:
+  ssl:
+    skip-verification: ${GREATWALL_SSL_SKIP_VERIFICATION:true}
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.example.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    cache-enabled: true
+    lazy-loading-enabled: true
+
+logging:
+  level:
+    com.example: INFO
+    org.mybatis: INFO
+
+search:
+  tavily:
+    api-key: ${TAVILY_API_KEY:}
+    base-url: ${TAVILY_BASE_URL:https://api.tavily.com/search}
+  enabled: ${SEARCH_ENABLED:true}
+
+app:
+  chat:
+    max-history-size: 20
+    response-timeout: 300s
+    sse-timeout: 300s
+    search:
+      max-tool-calls: ${APP_CHAT_SEARCH_MAX_TOOL_CALLS:3}
+    streaming:
+      chunk-size: 50
+      buffer-timeout: 100ms
+      heartbeat-interval: 30s
+    error:
+      retry-attempts: 3
+      retry-delay: 1000ms
+  retry-timeout:
+    ai-chat:
+      connect-timeout-seconds: 30
+      response-timeout-seconds: 120
+      max-retries: 2
+      retry-backoff-ms: 1000
+    search:
+      connect-timeout-seconds: 10
+      response-timeout-seconds: 20
+      max-retries: 2
+      retry-backoff-ms: 500
+    database:
+      query-timeout-seconds: 15
+      max-retries: 1
+      retry-backoff-ms: 200

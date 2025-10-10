@@ -6,6 +6,7 @@ const Home = () => import('../pages/Home.vue')
 
 const Chat = () => import('../features/chat/views/Chat.vue')
 const Mcp = () => import('../features/mcp/views/Mcp.vue')
+const NovelWorkspace = () => import('../features/novel/views/NovelWorkspace.vue')
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -13,6 +14,7 @@ const routes = [
   { path: '/home', name: 'Home', component: Home, meta: { requiresAuth: true } },
   { path: '/chat', name: 'Chat', component: Chat, meta: { requiresAuth: true } },
   { path: '/mcp', name: 'Mcp', component: Mcp, meta: { requiresAuth: true } },
+  { path: '/novel', name: 'Novel', component: NovelWorkspace, meta: { requiresAuth: true } },
   // 预留占位：/chat/** 与 /mcp/** 将在迁移后注册
 ]
 

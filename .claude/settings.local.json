@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run serve:*)"
+      "mcp__sequential__sequentialthinking"
     ],
     "deny": [],
     "ask": [],
@@ -49,6 +49,14 @@
         "MYSQL_DATABASE": "ai_chat"
       },
       "description": "UV run MySQL MCP server for ai_chat database"
+    },
+    "chrome-devtools": {
+      "command": "D:\\nvm4w\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ],
+      "description": "Chrome DevTools MCP - Official Google Chrome debugging and automation"
     }
   }
 }
