@@ -264,11 +264,9 @@ cd apps/portal-frontend && npm install && npm run dev &
 
 | 文档 | 说明 | 链接 |
 |------|------|------|
-| **需求文档** | 功能需求、用户故事、验收标准 | [docs/requirements/](docs/requirements/) |
-| **设计文档** | 架构设计、API 设计、数据库设计 | [docs/design/](docs/design/) |
-| **部署文档** | 环境配置、部署步骤、运维管理 | [docs/deployment/](docs/deployment/) |
-| **架构分析** | 重复代码分析、改进方案 | [docs/SPRING_AI_ARCHITECTURE_ANALYSIS.md](docs/SPRING_AI_ARCHITECTURE_ANALYSIS.md) |
-| **改进总结** | 已完成的改进、代码统计 | [docs/FINAL_IMPROVEMENTS_SUMMARY.md](docs/FINAL_IMPROVEMENTS_SUMMARY.md) |
+| **需求文档** | 功能需求、用户故事、验收标准 | [docs/requirements/需求.md](docs/requirements/需求.md) |
+| **设计文档** | 架构设计、API 设计、数据库设计 | [docs/design/设计.md](docs/design/设计.md) |
+| **部署文档** | 环境配置、部署步骤、运维管理 | [docs/deployment/部署.md](docs/deployment/部署.md) |
 
 ---
 
