@@ -1,107 +1,74 @@
 package com.example.memory;
 
-import static com.example.constant.AiChatConstants.ROLE_ASSISTANT;
-import static com.example.constant.AiChatConstants.ROLE_SYSTEM;
-import static com.example.constant.AiChatConstants.ROLE_USER;
-
 import com.example.entity.Message;
 import com.example.mapper.MessageMapper;
 import com.example.service.MessageToolResultService;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.MessageType;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.stereotype.Component;
 
+/**
+ * Chat模块的数据库ChatMemory实现
+ * 继承AbstractDatabaseChatMemory，复用通用逻辑
+ */
 @Slf4j
+@Component
 @RequiredArgsConstructor
-public class DatabaseChatMemory implements ChatMemory {
+public class DatabaseChatMemory extends com.example.memory.AbstractDatabaseChatMemory {
 
   private final MessageMapper messageMapper;
   private final MessageToolResultService messageToolResultService;
 
   @Override
-  public List<org.springframework.ai.chat.messages.Message> get(String conversationId) {
-    Long cid = parseConversationId(conversationId);
-    if (cid == null) {
-      return List.of();
-    }
-
-    List<Message> history = messageMapper.selectByConversationId(cid);
-    List<org.springframework.ai.chat.messages.Message> result = new ArrayList<>();
-    for (Message m : history) {
-      if (Objects.equals(m.getRole(), ROLE_USER)) {
-        result.add(new UserMessage(m.getContent()));
-      } else if (Objects.equals(m.getRole(), ROLE_ASSISTANT)) {
-        result.add(new AssistantMessage(m.getContent()));
-      } else if (Objects.equals(m.getRole(), ROLE_SYSTEM)) {
-        result.add(new SystemMessage(m.getContent()));
-      }
-    }
-    return result;
-  }
-
-  @Override
-  public void add(String conversationId, List<org.springframework.ai.chat.messages.Message> messages) {
-    Long cid = parseConversationId(conversationId);
-    if (cid == null || messages == null || messages.isEmpty()) {
+  protected void saveMessage(Long conversationId, String role, String content) {
+    if ("user".equals(role) || "assistant".equals(role)) {
       return;
     }
 
-    for (org.springframework.ai.chat.messages.Message msg : messages) {
-      try {
-        Message entity = new Message();
-        entity.setConversationId(cid);
-
-        if (msg.getMessageType() == MessageType.USER) {
-          continue;
-        } else if (msg.getMessageType() == MessageType.ASSISTANT) {
-          continue;
-        } else if (msg.getMessageType() == MessageType.SYSTEM) {
-          entity.setRole(ROLE_SYSTEM);
-          entity.setContent(((SystemMessage) msg).getText());
-        } else {
-          continue;
-        }
-
-        messageMapper.insert(entity);
-      } catch (Exception e) {
-        log.error("保存聊天消息到数据库失败: {}", e.getMessage(), e);
-      }
-    }
+    Message entity = new Message();
+    entity.setConversationId(conversationId);
+    entity.setRole(role);
+    entity.setContent(content);
+    messageMapper.insert(entity);
   }
 
   @Override
-  public void clear(String conversationId) {
-    Long cid = parseConversationId(conversationId);
-    if (cid == null) {
-      return;
-    }
+  protected List<MessageEntity> loadMessages(Long conversationId) {
+    List<Message> messages = messageMapper.selectByConversationId(conversationId);
+    return messages.stream()
+        .map(
+            msg ->
+                new MessageEntity() {
+                  @Override
+                  public String getRole() {
+                    return msg.getRole();
+                  }
+
+                  @Override
+                  public String getContent() {
+                    return msg.getContent();
+                  }
+                })
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  protected void deleteMessages(Long conversationId) {
+    messageMapper.deleteByConversationId(conversationId);
+  }
+
+  @Override
+  protected void afterClear(Long conversationId) {
     try {
-      List<Message> messages = messageMapper.selectByConversationId(cid);
+      List<Message> messages = messageMapper.selectByConversationId(conversationId);
       if (messages != null && !messages.isEmpty()) {
-        java.util.List<Long> ids = messages.stream().map(Message::getId).toList();
-        try {
-          messageToolResultService.deleteMessageToolResultsByMessageIds(ids);
-        } catch (Exception ignore) {}
+        List<Long> ids = messages.stream().map(Message::getId).toList();
+        messageToolResultService.deleteMessageToolResultsByMessageIds(ids);
       }
-      messageMapper.deleteByConversationId(cid);
     } catch (Exception e) {
-      log.warn("清理会话历史失败: {}", e.getMessage());
-    }
-  }
-
-  private Long parseConversationId(String conversationId) {
-    try {
-      return Long.valueOf(conversationId);
-    } catch (Exception e) {
-      log.warn("非法的conversationId: {}", conversationId);
-      return null;
+      log.warn("清理tool results失败: {}", e.getMessage());
     }
   }
 }
