@@ -2,14 +2,18 @@ package com.example.stream.springai;
 
 import com.example.stream.TextStreamClient;
 import com.example.stream.TextStreamRequest;
+import com.example.tool.ToolManager;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
 /**
- * 基于 Spring AI ChatClient 的通用文本流客户端。
+ * 基于 Spring AI ChatClient 的通用文本流客户端
+ * 使用ToolManager动态注入工具，避免不必要的工具注册
  */
 @Slf4j
 @Component
@@ -18,7 +22,9 @@ public class SpringAiTextStreamClient implements TextStreamClient {
 
   private final ChatClientResolver clientResolver;
   private final ChatOptionsFactory optionsFactory;
-  private final ToolsProvider toolsProvider;
+  
+  @Autowired(required = false)
+  private ToolManager toolManager;
 
   @Override
   public Flux<String> stream(TextStreamRequest request) {
@@ -55,14 +61,12 @@ public class SpringAiTextStreamClient implements TextStreamClient {
 
     var promptSpec = options != null ? promptBuilder.options(options) : promptBuilder;
 
-    Object[] tools = null;
-    try {
-      tools = toolsProvider != null ? toolsProvider.resolveTools(request) : null;
-    } catch (Exception e) {
-      log.warn("toolsProvider resolve failed: {}", e.getMessage());
-    }
-    if (tools != null && tools.length > 0) {
-      promptSpec = promptSpec.tools(tools);
+    if (toolManager != null) {
+      List<Object> tools = toolManager.resolveTools(request);
+      if (!tools.isEmpty()) {
+        promptSpec = promptSpec.tools(tools.toArray());
+        log.debug("注入 {} 个工具到prompt", tools.size());
+      }
     }
 
     return promptSpec
