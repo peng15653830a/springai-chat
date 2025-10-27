@@ -13,7 +13,6 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,12 +26,11 @@ import org.springframework.stereotype.Component;
  *   <li>注入MessageChatMemoryAdvisor和SimpleLoggerAdvisor</li>
  * </ul>
  * 
- * <p>替代：chat模块的ChatClientManager和novel模块的NovelClientManager
+ * <p>所有模块共享此管理器，消除重复的ChatClient创建逻辑
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnMissingBean(name = "chatClientManager")
 public class UnifiedChatClientManager implements ChatClientResolver, ClientManager {
 
   private final ModelProviderFactory modelProviderFactory;
