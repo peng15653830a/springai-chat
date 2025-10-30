@@ -18,11 +18,6 @@
 
     <!-- Novel模块特有的依赖 -->
     <dependencies>
-        <!-- Spring AI OpenAI Starter (for generic OpenAI-style providers) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
-        </dependency>
         <!-- Spring AI Ollama Starter -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
@@ -50,12 +45,6 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-jsoup-document-reader</artifactId>
         </dependency>
-        <!-- Spring Boot WebFlux for reactive SSE streaming -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-
         <!-- Spring Boot Web for REST API -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

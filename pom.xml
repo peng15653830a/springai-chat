@@ -94,6 +94,16 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- 通用的响应式与AI模型依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
         <!-- Spring Boot Test - 所有模块测试都需要 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

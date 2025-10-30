@@ -2,6 +2,8 @@ server:
   port: 8083
 
 spring:
+  config:
+    import: classpath:application-common.yml
   application:
     name: novel-backend
   ai:
@@ -22,11 +24,6 @@ spring:
         # 如果未指定，VectorStore 将使用已配置的 EmbeddingModel 默认值
         options:
           model: nomic-embed-text
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_chat}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
   sql:
     init:
       # 启用SQL初始化以创建Novel模块所需的表

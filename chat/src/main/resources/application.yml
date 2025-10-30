@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  config:
+    import: classpath:application-common.yml
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
@@ -12,27 +14,6 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   application:
     name: ai-chat
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      chat:
-        enabled: false
-      image:
-        enabled: false
-      audio:
-        transcription:
-          enabled: false
-        speech:
-          enabled: false
-      moderations:
-        enabled: false
-      embedding:
-        enabled: false
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_chat}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
   sql:
     init:
       mode: always

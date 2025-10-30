@@ -25,12 +25,6 @@
             <artifactId>reactor-core</artifactId>
         </dependency>
 
-        <!-- Spring WebFlux for ServerSentEvent mapping -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-
         <!-- Spring Context -->
         <dependency>
             <groupId>org.springframework</groupId>
@@ -42,15 +36,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
-
-        <!-- Spring AI OpenAI Starter (provided scope for compilation) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Spring AI Core types are provided transitively by the starter above -->
     </dependencies>
 
     <build>

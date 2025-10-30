@@ -11,6 +11,7 @@ import com.example.novel.converter.NovelModelResponseConverter;
 import com.example.novel.dto.request.NovelStreamRequest;
 import com.example.novel.dto.response.ModelListResponse;
 import com.example.novel.service.NovelService;
+import com.example.service.BaseChatService;
 import com.example.service.catalog.ModelCatalogService;
 import com.example.stream.TextStreamRequest;
 import com.example.stream.springai.SpringAiTextStreamClient;
@@ -18,7 +19,6 @@ import com.example.strategy.model.ModelSelector;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -26,17 +26,34 @@ import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class NovelServiceImpl implements NovelService {
+public class NovelServiceImpl extends BaseChatService implements NovelService {
 
   private final ChatErrorHandler errorHandler;
-  private final SpringAiTextStreamClient textStreamClient;
   private final ModelSelector modelSelector;
   private final ModelCatalogService modelCatalogService;
   private final com.example.novel.mapper.NovelSessionMapper novelSessionMapper;
   private final com.example.novel.mapper.NovelMessageMapper novelMessageMapper;
   private final MultiModelProperties multiModelProperties;
   private final NovelModelResponseConverter modelResponseConverter;
+
+  public NovelServiceImpl(
+      ChatErrorHandler errorHandler,
+      SpringAiTextStreamClient textStreamClient,
+      ModelSelector modelSelector,
+      ModelCatalogService modelCatalogService,
+      com.example.novel.mapper.NovelSessionMapper novelSessionMapper,
+      com.example.novel.mapper.NovelMessageMapper novelMessageMapper,
+      MultiModelProperties multiModelProperties,
+      NovelModelResponseConverter modelResponseConverter) {
+    super(textStreamClient);
+    this.errorHandler = errorHandler;
+    this.modelSelector = modelSelector;
+    this.modelCatalogService = modelCatalogService;
+    this.novelSessionMapper = novelSessionMapper;
+    this.novelMessageMapper = novelMessageMapper;
+    this.multiModelProperties = multiModelProperties;
+    this.modelResponseConverter = modelResponseConverter;
+  }
 
   @Override
   public Mono<ModelListResponse> getAvailableModels() {
@@ -91,21 +108,17 @@ public class NovelServiceImpl implements NovelService {
             .deepThinking(false)
             .build();
 
-    var source = textStreamClient.stream(req);
-    var hot = source.replay().autoConnect(2);
+    Flux<ChatEvent> streamFlux =
+        streamText(
+            req,
+            (requestSpec, content) ->
+                Mono.fromSupplier(
+                    () -> {
+                      // 注意：assistant消息已由MessageChatMemoryAdvisor自动保存，无需手动保存
+                      return ChatEvent.end(null);
+                    }));
 
-    return Flux.concat(
-            Flux.just(ChatEvent.start("novel-generation")),
-            Flux.merge(
-                hot.map(ChatEvent::chunk),
-                hot.scanWith(StringBuilder::new, (sb, c) -> sb.append(c))
-                    .takeLast(1)
-                    .doOnNext(
-                        sb -> {
-                          // 注意：assistant消息已由MessageChatMemoryAdvisor自动保存
-                          // 无需手动保存
-                        })
-                    .thenMany(Flux.just(ChatEvent.end(null)))))
+    return Flux.concat(Flux.just(ChatEvent.start("novel-generation")), streamFlux)
         .onErrorResume(errorHandler::handleChatError)
         .cast(Object.class);
   }
