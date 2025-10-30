@@ -6,6 +6,7 @@ import com.example.entity.Message;
 import com.example.mapper.ConversationMapper;
 import com.example.mapper.MessageMapper;
 import com.example.service.ConversationService;
+import com.example.service.ConversationTitleService;
 import com.example.service.MessageToolResultService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
