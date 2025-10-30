@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * 统一的ChatClient管理器
+ * ChatClient管理器
  * 
  * <p>职责：
  * <ul>
@@ -27,11 +27,14 @@ import org.springframework.stereotype.Component;
  * </ul>
  * 
  * <p>所有模块共享此管理器，消除重复的ChatClient创建逻辑
+ * 
+ * <p>注意：此类负责管理ChatClient实例，不要与{@link com.example.service.ChatModelCatalogService}混淆
+ * （后者提供模型目录查询服务）
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UnifiedChatClientManager implements ChatClientResolver, ClientManager {
+public class ChatClientManager implements ChatClientResolver, ClientManager {
 
   private final ModelProviderFactory modelProviderFactory;
   private final SystemPromptProvider systemPromptProvider;

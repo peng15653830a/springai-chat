@@ -24,7 +24,7 @@ public class ModelController {
 
   @Autowired private ChatModelCatalogService chatModelCatalogService;
   
-  @Autowired private com.example.client.UnifiedChatClientManager unifiedChatClientManager;
+  @Autowired private com.example.client.ChatClientManager chatClientManager;
 
   @Autowired private UserModelPreferenceService userModelPreferenceService;
 
@@ -38,7 +38,7 @@ public class ModelController {
     log.info("获取可用提供者列表");
 
     try {
-      List<String> availableProviders = unifiedChatClientManager.getAvailableProviders();
+      List<String> availableProviders = chatClientManager.getAvailableProviders();
       List<ProviderInfo> providers =
           availableProviders.stream()
               .map(
@@ -89,7 +89,7 @@ public class ModelController {
     log.info("获取所有可用模型列表");
 
     try {
-      List<String> availableProviders = unifiedChatClientManager.getAvailableProviders();
+      List<String> availableProviders = chatClientManager.getAvailableProviders();
       List<ProviderInfo> providersWithModels =
           availableProviders.stream()
               .map(

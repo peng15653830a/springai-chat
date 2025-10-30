@@ -2,10 +2,11 @@
 
 ## 执行概览
 
-✅ **改进完成**: 10项核心改进
+✅ **改进完成**: 11项核心改进
 ✅ **代码减少**: 160+行
 ✅ **新增组件**: 8个可复用组件
-✅ **文档产出**: 3份详细文档
+✅ **文档产出**: 4份详细文档
+✅ **命名优化**: 2个类重命名
 
 ---
 
@@ -137,6 +138,26 @@ List<ModelConfig> getEnabledModels(provider)
 
 ---
 
+#### 11. UnifiedChatClientManager → ChatClientManager
+**重命名**: 去掉冗余的"Unified"前缀
+
+**原因**:
+- "Unified"是历史遗留，用于和旧的ChatClientManager区分
+- 旧的ChatClientManager已改名为ChatModelCatalogService
+- "Unified"前缀变得冗余
+
+**影响范围** (4处):
+- ModelController
+- DefaultModelSelector
+- ChatModelCatalogService
+
+**收益**:
+- 命名更简洁（-8个字符）
+- 语义更清晰
+- 降低理解成本
+
+---
+
 ## 文档产出
 
 ### 1. architecture-analysis.md
@@ -158,6 +179,13 @@ List<ModelConfig> getEnabledModels(provider)
 - 代码对比
 - 量化数据
 - 未来路线图
+
+### 4. naming-improvements.md
+**内容**: 命名规范改进记录
+- UnifiedChatClientManager重命名决策
+- 命名原则总结（Manager vs Service）
+- 命名规范指南
+- 未来改进建议
 
 ---
 
@@ -187,9 +215,15 @@ List<ModelConfig> getEnabledModels(provider)
 3. ✅ `NovelModelResponseConverter` - Novel响应转换器
 4. ✅ `ConversationTitleService` - 标题生成服务
 5. ✅ `ChatModelCatalogService` - 模型目录服务（重命名）
-6. ✅ `MessageRoles` - 消息角色常量
-7. ✅ `NovelConstants` - Novel模块常量
-8. ✅ MultiModelProperties便捷方法
+6. ✅ `ChatClientManager` - ChatClient管理器（简化命名）
+7. ✅ `MessageRoles` - 消息角色常量
+8. ✅ `NovelConstants` - Novel模块常量
+9. ✅ MultiModelProperties便捷方法
+
+### 命名优化
+
+1. ✅ `ChatClientManager`（旧）→ `ChatModelCatalogService`（名实相符）
+2. ✅ `UnifiedChatClientManager` → `ChatClientManager`（去除冗余前缀）
 
 ---
 

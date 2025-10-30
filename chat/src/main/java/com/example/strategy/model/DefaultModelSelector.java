@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 public class DefaultModelSelector implements ModelSelector {
 
   private final ChatModelCatalogService chatModelCatalogService;
-  private final com.example.client.UnifiedChatClientManager unifiedChatClientManager;
+  private final com.example.client.ChatClientManager chatClientManager;
   private final UserModelPreferenceService userModelPreferenceService;
   private final MultiModelProperties properties;
 
@@ -29,7 +29,7 @@ public class DefaultModelSelector implements ModelSelector {
   public String getActualProviderName(String providerName) {
     if (providerName != null && !providerName.trim().isEmpty()) {
       // 检查指定的提供者是否可用
-      if (unifiedChatClientManager.isAvailable(providerName)) {
+      if (chatClientManager.isAvailable(providerName)) {
         return providerName;
       } else {
         log.warn("指定的提供者 {} 不可用，使用默认提供者", providerName);

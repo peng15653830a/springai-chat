@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
  *   <li>检查模型能力（thinking、streaming等）</li>
  * </ul>
  *
- * <p>注意：ChatClient实例管理在 {@link com.example.client.UnifiedChatClientManager}
+ * <p>注意：ChatClient实例管理在 {@link com.example.client.ChatClientManager}
  *
  * @author xupeng
  */
