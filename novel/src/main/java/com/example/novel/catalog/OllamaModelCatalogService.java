@@ -1,6 +1,7 @@
 package com.example.novel.catalog;
 
 import com.example.config.MultiModelProperties;
+import com.example.converter.ModelInfoConverter;
 import com.example.dto.common.ModelInfo;
 import com.example.service.catalog.ModelCatalogService;
 import java.util.Collections;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class OllamaModelCatalogService implements ModelCatalogService {
 
   private final MultiModelProperties properties;
+  private final ModelInfoConverter modelInfoConverter;
 
   @Override
   public List<ModelInfo> listModels() {
@@ -34,7 +36,7 @@ public class OllamaModelCatalogService implements ModelCatalogService {
                         ? java.util.stream.Stream.empty()
                         : providerConfig.getModels().stream()
                             .filter(MultiModelProperties.ModelConfig::isEnabled))
-            .map(this::convert)
+            .map(modelInfoConverter::convert)
             .collect(Collectors.toList());
     models.sort(ModelCatalogService.super::compare);
     return models;
@@ -46,19 +48,5 @@ public class OllamaModelCatalogService implements ModelCatalogService {
       return Optional.empty();
     }
     return listModels().stream().filter(m -> modelName.equals(m.getName())).findFirst();
-  }
-
-  private ModelInfo convert(MultiModelProperties.ModelConfig cfg) {
-    ModelInfo info = new ModelInfo();
-    info.setId((long) cfg.getName().hashCode());
-    info.setName(cfg.getName());
-    info.setDisplayName(cfg.getDisplayName() != null ? cfg.getDisplayName() : cfg.getName());
-    info.setMaxTokens(cfg.getMaxTokens());
-    info.setTemperature(cfg.getTemperature());
-    info.setSupportsThinking(cfg.isSupportsThinking());
-    info.setSupportsStreaming(cfg.isSupportsStreaming());
-    info.setAvailable(cfg.isEnabled());
-    info.setSortOrder(cfg.getSortOrder());
-    return info;
   }
 }

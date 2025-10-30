@@ -1,5 +1,9 @@
 package com.example.memory;
 
+import static com.example.constant.MessageRoles.ASSISTANT;
+import static com.example.constant.MessageRoles.SYSTEM;
+import static com.example.constant.MessageRoles.USER;
+
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -128,9 +132,9 @@ public abstract class AbstractDatabaseChatMemory implements ChatMemory {
 
     MessageType type = msg.getMessageType();
     return switch (type) {
-      case USER -> "user";
-      case ASSISTANT -> "assistant";
-      case SYSTEM -> "system";
+      case USER -> USER;
+      case ASSISTANT -> ASSISTANT;
+      case SYSTEM -> SYSTEM;
       default -> null;
     };
   }
@@ -146,9 +150,9 @@ public abstract class AbstractDatabaseChatMemory implements ChatMemory {
     }
 
     return switch (entity.getRole().toLowerCase()) {
-      case "user" -> new UserMessage(content);
-      case "assistant" -> new AssistantMessage(content);
-      case "system" -> new SystemMessage(content);
+      case USER -> new UserMessage(content);
+      case ASSISTANT -> new AssistantMessage(content);
+      case SYSTEM -> new SystemMessage(content);
       default -> {
         log.warn("未知角色: {}", entity.getRole());
         yield null;

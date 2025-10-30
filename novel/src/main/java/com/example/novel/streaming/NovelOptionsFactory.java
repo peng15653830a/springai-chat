@@ -1,5 +1,7 @@
 package com.example.novel.streaming;
 
+import static com.example.novel.constant.NovelConstants.PROVIDER_OLLAMA;
+
 import com.example.config.MultiModelProperties;
 import com.example.stream.TextStreamRequest;
 import com.example.stream.springai.ChatOptionsFactory;
@@ -33,7 +35,7 @@ public class NovelOptionsFactory implements ChatOptionsFactory {
             ? request.getMaxTokens()
             : multiModelProperties.getDefaults().getMaxTokens();
 
-    if ("ollama".equalsIgnoreCase(provider)) {
+    if (PROVIDER_OLLAMA.equalsIgnoreCase(provider)) {
       Double topP = request.getTopP();
       return OllamaOptions.builder()
           .model(model)

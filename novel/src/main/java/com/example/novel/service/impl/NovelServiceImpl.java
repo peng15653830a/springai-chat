@@ -1,9 +1,13 @@
 package com.example.novel.service.impl;
 
-import com.example.dto.common.ModelInfo;
+import static com.example.novel.constant.NovelConstants.DEFAULT_SESSION_TITLE;
+import static com.example.novel.constant.NovelConstants.ROLE_USER;
+
 import com.example.config.MultiModelProperties;
+import com.example.dto.common.ModelInfo;
 import com.example.dto.stream.ChatEvent;
 import com.example.handler.ChatErrorHandler;
+import com.example.novel.converter.NovelModelResponseConverter;
 import com.example.novel.dto.request.NovelStreamRequest;
 import com.example.novel.dto.response.ModelListResponse;
 import com.example.novel.service.NovelService;
@@ -32,6 +36,7 @@ public class NovelServiceImpl implements NovelService {
   private final com.example.novel.mapper.NovelSessionMapper novelSessionMapper;
   private final com.example.novel.mapper.NovelMessageMapper novelMessageMapper;
   private final MultiModelProperties multiModelProperties;
+  private final NovelModelResponseConverter modelResponseConverter;
 
   @Override
   public Mono<ModelListResponse> getAvailableModels() {
@@ -45,23 +50,11 @@ public class NovelServiceImpl implements NovelService {
   }
 
   private ModelListResponse buildModelListResponse(List<ModelInfo> modelInfos) {
-    List<ModelInfo> safeInfos =
-        modelInfos != null ? modelInfos : Collections.emptyList();
+    List<ModelInfo> safeInfos = modelInfos != null ? modelInfos : Collections.emptyList();
     ModelListResponse response = new ModelListResponse();
     response.setModels(
-        safeInfos.stream().map(this::toResponseModel).collect(Collectors.toList()));
+        safeInfos.stream().map(modelResponseConverter::convert).collect(Collectors.toList()));
     return response;
-  }
-
-  private ModelListResponse.ModelInfo toResponseModel(ModelInfo info) {
-    ModelListResponse.ModelInfo dto = new ModelListResponse.ModelInfo();
-    dto.setName(info.getName());
-    dto.setDisplayName(
-        info.getDisplayName() != null ? info.getDisplayName() : info.getName());
-    dto.setAvailable(info.getAvailable() == null ? Boolean.TRUE : info.getAvailable());
-    dto.setSize(null);
-    dto.setModifiedAt(null);
-    return dto;
   }
 
   @Override
@@ -71,7 +64,7 @@ public class NovelServiceImpl implements NovelService {
 
     // 创建会话并保存用户消息
     var session = new com.example.novel.entity.NovelSession();
-    session.setTitle("创作会话");
+    session.setTitle(DEFAULT_SESSION_TITLE);
     session.setModel(selected.modelName());
     session.setTemperature(request.getTemperature());
     session.setMaxTokens(request.getMaxTokens());
@@ -80,7 +73,7 @@ public class NovelServiceImpl implements NovelService {
 
     var userMsg = new com.example.novel.entity.NovelMessage();
     userMsg.setSessionId(session.getId());
-    userMsg.setRole("user");
+    userMsg.setRole(ROLE_USER);
     userMsg.setContent(request.getPrompt());
     novelMessageMapper.insert(userMsg);
 
