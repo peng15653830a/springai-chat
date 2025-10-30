@@ -1,17 +1,17 @@
 package com.example.service.impl;
 
-import com.example.config.ChatStreamingProperties;
 import com.example.dto.request.StreamChatRequest;
 import com.example.dto.stream.ChatEvent;
 import com.example.handler.ChatErrorHandler;
 import com.example.service.AiChatService;
+import com.example.service.BaseChatService;
 import com.example.service.ConversationService;
 import com.example.service.MessageService;
 import com.example.service.SseEventPublisher;
+import com.example.stream.TextStreamRequest;
 import com.example.stream.springai.SpringAiTextStreamClient;
 import com.example.strategy.model.ModelSelector;
 import com.example.strategy.prompt.PromptBuilder;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -19,17 +19,31 @@ import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class AiChatServiceImpl implements AiChatService {
+public class AiChatServiceImpl extends BaseChatService implements AiChatService {
 
-  private final ChatStreamingProperties streamingProperties;
   private final ConversationService conversationService;
   private final MessageService messageService;
   private final ModelSelector modelSelector;
   private final PromptBuilder promptBuilder;
   private final ChatErrorHandler errorHandler;
   private final SseEventPublisher sseEventPublisher;
-  private final SpringAiTextStreamClient textStreamClient;
+
+  public AiChatServiceImpl(
+      ConversationService conversationService,
+      MessageService messageService,
+      ModelSelector modelSelector,
+      PromptBuilder promptBuilder,
+      ChatErrorHandler errorHandler,
+      SseEventPublisher sseEventPublisher,
+      SpringAiTextStreamClient textStreamClient) {
+    super(textStreamClient);
+    this.conversationService = conversationService;
+    this.messageService = messageService;
+    this.modelSelector = modelSelector;
+    this.promptBuilder = promptBuilder;
+    this.errorHandler = errorHandler;
+    this.sseEventPublisher = sseEventPublisher;
+  }
 
   @Override
   public Flux<ChatEvent> streamChat(StreamChatRequest request) {
@@ -67,12 +81,12 @@ public class AiChatServiceImpl implements AiChatService {
           return messageService
               .saveUserMessageAsync(request.getConversationId(), userMessage)
               .flatMapMany(
-                  saved ->
+                  ignored ->
                       buildPrompt(request)
                           .flatMapMany(
                               prompt -> {
-                                var req =
-                                    com.example.stream.TextStreamRequest.builder()
+                                TextStreamRequest streamRequest =
+                                    TextStreamRequest.builder()
                                         .provider(selected.providerName())
                                         .model(selected.modelName())
                                         .prompt(prompt)
@@ -82,18 +96,15 @@ public class AiChatServiceImpl implements AiChatService {
                                         .searchEnabled(request.isSearchEnabled())
                                         .build();
 
-                                var source = textStreamClient.stream(req);
-                                var hot = source.replay().autoConnect(2);
-
-                                return Flux.merge(
-                                    hot.map(ChatEvent::chunk),
-                                    hot.scanWith(StringBuilder::new, (sb, c) -> sb.append(c))
-                                        .takeLast(1)
-                                        .flatMap(
-                                            sb ->
-                                                messageService
-                                                    .saveAiMessageAsync(
-                                                        request.getConversationId(), sb.toString(), null)));
+                                return streamText(
+                                    streamRequest,
+                                    (req, content) -> {
+                                      if (content == null || content.isEmpty()) {
+                                        return Mono.empty();
+                                      }
+                                      return messageService.saveAiMessageAsync(
+                                          request.getConversationId(), content, null);
+                                    });
                               }));
         });
   }
