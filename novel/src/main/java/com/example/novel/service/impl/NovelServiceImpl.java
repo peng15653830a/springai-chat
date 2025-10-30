@@ -26,17 +26,32 @@ import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class NovelServiceImpl implements NovelService {
+public class NovelServiceImpl extends com.example.service.BaseChatService implements NovelService {
 
-  private final ChatErrorHandler errorHandler;
-  private final SpringAiTextStreamClient textStreamClient;
   private final ModelSelector modelSelector;
   private final ModelCatalogService modelCatalogService;
   private final com.example.novel.mapper.NovelSessionMapper novelSessionMapper;
   private final com.example.novel.mapper.NovelMessageMapper novelMessageMapper;
   private final MultiModelProperties multiModelProperties;
   private final NovelModelResponseConverter modelResponseConverter;
+
+  public NovelServiceImpl(
+      ChatErrorHandler errorHandler,
+      SpringAiTextStreamClient textStreamClient,
+      ModelSelector modelSelector,
+      ModelCatalogService modelCatalogService,
+      com.example.novel.mapper.NovelSessionMapper novelSessionMapper,
+      com.example.novel.mapper.NovelMessageMapper novelMessageMapper,
+      MultiModelProperties multiModelProperties,
+      NovelModelResponseConverter modelResponseConverter) {
+    super(textStreamClient, errorHandler);
+    this.modelSelector = modelSelector;
+    this.modelCatalogService = modelCatalogService;
+    this.novelSessionMapper = novelSessionMapper;
+    this.novelMessageMapper = novelMessageMapper;
+    this.multiModelProperties = multiModelProperties;
+    this.modelResponseConverter = modelResponseConverter;
+  }
 
   @Override
   public Mono<ModelListResponse> getAvailableModels() {
@@ -91,23 +106,17 @@ public class NovelServiceImpl implements NovelService {
             .deepThinking(false)
             .build();
 
-    var source = textStreamClient.stream(req);
-    var hot = source.replay().autoConnect(2);
-
     return Flux.concat(
             Flux.just(ChatEvent.start("novel-generation")),
-            Flux.merge(
-                hot.map(ChatEvent::chunk),
-                hot.scanWith(StringBuilder::new, (sb, c) -> sb.append(c))
-                    .takeLast(1)
-                    .doOnNext(
-                        sb -> {
-                          // 注意：assistant消息已由MessageChatMemoryAdvisor自动保存
-                          // 无需手动保存
-                        })
-                    .thenMany(Flux.just(ChatEvent.end(null)))))
-        .onErrorResume(errorHandler::handleChatError)
+            performStreamChat(req).cast(Object.class),
+            Flux.just(ChatEvent.end(null)))
         .cast(Object.class);
   }
 
+  @Override
+  protected Flux<ChatEvent> handleAssistantMessage(String conversationId, String content) {
+    // 注意：assistant消息已由MessageChatMemoryAdvisor自动保存
+    // 无需手动保存
+    return Flux.empty();
+  }
 }
