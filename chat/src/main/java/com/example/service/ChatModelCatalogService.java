@@ -1,6 +1,7 @@
-package com.example.manager;
+package com.example.service;
 
 import com.example.config.MultiModelProperties;
+import com.example.converter.ModelInfoConverter;
 import com.example.dto.common.ModelInfo;
 import com.example.service.catalog.ModelCatalogService;
 import com.example.service.factory.ModelProviderFactory;
@@ -8,23 +9,31 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 /**
  * Chat模块的模型目录服务
  * 提供模型列表、模型信息查询等功能
- * 
- * <p>注意：ChatClient管理已迁移到 {@link com.example.client.UnifiedChatClientManager}
+ *
+ * <p>职责：
+ * <ul>
+ *   <li>提供可用模型列表</li>
+ *   <li>按名称查询模型信息</li>
+ *   <li>检查模型能力（thinking、streaming等）</li>
+ * </ul>
+ *
+ * <p>注意：ChatClient实例管理在 {@link com.example.client.UnifiedChatClientManager}
  *
  * @author xupeng
  */
 @Slf4j
-@Component
+@Service
 @RequiredArgsConstructor
-public class ChatClientManager implements ModelCatalogService {
+public class ChatModelCatalogService implements ModelCatalogService {
 
   private final MultiModelProperties properties;
   private final ModelProviderFactory modelProviderFactory;
+  private final ModelInfoConverter modelInfoConverter;
 
   @Override
   public List<ModelInfo> listModels() {
@@ -38,7 +47,7 @@ public class ChatClientManager implements ModelCatalogService {
                         ? java.util.stream.Stream.empty()
                         : providerConfig.getModels().stream()
                             .filter(MultiModelProperties.ModelConfig::isEnabled))
-            .map(this::convertToModelInfo)
+            .map(modelInfoConverter::convert)
             .collect(Collectors.toList());
 
     models.sort(ModelCatalogService.super::compare);
@@ -62,7 +71,7 @@ public class ChatClientManager implements ModelCatalogService {
                         .filter(MultiModelProperties.ModelConfig::isEnabled))
         .filter(model -> modelName.equals(model.getName()))
         .findFirst()
-        .map(this::convertToModelInfo);
+        .map(modelInfoConverter::convert);
   }
 
   public List<ModelInfo> getModels(String provider) {
@@ -74,7 +83,7 @@ public class ChatClientManager implements ModelCatalogService {
 
     return config.getModels().stream()
         .filter(MultiModelProperties.ModelConfig::isEnabled)
-        .map(this::convertToModelInfo)
+        .map(modelInfoConverter::convert)
         .collect(Collectors.toList());
   }
 
@@ -87,7 +96,7 @@ public class ChatClientManager implements ModelCatalogService {
 
     return config.getModels().stream()
         .filter(model -> model.getName().equals(modelName))
-        .map(this::convertToModelInfo)
+        .map(modelInfoConverter::convert)
         .findFirst()
         .orElse(null);
   }
@@ -102,20 +111,6 @@ public class ChatClientManager implements ModelCatalogService {
     return getModelConfig(provider, modelName)
         .map(MultiModelProperties.ModelConfig::isSupportsStreaming)
         .orElse(true);
-  }
-
-  private ModelInfo convertToModelInfo(MultiModelProperties.ModelConfig config) {
-    ModelInfo info = new ModelInfo();
-    info.setId((long) config.getName().hashCode());
-    info.setName(config.getName());
-    info.setDisplayName(config.getDisplayName());
-    info.setMaxTokens(config.getMaxTokens());
-    info.setTemperature(config.getTemperature());
-    info.setSupportsThinking(config.isSupportsThinking());
-    info.setSupportsStreaming(config.isSupportsStreaming());
-    info.setAvailable(config.isEnabled());
-    info.setSortOrder(config.getSortOrder());
-    return info;
   }
 
   private Optional<MultiModelProperties.ModelConfig> getModelConfig(

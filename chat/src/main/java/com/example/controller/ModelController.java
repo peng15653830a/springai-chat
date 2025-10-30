@@ -4,7 +4,7 @@ import com.example.dto.common.ModelInfo;
 import com.example.dto.common.ProviderInfo;
 import com.example.dto.common.UserModelPreferenceDto;
 import com.example.dto.response.ApiResponse;
-import com.example.manager.ChatClientManager;
+import com.example.service.ChatModelCatalogService;
 import com.example.service.UserModelPreferenceService;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 模型管理控制器 职责分离：模型查询使用ChatClientManager，用户偏好使用UserModelPreferenceService
+ * 模型管理控制器 职责分离：模型查询使用ChatModelCatalogService，用户偏好使用UserModelPreferenceService
  *
  * @author xupeng
  */
@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 public class ModelController {
 
-  @Autowired private ChatClientManager chatClientManager;
+  @Autowired private ChatModelCatalogService chatModelCatalogService;
   
   @Autowired private com.example.client.UnifiedChatClientManager unifiedChatClientManager;
 
@@ -70,7 +70,7 @@ public class ModelController {
     log.info("获取提供者 {} 的模型列表", providerName);
 
     try {
-      List<ModelInfo> models = chatClientManager.getModels(providerName);
+      List<ModelInfo> models = chatModelCatalogService.getModels(providerName);
       log.info("成功获取提供者 {} 的 {} 个模型", providerName, models.size());
       return ApiResponse.success(models);
     } catch (Exception e) {
@@ -98,7 +98,7 @@ public class ModelController {
                     info.setName(providerName);
                     info.setDisplayName(providerName);
                     info.setAvailable(true);
-                    info.setModels(chatClientManager.getModels(providerName));
+                    info.setModels(chatModelCatalogService.getModels(providerName));
                     return info;
                   })
               .collect(java.util.stream.Collectors.toList());
@@ -128,7 +128,7 @@ public class ModelController {
     log.info("获取模型详细信息: {}-{}", providerName, modelName);
 
     try {
-      ModelInfo modelInfo = chatClientManager.getModelInfo(providerName, modelName);
+      ModelInfo modelInfo = chatModelCatalogService.getModelInfo(providerName, modelName);
       if (modelInfo != null) {
         log.info("成功获取模型信息: {}", modelInfo.getDisplayName());
         return ApiResponse.success(modelInfo);
@@ -155,7 +155,7 @@ public class ModelController {
     log.debug("检查模型是否可用: {}-{}", providerName, modelName);
 
     try {
-      boolean available = chatClientManager.supportsStreaming(providerName, modelName);
+      boolean available = chatModelCatalogService.supportsStreaming(providerName, modelName);
       log.debug("模型 {}-{} 可用性: {}", providerName, modelName, available);
       return ApiResponse.success(available);
     } catch (Exception e) {

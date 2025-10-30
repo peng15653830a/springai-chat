@@ -3,7 +3,7 @@ package com.example.streaming;
 import com.example.config.ChatOptionsProperties;
 import com.example.config.MultiModelProperties;
 import com.example.integration.ai.greatwall.GreatWallChatOptions;
-import com.example.manager.ChatClientManager;
+import com.example.service.ChatModelCatalogService;
 import com.example.stream.TextStreamRequest;
 import com.example.stream.springai.AbstractChatOptionsFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -15,14 +15,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class ChatModuleOptionsFactory extends AbstractChatOptionsFactory {
 
-  private final ChatClientManager chatClientManager;
+  private final ChatModelCatalogService chatModelCatalogService;
 
   public ChatModuleOptionsFactory(
       MultiModelProperties multiModelProperties,
       ChatOptionsProperties chatOptionsProperties,
-      ChatClientManager chatClientManager) {
+      ChatModelCatalogService chatModelCatalogService) {
     super(multiModelProperties, chatOptionsProperties);
-    this.chatClientManager = chatClientManager;
+    this.chatModelCatalogService = chatModelCatalogService;
   }
 
   private static final String PROVIDER_GREATWALL = "greatwall";
@@ -43,7 +43,7 @@ public class ChatModuleOptionsFactory extends AbstractChatOptionsFactory {
       opts.setTemperature(temperature);
       opts.setMaxTokens(maxTokens);
       boolean enableThinking =
-          request.isDeepThinking() && chatClientManager.supportsThinking(provider, model);
+          request.isDeepThinking() && chatModelCatalogService.supportsThinking(provider, model);
       opts.setEnableThinking(enableThinking);
       return opts;
     }

@@ -1,5 +1,6 @@
 package com.example.config;
 
+import com.example.util.ModelConfigHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -31,7 +32,7 @@ public class DeepSeekConfig {
         multiModelProperties.getProviders().get("deepseek");
     String apiKey = multiModelProperties.getApiKey("deepseek");
     MultiModelProperties.ModelConfig modelConfig =
-        getDefaultModelConfig(multiModelProperties, "deepseek");
+        ModelConfigHelper.getDefaultModelConfig(multiModelProperties, "deepseek");
 
     // 如果模型未找到，返回null而不是抛出异常
     if (modelConfig == null) {
@@ -50,8 +51,8 @@ public class DeepSeekConfig {
           .defaultOptions(
               OpenAiChatOptions.builder()
                   .model(modelConfig.getName())
-                  .temperature(getTemperature(modelConfig, multiModelProperties))
-                  .maxTokens(getMaxTokens(modelConfig, multiModelProperties))
+                  .temperature(ModelConfigHelper.getTemperature(modelConfig, multiModelProperties))
+                  .maxTokens(ModelConfigHelper.getMaxTokens(modelConfig, multiModelProperties))
                   .build())
           .build();
 
@@ -59,36 +60,5 @@ public class DeepSeekConfig {
       log.error("创建DeepSeek ChatModel失败: {}", e.getMessage());
       throw new RuntimeException("Failed to create DeepSeek ChatModel", e);
     }
-  }
-
-  /** 获取默认模型配置 */
-  private MultiModelProperties.ModelConfig getDefaultModelConfig(
-      MultiModelProperties multiModelProperties, String providerName) {
-    MultiModelProperties.ProviderConfig providerConfig =
-        multiModelProperties.getProviders().get(providerName);
-    if (providerConfig == null || providerConfig.getModels() == null) {
-      return null;
-    }
-
-    // 返回第一个模型作为默认模型
-    return providerConfig.getModels().stream().findFirst().orElse(null);
-  }
-
-  /** 获取温度参数 */
-  private Double getTemperature(
-      MultiModelProperties.ModelConfig modelConfig, MultiModelProperties multiModelProperties) {
-    if (modelConfig != null && modelConfig.getTemperature() != null) {
-      return modelConfig.getTemperature().doubleValue();
-    }
-    return multiModelProperties.getDefaults().getTemperature().doubleValue();
-  }
-
-  /** 获取最大token数 */
-  private Integer getMaxTokens(
-      MultiModelProperties.ModelConfig modelConfig, MultiModelProperties multiModelProperties) {
-    if (modelConfig != null && modelConfig.getMaxTokens() != null) {
-      return modelConfig.getMaxTokens();
-    }
-    return multiModelProperties.getDefaults().getMaxTokens();
   }
 }

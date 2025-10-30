@@ -89,5 +89,23 @@ public class MultiModelProperties {
     }
     return true;
   }
+
+  public java.util.Optional<ModelConfig> getModelConfig(String providerName, String modelName) {
+    ProviderConfig provider = providers.get(providerName);
+    if (provider == null || provider.getModels() == null) {
+      return java.util.Optional.empty();
+    }
+    return provider.getModels().stream()
+        .filter(model -> model.getName().equals(modelName))
+        .findFirst();
+  }
+
+  public List<ModelConfig> getEnabledModels(String providerName) {
+    ProviderConfig provider = providers.get(providerName);
+    if (provider == null || !provider.isEnabled() || provider.getModels() == null) {
+      return List.of();
+    }
+    return provider.getModels().stream().filter(ModelConfig::isEnabled).toList();
+  }
 }
 

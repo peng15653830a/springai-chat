@@ -3,7 +3,7 @@ package com.example.strategy.model;
 import com.example.config.MultiModelProperties;
 import com.example.dto.common.ModelInfo;
 import com.example.dto.common.UserModelPreferenceDto;
-import com.example.manager.ChatClientManager;
+import com.example.service.ChatModelCatalogService;
 import com.example.service.UserModelPreferenceService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class DefaultModelSelector implements ModelSelector {
 
-  private final ChatClientManager chatClientManager;
+  private final ChatModelCatalogService chatModelCatalogService;
   private final com.example.client.UnifiedChatClientManager unifiedChatClientManager;
   private final UserModelPreferenceService userModelPreferenceService;
   private final MultiModelProperties properties;
@@ -43,7 +43,7 @@ public class DefaultModelSelector implements ModelSelector {
   public String getActualModelName(String providerName, String modelName) {
     if (modelName != null && !modelName.trim().isEmpty()) {
       // 验证指定的模型是否可用
-      List<ModelInfo> availableModels = chatClientManager.getModels(providerName);
+      List<ModelInfo> availableModels = chatModelCatalogService.getModels(providerName);
       boolean modelExists =
           availableModels.stream().anyMatch(model -> modelName.equals(model.getName()));
 
@@ -56,7 +56,7 @@ public class DefaultModelSelector implements ModelSelector {
     }
 
     // 使用该提供者的第一个可用模型
-    List<ModelInfo> availableModels = chatClientManager.getModels(providerName);
+    List<ModelInfo> availableModels = chatModelCatalogService.getModels(providerName);
     if (!availableModels.isEmpty()) {
       String defaultModel = availableModels.get(0).getName();
       log.debug("使用默认模型: {}", defaultModel);
